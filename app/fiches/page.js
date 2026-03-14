@@ -64,6 +64,11 @@ export default function FichesPage() {
             borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
             fontWeight: '600', cursor: 'pointer'
           }}>+ Nouvelle fiche</button>
+          <button onClick={() => router.push('/menus')} style={{
+  background: 'transparent', color: 'rgba(255,255,255,0.7)',
+  border: '0.5px solid rgba(255,255,255,0.2)',
+  borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer'
+}}>Menus</button>
           <button onClick={() => router.push('/sous-fiches')} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
