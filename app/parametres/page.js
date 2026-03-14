@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 
 export default function ParametresPage() {
   const [params, setParams] = useState({})
@@ -11,8 +12,8 @@ export default function ParametresPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c, darkMode, toggleDarkMode } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -50,7 +51,7 @@ export default function ParametresPage() {
 
   const Section = ({ titre, children }) => (
     <div style={{
-      background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
+      background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px',
       border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
     }}>
       <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
@@ -77,6 +78,7 @@ export default function ParametresPage() {
             padding: '10px 12px', borderRadius: '8px',
             border: `0.5px solid ${c.bordure}`, fontSize: '14px',
             outline: 'none', color: c.texte,
+            background: c.blanc,
             width: type === 'number' ? (isMobile ? '100%' : '100px') : '100%'
           }}
         />
@@ -107,7 +109,7 @@ export default function ParametresPage() {
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {saved && (
             <span style={{ fontSize: '12px', color: '#9FE1CB', fontWeight: '500' }}>
@@ -122,7 +124,7 @@ export default function ParametresPage() {
           }}>
             {saving ? '...' : 'Sauvegarder'}
           </button>
-          <button onClick={() => router.push('/fiches')} style={{
+          <button onClick={() => router.push('/dashboard')} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
@@ -131,6 +133,44 @@ export default function ParametresPage() {
       </div>
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '700px', margin: '0 auto' }}>
+
+        {/* Mode sombre */}
+        <div style={{
+          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Apparence
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte, marginBottom: '4px' }}>
+                Mode sombre
+              </div>
+              <div style={{ fontSize: '12px', color: c.texteMuted }}>
+                Adapté pour une utilisation en cuisine avec peu de lumière
+              </div>
+            </div>
+            <div
+              onClick={toggleDarkMode}
+              style={{
+                width: '52px', height: '28px', borderRadius: '20px',
+                background: darkMode ? c.accent : c.bordure,
+                position: 'relative', cursor: 'pointer',
+                transition: 'background 0.3s ease', flexShrink: 0
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: '3px',
+                left: darkMode ? '27px' : '3px',
+                width: '22px', height: '22px',
+                borderRadius: '50%', background: 'white',
+                transition: 'left 0.3s ease',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.2)'
+              }} />
+            </div>
+          </div>
+        </div>
 
         {/* Établissement */}
         <Section titre="Établissement">
@@ -190,7 +230,7 @@ export default function ParametresPage() {
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: '8px',
                 border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-                background: 'white', outline: 'none', color: c.texte
+                background: c.blanc, outline: 'none', color: c.texte
               }}
             >
               {theme.saisons.map(s => <option key={s}>{s}</option>)}
