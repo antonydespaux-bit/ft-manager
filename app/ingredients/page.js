@@ -114,6 +114,20 @@ export default function IngredientsPage() {
             fontSize: '13px', fontWeight: '500', cursor: 'pointer'
           }}
         >
+          <button
+  onClick={() => router.push('/import')}
+  style={{
+    background: 'transparent',
+    color: '#666',
+    border: '0.5px solid #ddd',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    cursor: 'pointer'
+  }}
+>
+  Importer Excel
+</button>
           + Nouvel ingrédient
         </button>
       </div>
