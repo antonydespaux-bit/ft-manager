@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
+import { useIsMobile } from '../../lib/useIsMobile'
 
 export default function MenusPage() {
   const [menus, setMenus] = useState([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const c = theme.couleurs
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     checkUser()
@@ -31,6 +33,7 @@ export default function MenusPage() {
           fiches (id, nom, categorie, cout_portion)
         )
       `)
+      .eq('archive', false)
       .order('created_at', { ascending: false })
     setMenus(data || [])
     setLoading(false)
@@ -62,26 +65,27 @@ export default function MenusPage() {
       <div style={{
         background: c.principal,
         borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 24px',
+        padding: '0 16px',
         display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px'
+        justifyContent: 'space-between', height: '56px',
+        position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => router.push('/fiches')} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer'
-          }}>← Fiches</button>
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+          }}>← {!isMobile && 'Retour'}</button>
           <button onClick={() => router.push('/menus/nouveau')} style={{
             background: c.accent, color: c.principal, border: 'none',
-            borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px',
             fontWeight: '600', cursor: 'pointer'
-          }}>+ Nouveau menu</button>
+          }}>+ {!isMobile && 'Nouveau menu'}</button>
         </div>
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
@@ -100,18 +104,22 @@ export default function MenusPage() {
             }}>Créer le premier menu</button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: isMobile ? '10px' : '16px'
+          }}>
             {menus.map(menu => {
               const cout = calculerCoutMenu(menu)
               const fc = foodCostMenu(menu)
               return (
                 <div key={menu.id} style={{
-                  background: 'white', borderRadius: '12px', padding: '20px',
+                  background: 'white', borderRadius: '12px', padding: '18px',
                   border: `0.5px solid ${c.bordure}`
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
-                      <div style={{ fontSize: '16px', fontWeight: '500', color: c.texte }}>{menu.nom}</div>
+                      <div style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: '500', color: c.texte }}>{menu.nom}</div>
                       {menu.saison && (
                         <span style={{
                           background: c.accentClair, color: c.principal,
@@ -123,24 +131,23 @@ export default function MenusPage() {
                     {menu.prix_vente && (
                       <div style={{
                         background: c.principal, color: c.accent,
-                        borderRadius: '8px', padding: '6px 12px', textAlign: 'center'
+                        borderRadius: '8px', padding: '6px 12px', textAlign: 'center', flexShrink: 0
                       }}>
                         <div style={{ fontSize: '10px', opacity: 0.7 }}>Prix TTC</div>
-                        <div style={{ fontSize: '16px', fontWeight: '500' }}>{Number(menu.prix_vente).toFixed(2)} €</div>
+                        <div style={{ fontSize: '15px', fontWeight: '500' }}>{Number(menu.prix_vente).toFixed(2)} €</div>
                       </div>
                     )}
                   </div>
 
-                  <div style={{ borderTop: `0.5px solid ${c.bordure}`, paddingTop: '12px', marginBottom: '12px' }}>
+                  <div style={{ borderTop: `0.5px solid ${c.bordure}`, paddingTop: '10px', marginBottom: '12px' }}>
                     {['Entrée', 'Plat', 'Dessert'].map(service => {
                       const fiche = menu.menu_fiches?.find(mf => mf.service === service)
                       return (
                         <div key={service} style={{
-                          display: 'flex', justifyContent: 'space-between',
-                          alignItems: 'center', marginBottom: '6px'
+                          display: 'flex', alignItems: 'center', marginBottom: '6px', gap: '8px'
                         }}>
-                          <span style={{ fontSize: '12px', color: c.texteMuted, width: '60px' }}>{service}</span>
-                          <span style={{ fontSize: '13px', color: c.texte, flex: 1, paddingLeft: '8px' }}>
+                          <span style={{ fontSize: '11px', color: c.texteMuted, width: '55px', fontWeight: '500' }}>{service}</span>
+                          <span style={{ fontSize: '13px', color: c.texte, flex: 1 }}>
                             {fiche ? fiche.fiches?.nom : <span style={{ color: '#ccc', fontStyle: 'italic' }}>Non défini</span>}
                           </span>
                         </div>
@@ -148,32 +155,28 @@ export default function MenusPage() {
                     })}
                   </div>
 
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                    <div style={{ flex: 1, background: c.fond, borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coût matière</div>
-                      <div style={{ fontSize: '16px', fontWeight: '500', color: c.texte, marginTop: '2px' }}>{cout.toFixed(2)} €</div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ flex: 1, background: c.fond, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase' }}>Coût</div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{cout.toFixed(2)} €</div>
                     </div>
                     {fc && (
                       <div style={{
-                        flex: 1, borderRadius: '8px', padding: '10px', textAlign: 'center',
+                        flex: 1, borderRadius: '8px', padding: '8px', textAlign: 'center',
                         background: fc < 30 ? '#EAF3DE' : fc < 40 ? '#FAEEDA' : '#FCEBEB'
                       }}>
-                        <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>Food cost</div>
-                        <div style={{ fontSize: '16px', fontWeight: '500', marginTop: '2px', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>{fc} %</div>
+                        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>Food cost</div>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>{fc} %</div>
                       </div>
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <button onClick={() => router.push(`/menus/${menu.id}`)} style={{
                       flex: 1, padding: '8px', background: c.accentClair, color: c.principal,
                       border: 'none', borderRadius: '8px', fontSize: '12px',
                       cursor: 'pointer', fontWeight: '500'
                     }}>Voir / Modifier</button>
-                    <button onClick={() => window.print()} style={{
-                      padding: '8px 12px', background: c.principal, color: 'white',
-                      border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
-                    }}>Imprimer</button>
                     <button onClick={() => handleDelete(menu.id)} style={{
                       padding: '8px 12px', background: 'transparent', color: '#A32D2D',
                       border: `0.5px solid #ddd`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
