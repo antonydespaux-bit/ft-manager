@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { supabase, getParametres } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 
@@ -8,6 +8,7 @@ export default function MenuDetail() {
   const [menu, setMenu] = useState(null)
   const [menuFiches, setMenuFiches] = useState([])
   const [toutesLesFiches, setToutesLesFiches] = useState([])
+  const [params, setParams] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -17,13 +18,14 @@ export default function MenuDetail() {
   const [description, setDescription] = useState('')
   const [selection, setSelection] = useState({ Entrée: '', Plat: '', Dessert: '' })
   const router = useRouter()
-  const params = useParams()
+  const params_route = useParams()
   const c = theme.couleurs
   const services = ['Entrée', 'Plat', 'Dessert']
 
   useEffect(() => {
     checkUser()
     loadData()
+    loadParams()
   }, [])
 
   const checkUser = async () => {
@@ -31,11 +33,16 @@ export default function MenuDetail() {
     if (!session) router.push('/')
   }
 
+  const loadParams = async () => {
+    const p = await getParametres()
+    setParams(p)
+  }
+
   const loadData = async () => {
     const { data: menuData } = await supabase
       .from('menus')
       .select(`*, menu_fiches(id, service, ordre, fiches(id, nom, categorie, cout_portion, prix_ttc))`)
-      .eq('id', params.id)
+      .eq('id', params_route.id)
       .single()
 
     if (!menuData) { router.push('/menus'); return }
@@ -81,6 +88,13 @@ export default function MenuDetail() {
     return (cout / (prix / 1.10) * 100).toFixed(1)
   }
 
+  const prixIndicatif = (cout) => {
+    if (!cout) return null
+    const seuil = parseFloat(params['seuil_vert_cuisine'] || 28) / 100
+    const tva = 1 + parseFloat(params['tva_restauration'] || 10) / 100
+    return (cout / seuil * tva).toFixed(2)
+  }
+
   const handleSave = async () => {
     setSaving(true)
 
@@ -92,14 +106,14 @@ export default function MenuDetail() {
         prix_vente: prixVente ? parseFloat(prixVente) : null,
         description
       })
-      .eq('id', params.id)
+      .eq('id', params_route.id)
 
-    await supabase.from('menu_fiches').delete().eq('menu_id', params.id)
+    await supabase.from('menu_fiches').delete().eq('menu_id', params_route.id)
 
     const menuFichesAInserer = services
       .filter(service => selection[service])
       .map((service, index) => ({
-        menu_id: params.id,
+        menu_id: params_route.id,
         fiche_id: selection[service],
         service,
         ordre: index
@@ -116,7 +130,7 @@ export default function MenuDetail() {
 
   const handleDelete = async () => {
     if (!confirm('Supprimer ce menu ?')) return
-    await supabase.from('menus').delete().eq('id', params.id)
+    await supabase.from('menus').delete().eq('id', params_route.id)
     router.push('/menus')
   }
 
@@ -127,7 +141,11 @@ export default function MenuDetail() {
   )
 
   const cout = editing ? calculerCoutSelection() : calculerCout()
-  const fc = foodCost(cout, editing ? (prixVente ? parseFloat(prixVente) : null) : menu.prix_vente)
+  const prixActuel = editing ? (prixVente ? parseFloat(prixVente) : null) : menu.prix_vente
+  const fc = foodCost(cout, prixActuel)
+  const prixIndic = prixIndicatif(cout)
+  const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
+  const seuilOrange = parseFloat(params['seuil_orange_cuisine'] || 35)
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
@@ -215,6 +233,11 @@ export default function MenuDetail() {
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix de vente TTC (€)</label>
                 <input type="number" value={prixVente} onChange={e => setPrixVente(e.target.value)} step="0.01"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }} />
+                {prixIndic && (
+                  <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
+                    Prix indicatif ({seuilVert}% food cost) : <strong>{prixIndic} €</strong>
+                  </div>
+                )}
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
@@ -322,23 +345,30 @@ export default function MenuDetail() {
             <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{cout.toFixed(2)} €</div>
           </div>
-          {(editing ? prixVente : menu.prix_vente) && (
+          {prixActuel && (
             <div style={{ background: c.fond, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Prix HT</div>
               <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
-                {((editing ? parseFloat(prixVente) : menu.prix_vente) / 1.10).toFixed(2)} €
+                {(prixActuel / 1.10).toFixed(2)} €
               </div>
+            </div>
+          )}
+          {prixIndic && (
+            <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
+              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>Basé sur {seuilVert}% food cost</div>
             </div>
           )}
           {fc && (
             <div style={{
-              background: fc < 30 ? '#EAF3DE' : fc < 40 ? '#FAEEDA' : '#FCEBEB',
+              background: fc < seuilVert ? '#EAF3DE' : fc < seuilOrange ? '#FAEEDA' : '#FCEBEB',
               borderRadius: '8px', padding: '14px'
             }}>
-              <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>
+              <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>
                 Food cost
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>
                 {fc} %
               </div>
             </div>
