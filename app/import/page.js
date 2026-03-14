@@ -3,10 +3,12 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
+import { useIsMobile } from '../../lib/useIsMobile'
 import * as XLSX from 'xlsx'
 
 export default function ImportPage() {
   const [loading, setLoading] = useState(false)
+  const [recalcul, setRecalcul] = useState(false)
   const [resultat, setResultat] = useState(null)
   const [apercu, setApercu] = useState([])
   const [fichierPret, setFichierPret] = useState(false)
@@ -15,6 +17,7 @@ export default function ImportPage() {
   const [etape, setEtape] = useState('')
   const router = useRouter()
   const c = theme.couleurs
+  const isMobile = useIsMobile()
 
   const normaliserPrix = (valeur) => {
     if (!valeur) return null
@@ -107,28 +110,77 @@ export default function ImportPage() {
     setEtape('')
   }
 
+  const handleRecalcul = async () => {
+    setRecalcul(true)
+    setEtape('Recalcul du coût de toutes les fiches...')
+
+    const { error } = await supabase.rpc('recalculer_cout_portions')
+
+    if (error) {
+      console.error(error)
+    }
+
+    setRecalcul(false)
+    setEtape('')
+    setResultat(prev => ({ ...prev, recalculDone: true }))
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
       <div style={{
-        background: c.principal,
-        borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 24px',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px'
+        background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
+        padding: '0 16px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', height: '56px',
+        position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
         <button onClick={() => router.push('/ingredients')} style={{
           background: 'transparent', color: 'rgba(255,255,255,0.7)',
           border: '0.5px solid rgba(255,255,255,0.2)',
-          borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer'
-        }}>← Retour</button>
+          borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+        }}>← {!isMobile && 'Retour'}</button>
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '700px', margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '700px', margin: '0 auto' }}>
 
+        {/* Bouton recalcul rapide */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: '28px',
+          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '20px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
+            Mise à jour en masse des fiches
+          </div>
+          <div style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '14px' }}>
+            Recalcule automatiquement le coût de toutes les fiches techniques en fonction des prix actuels des ingrédients.
+          </div>
+          <button
+            onClick={handleRecalcul}
+            disabled={recalcul}
+            style={{
+              width: '100%', padding: '14px',
+              background: recalcul ? c.texteMuted : c.vert,
+              color: 'white', border: 'none', borderRadius: '8px',
+              fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {recalcul ? `${etape}` : '🔄 Recalculer toutes les fiches'}
+          </button>
+          {resultat?.recalculDone && (
+            <div style={{
+              marginTop: '10px', padding: '10px 14px', background: c.vertClair,
+              borderRadius: '8px', fontSize: '13px', color: c.vert,
+              border: `0.5px solid ${c.vert}40`
+            }}>
+              ✓ Toutes les fiches ont été mises à jour avec les prix actuels !
+            </div>
+          )}
+        </div>
+
+        {/* Import Excel */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '28px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '20px'
         }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
@@ -165,29 +217,31 @@ export default function ImportPage() {
               <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '8px', fontWeight: '500' }}>
                 Aperçu des 5 premiers ingrédients ({donnees.length} au total) :
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: c.fond }}>
-                    {['Nom', 'Prix HT', 'Unité'].map(h => (
-                      <th key={h} style={{
-                        padding: '8px 12px', textAlign: 'left',
-                        fontSize: '11px', color: c.texteMuted,
-                        fontWeight: '500', textTransform: 'uppercase',
-                        border: `0.5px solid ${c.bordure}`
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {apercu.map((ing, i) => (
-                    <tr key={i}>
-                      <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.nom}</td>
-                      <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.prix_kg ? `${ing.prix_kg} €` : '—'}</td>
-                      <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.unite}</td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: c.fond }}>
+                      {['Nom', 'Prix HT', 'Unité'].map(h => (
+                        <th key={h} style={{
+                          padding: '8px 12px', textAlign: 'left',
+                          fontSize: '11px', color: c.texteMuted,
+                          fontWeight: '500', textTransform: 'uppercase',
+                          border: `0.5px solid ${c.bordure}`
+                        }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {apercu.map((ing, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.nom}</td>
+                        <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.prix_kg ? `${ing.prix_kg} €` : '—'}</td>
+                        <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.unite}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -229,12 +283,10 @@ export default function ImportPage() {
 
         {resultat && (
           <div style={{
-            background: c.vertClair,
-            border: `0.5px solid ${c.vert}40`,
-            borderRadius: '12px', padding: '20px',
-            fontSize: '14px', color: c.vert
+            background: c.vertClair, border: `0.5px solid ${c.vert}40`,
+            borderRadius: '12px', padding: '20px'
           }}>
-            <div style={{ fontWeight: '600', marginBottom: '10px' }}>Import terminé !</div>
+            <div style={{ fontWeight: '600', marginBottom: '10px', color: c.vert }}>Import terminé !</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div style={{ background: 'white', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: '500', color: c.vert }}>{resultat.importes}</div>
@@ -249,8 +301,45 @@ export default function ImportPage() {
                 <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Erreurs</div>
               </div>
             </div>
+
+            {resultat.misAJour > 0 && !resultat.recalculDone && (
+              <div style={{
+                background: '#FAEEDA', borderRadius: '8px', padding: '14px',
+                marginBottom: '12px', border: '0.5px solid #FAC775'
+              }}>
+                <div style={{ fontSize: '13px', color: '#633806', fontWeight: '500', marginBottom: '8px' }}>
+                  ⚠️ {resultat.misAJour} prix ont été mis à jour
+                </div>
+                <div style={{ fontSize: '12px', color: '#633806', marginBottom: '10px' }}>
+                  Voulez-vous recalculer le coût de toutes les fiches avec les nouveaux prix ?
+                </div>
+                <button
+                  onClick={handleRecalcul}
+                  disabled={recalcul}
+                  style={{
+                    width: '100%', padding: '12px',
+                    background: recalcul ? c.texteMuted : c.vert,
+                    color: 'white', border: 'none', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {recalcul ? 'Recalcul en cours...' : '🔄 Recalculer toutes les fiches maintenant'}
+                </button>
+              </div>
+            )}
+
+            {resultat.recalculDone && (
+              <div style={{
+                background: c.vertClair, borderRadius: '8px', padding: '12px',
+                marginBottom: '12px', border: `0.5px solid ${c.vert}40`,
+                fontSize: '13px', color: c.vert, fontWeight: '500'
+              }}>
+                ✓ Toutes les fiches ont été recalculées avec les nouveaux prix !
+              </div>
+            )}
+
             <button
-              onClick={() => router.push('/ingredients')}
+              onClick={() => router.push('/fiches')}
               style={{
                 width: '100%', padding: '10px 20px',
                 background: c.vert, color: 'white',
@@ -258,7 +347,7 @@ export default function ImportPage() {
                 fontSize: '13px', cursor: 'pointer', fontWeight: '500'
               }}
             >
-              Voir les ingrédients
+              Voir les fiches
             </button>
           </div>
         )}
