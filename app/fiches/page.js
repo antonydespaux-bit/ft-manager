@@ -51,16 +51,17 @@ export default function FichesPage() {
 
   const categories = ['toutes', ...new Set(fiches.map(f => f.categorie).filter(Boolean))]
 
-  const navItems = [
-    { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
-    { label: 'Menus', path: '/menus' },
-    { label: 'Récap', path: '/recap' },
-    { label: 'Sous-fiches', path: '/sous-fiches' },
-    { label: 'Ingrédients', path: '/ingredients' },
-    { label: 'Archives', path: '/archives' },
-    { label: 'Paramètres', path: '/parametres' },
-    { label: 'Déconnexion', path: null, action: handleLogout },
-  ]
+ const navItems = [
+  { label: 'Dashboard', path: '/dashboard' },
+  { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
+  { label: 'Menus', path: '/menus' },
+  { label: 'Récap', path: '/recap' },
+  { label: 'Sous-fiches', path: '/sous-fiches' },
+  { label: 'Ingrédients', path: '/ingredients' },
+  { label: 'Archives', path: '/archives' },
+  { label: 'Paramètres', path: '/parametres' },
+  { label: 'Déconnexion', path: null, action: handleLogout },
+]
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
