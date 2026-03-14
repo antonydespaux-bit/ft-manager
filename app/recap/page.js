@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
+import { useIsMobile } from '../../lib/useIsMobile'
 import * as XLSX from 'xlsx'
 
 export default function RecapPage() {
@@ -15,6 +16,7 @@ export default function RecapPage() {
   const [saving, setSaving] = useState(false)
   const router = useRouter()
   const c = theme.couleurs
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     checkUser()
@@ -142,7 +144,6 @@ export default function RecapPage() {
 
   const exportExcel = () => {
     const wb = XLSX.utils.book_new()
-
     const rowsRecap = [...theme.categories, 'Menus'].map(cat => {
       const stats = statsCategorie(cat)
       if (!stats) return null
@@ -156,10 +157,8 @@ export default function RecapPage() {
         'Ratio moyen (%)': stats.ratioMoyen.toFixed(1)
       }
     }).filter(Boolean)
-
     const wsRecap = XLSX.utils.json_to_sheet(rowsRecap)
     XLSX.utils.book_append_sheet(wb, wsRecap, 'Récapitulatif')
-
     theme.categories.forEach(cat => {
       const lignes = fichesFiltrees.filter(f => f.categorie === cat)
       if (!lignes.length) return
@@ -175,20 +174,57 @@ export default function RecapPage() {
       const ws = XLSX.utils.json_to_sheet(rows)
       XLSX.utils.book_append_sheet(wb, ws, cat.substring(0, 31))
     })
-
     XLSX.writeFile(wb, `recap_la_fantaisie_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.xlsx`)
   }
 
-  const colonnes = ['Catégorie', 'Nb fiches', 'Coût moy./portion', 'Prix HT moy.', 'Prix TTC moy.', 'Bénéfice moy.', 'Ratio moy.']
-
   const DetailFiches = ({ cat }) => {
-    const lignes = cat === 'Menus'
-      ? menusFiltres
-      : fichesFiltrees.filter(f => f.categorie === cat)
-
+    const lignes = cat === 'Menus' ? menusFiltres : fichesFiltrees.filter(f => f.categorie === cat)
     if (!lignes.length) return null
 
-    return (
+    return isMobile ? (
+      <div style={{ padding: '8px 12px', background: c.fond }}>
+        {lignes.map((item, i) => {
+          const cout = cat === 'Menus'
+            ? (item.menu_fiches?.reduce((t, mf) => t + (mf.fiches?.cout_portion || 0), 0) || 0)
+            : item.cout_portion
+          const prixTTC = cat === 'Menus' ? item.prix_vente : item.prix_ttc
+          const prixHT = prixTTC ? prixTTC / 1.10 : null
+          const fc = prixHT && cout ? (cout / prixHT * 100).toFixed(1) : null
+          const aArchiver = modifArchive[item.id] || false
+
+          return (
+            <div key={item.id} style={{
+              background: aArchiver ? '#FAEEDA' : 'white',
+              borderRadius: '8px', padding: '12px', marginBottom: '8px',
+              border: `0.5px solid ${c.bordure}`
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div
+                  style={{ fontSize: '14px', fontWeight: '500', color: c.texte, cursor: 'pointer', flex: 1 }}
+                  onClick={() => router.push(cat === 'Menus' ? `/menus/${item.id}` : `/fiches/${item.id}`)}
+                >{item.nom}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {fc && (
+                    <span style={{
+                      background: fcBg(fc), color: fcColor(fc),
+                      borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500'
+                    }}>{fc}%</span>
+                  )}
+                  <input type="checkbox" checked={aArchiver} onChange={() => toggleArchive(item.id)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: c.accent }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: c.texteMuted }}>
+                {cout ? <span>Coût : {Number(cout).toFixed(2)} €</span> : null}
+                {prixTTC ? <span>Prix : {Number(prixTTC).toFixed(2)} €</span> : null}
+                {item.saison ? <span>{item.saison}</span> : null}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    ) : (
       <tr>
         <td colSpan={8} style={{ padding: '0', background: c.fond }}>
           <div style={{ padding: '12px 16px' }}>
@@ -214,46 +250,28 @@ export default function RecapPage() {
                   const benefice = prixHT && cout ? prixHT - cout : null
                   const fc = prixHT && cout ? (cout / prixHT * 100).toFixed(1) : null
                   const aArchiver = modifArchive[item.id] || false
-
                   return (
-                    <tr
-                      key={item.id}
-                      style={{
-                        borderBottom: i < lignes.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
-                        background: aArchiver ? '#FAEEDA' : 'white'
-                      }}
-                    >
-                      <td
-                        style={{ padding: '8px 10px', fontWeight: '500', color: c.texte, cursor: 'pointer' }}
+                    <tr key={item.id} style={{
+                      borderBottom: i < lignes.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
+                      background: aArchiver ? '#FAEEDA' : 'white'
+                    }}>
+                      <td style={{ padding: '8px 10px', fontWeight: '500', color: c.texte, cursor: 'pointer' }}
                         onClick={() => router.push(cat === 'Menus' ? `/menus/${item.id}` : `/fiches/${item.id}`)}
                       >{item.nom}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texteMuted }}>{item.saison || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
-                        {cout ? `${Number(cout).toFixed(2)} €` : '—'}
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
-                        {prixHT ? `${prixHT.toFixed(2)} €` : '—'}
-                      </td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
-                        {prixTTC ? `${Number(prixTTC).toFixed(2)} €` : '—'}
-                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>{cout ? `${Number(cout).toFixed(2)} €` : '—'}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>{prixHT ? `${prixHT.toFixed(2)} €` : '—'}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>{prixTTC ? `${Number(prixTTC).toFixed(2)} €` : '—'}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: benefice ? (benefice > 0 ? '#3B6D11' : '#A32D2D') : c.texteMuted }}>
                         {benefice ? `${benefice.toFixed(2)} €` : '—'}
                       </td>
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                         {fc ? (
-                          <span style={{
-                            background: fcBg(fc), color: fcColor(fc),
-                            borderRadius: '20px', padding: '2px 8px',
-                            fontSize: '11px', fontWeight: '500'
-                          }}>{fc} %</span>
+                          <span style={{ background: fcBg(fc), color: fcColor(fc), borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>{fc} %</span>
                         ) : '—'}
                       </td>
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        <input
-                          type="checkbox"
-                          checked={aArchiver}
-                          onChange={() => toggleArchive(item.id)}
+                        <input type="checkbox" checked={aArchiver} onChange={() => toggleArchive(item.id)}
                           style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: c.accent }}
                         />
                       </td>
@@ -271,54 +289,55 @@ export default function RecapPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div className="no-print" style={{
+      <div style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 24px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px'
+        padding: '0 16px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', height: '56px',
+        position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           {nbArchivesSelectionnes > 0 && (
             <button onClick={sauvegarderArchives} disabled={saving} style={{
               background: saving ? c.texteMuted : '#854F0B',
               color: 'white', border: 'none', borderRadius: '8px',
-              padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+              padding: '8px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
             }}>
-              {saving ? 'Archivage...' : `Archiver ${nbArchivesSelectionnes} fiche${nbArchivesSelectionnes > 1 ? 's' : ''}`}
+              {saving ? '...' : `Archiver ${nbArchivesSelectionnes}`}
             </button>
           )}
           <button onClick={() => router.push('/archives')} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer'
-          }}>Archives</button>
+            borderRadius: '8px', padding: '8px 10px', fontSize: '12px', cursor: 'pointer'
+          }}>{isMobile ? '📦' : 'Archives'}</button>
           <button onClick={exportExcel} style={{
             background: c.vert, color: 'white', border: 'none',
-            borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
+            borderRadius: '8px', padding: '8px 10px', fontSize: '12px',
             fontWeight: '600', cursor: 'pointer'
-          }}>Export Excel</button>
+          }}>{isMobile ? '📊' : 'Export Excel'}</button>
           <button onClick={() => router.push('/fiches')} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer'
-          }}>← Retour</button>
+            borderRadius: '8px', padding: '8px 10px', fontSize: '12px', cursor: 'pointer'
+          }}>← {!isMobile && 'Retour'}</button>
         </div>
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        <div className="no-print" style={{
-          display: 'flex', gap: '10px', marginBottom: '24px',
+        <div style={{
+          display: 'flex', gap: '8px', marginBottom: '16px',
           alignItems: 'center', flexWrap: 'wrap'
         }}>
-          <span style={{ fontSize: '13px', color: c.texteMuted }}>Filtrer par saison :</span>
           <select
             value={saisonFiltree}
             onChange={e => setSaisonFiltree(e.target.value)}
             style={{
-              padding: '8px 14px', borderRadius: '8px',
+              padding: '8px 12px', borderRadius: '8px',
               border: `0.5px solid ${c.bordure}`, fontSize: '13px',
-              background: 'white', outline: 'none', color: c.texte, cursor: 'pointer'
+              background: 'white', outline: 'none', color: c.texte, cursor: 'pointer',
+              flex: isMobile ? 1 : 'none'
             }}
           >
             <option value="toutes">Toutes les saisons</option>
@@ -331,18 +350,75 @@ export default function RecapPage() {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
+        ) : isMobile ? (
+          // Version mobile du récap
+          <div>
+            {[...theme.categories, 'Menus'].map((cat) => {
+              const stats = statsCategorie(cat)
+              if (!stats) return null
+              const isOpen = categorieOuverte === cat
+              const isMenuCat = cat === 'Menus'
+              return (
+                <div key={cat} style={{ marginBottom: '8px' }}>
+                  <div
+                    onClick={() => setCategorieOuverte(isOpen ? null : cat)}
+                    style={{
+                      background: isOpen ? c.accentClair : 'white',
+                      borderRadius: isOpen ? '12px 12px 0 0' : '12px',
+                      padding: '14px 16px', cursor: 'pointer',
+                      border: `0.5px solid ${c.bordure}`,
+                      borderBottom: isOpen ? 'none' : `0.5px solid ${c.bordure}`
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          background: isMenuCat ? c.accentClair : c.violetClair,
+                          color: isMenuCat ? c.principal : '#3C3489',
+                          borderRadius: '20px', padding: '3px 12px',
+                          fontSize: '12px', fontWeight: '500'
+                        }}>{cat}</span>
+                        <span style={{ fontSize: '11px', color: c.texteMuted }}>{stats.nb} fiche{stats.nb > 1 ? 's' : ''}</span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: c.accent }}>{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase' }}>Coût moy.</div>
+                        <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>{stats.coutMoyen > 0 ? `${stats.coutMoyen.toFixed(2)}€` : '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase' }}>Prix TTC</div>
+                        <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>{stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)}€` : '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase' }}>Ratio</div>
+                        <div style={{ fontSize: '13px', fontWeight: '500' }}>
+                          {stats.ratioMoyen > 0 ? (
+                            <span style={{ color: fcColor(stats.ratioMoyen) }}>{stats.ratioMoyen.toFixed(1)}%</span>
+                          ) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {isOpen && (
+                    <div style={{ border: `0.5px solid ${c.bordure}`, borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                      <DetailFiches cat={cat} />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         ) : (
-          <div style={{
-            background: 'white', borderRadius: '12px',
-            border: `0.5px solid ${c.bordure}`, overflow: 'hidden'
-          }}>
+          // Version desktop du récap
+          <div style={{ background: 'white', borderRadius: '12px', border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: c.principal }}>
-                  {colonnes.map(col => (
+                  {['Catégorie', 'Nb fiches', 'Coût moy./portion', 'Prix HT moy.', 'Prix TTC moy.', 'Bénéfice moy.', 'Ratio moy.'].map(col => (
                     <th key={col} style={{
-                      padding: '12px 16px',
-                      textAlign: col === 'Catégorie' ? 'left' : 'right',
+                      padding: '12px 16px', textAlign: col === 'Catégorie' ? 'left' : 'right',
                       fontSize: '11px', color: c.accent, fontWeight: '500',
                       textTransform: 'uppercase', letterSpacing: '0.04em'
                     }}>{col}</th>
@@ -355,17 +431,11 @@ export default function RecapPage() {
                   if (!stats) return null
                   const isOpen = categorieOuverte === cat
                   const isMenuCat = cat === 'Menus'
-
                   return (
                     <>
-                      <tr
-                        key={cat}
+                      <tr key={cat}
                         onClick={() => setCategorieOuverte(isOpen ? null : cat)}
-                        style={{
-                          borderBottom: `0.5px solid ${c.bordure}`,
-                          cursor: 'pointer',
-                          background: isOpen ? c.accentClair : 'white'
-                        }}
+                        style={{ borderBottom: `0.5px solid ${c.bordure}`, cursor: 'pointer', background: isOpen ? c.accentClair : 'white' }}
                         onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = c.fond }}
                         onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = 'white' }}
                       >
@@ -374,38 +444,24 @@ export default function RecapPage() {
                             <span style={{
                               background: isMenuCat ? c.accentClair : c.violetClair,
                               color: isMenuCat ? c.principal : '#3C3489',
-                              borderRadius: '20px', padding: '3px 12px',
-                              fontSize: '12px', fontWeight: '500'
+                              borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500'
                             }}>{cat}</span>
-                            <span style={{ fontSize: '11px', color: c.texteMuted }}>
-                              {stats.nb} fiche{stats.nb > 1 ? 's' : ''}
-                            </span>
-                            <span style={{ fontSize: '11px', color: c.accent, marginLeft: 'auto' }}>
-                              {isOpen ? '▲' : '▼'}
-                            </span>
+                            <span style={{ fontSize: '11px', color: c.texteMuted }}>{stats.nb} fiche{stats.nb > 1 ? 's' : ''}</span>
+                            <span style={{ fontSize: '11px', color: c.accent, marginLeft: 'auto' }}>{isOpen ? '▲' : '▼'}</span>
                           </div>
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.nb}</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
-                          {stats.coutMoyen > 0 ? `${stats.coutMoyen.toFixed(2)} €` : '—'}
-                        </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
-                          {stats.prixHTMoyen > 0 ? `${stats.prixHTMoyen.toFixed(2)} €` : '—'}
-                        </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
-                          {stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)} €` : '—'}
-                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.coutMoyen > 0 ? `${stats.coutMoyen.toFixed(2)} €` : '—'}</td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.prixHTMoyen > 0 ? `${stats.prixHTMoyen.toFixed(2)} €` : '—'}</td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)} €` : '—'}</td>
                         <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: '500', color: stats.beneficeMoyen > 0 ? '#3B6D11' : stats.beneficeMoyen < 0 ? '#A32D2D' : c.texteMuted }}>
                           {stats.beneficeMoyen !== 0 ? `${stats.beneficeMoyen.toFixed(2)} €` : '—'}
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                           {stats.ratioMoyen > 0 ? (
-                            <span style={{
-                              background: fcBg(stats.ratioMoyen),
-                              color: fcColor(stats.ratioMoyen),
-                              borderRadius: '20px', padding: '3px 10px',
-                              fontSize: '12px', fontWeight: '500'
-                            }}>{stats.ratioMoyen.toFixed(1)} %</span>
+                            <span style={{ background: fcBg(stats.ratioMoyen), color: fcColor(stats.ratioMoyen), borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '500' }}>
+                              {stats.ratioMoyen.toFixed(1)} %
+                            </span>
                           ) : '—'}
                         </td>
                       </tr>
