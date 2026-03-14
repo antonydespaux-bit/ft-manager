@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
+import { useIsMobile } from '../../lib/useIsMobile'
 
 export default function FichesPage() {
   const [fiches, setFiches] = useState([])
@@ -10,8 +11,10 @@ export default function FichesPage() {
   const [recherche, setRecherche] = useState('')
   const [categorie, setCategorie] = useState('toutes')
   const [saison, setSaison] = useState('toutes')
+  const [menuOuvert, setMenuOuvert] = useState(false)
   const router = useRouter()
   const c = theme.couleurs
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     checkUser()
@@ -48,9 +51,21 @@ export default function FichesPage() {
 
   const categories = ['toutes', ...new Set(fiches.map(f => f.categorie).filter(Boolean))]
 
+  const navItems = [
+    { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
+    { label: 'Menus', path: '/menus' },
+    { label: 'Récap', path: '/recap' },
+    { label: 'Sous-fiches', path: '/sous-fiches' },
+    { label: 'Ingrédients', path: '/ingredients' },
+    { label: 'Archives', path: '/archives' },
+    { label: 'Paramètres', path: '/parametres' },
+    { label: 'Déconnexion', path: null, action: handleLogout },
+  ]
+
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
+      {/* Barre navigation */}
       <div style={{
         background: c.principal,
         borderBottom: `0.5px solid ${c.accent}40`,
@@ -58,80 +73,100 @@ export default function FichesPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: '56px'
+        height: '56px',
+        position: 'sticky', top: 0, zIndex: 100
       }}>
         <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => router.push('/fiches/nouvelle')} style={{
-            background: c.accent, color: c.principal, border: 'none',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
-            fontWeight: '600', cursor: 'pointer'
-          }}>+ Nouvelle fiche</button>
-          <button onClick={() => router.push('/menus')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Menus</button>
-          <button onClick={() => router.push('/recap')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Récap</button>
-          <button onClick={() => router.push('/sous-fiches')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Sous-fiches</button>
-          <button onClick={() => router.push('/ingredients')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Ingrédients</button>
-          <button onClick={() => router.push('/archives')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Archives</button>
-          <button onClick={() => router.push('/parametres')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Paramètres</button>
-          <button onClick={handleLogout} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Déconnexion</button>
-        </div>
+
+        {isMobile ? (
+          <button
+            onClick={() => setMenuOuvert(!menuOuvert)}
+            style={{
+              background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
+              color: 'white', fontSize: '18px'
+            }}
+          >☰</button>
+        ) : (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {navItems.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => item.action ? item.action() : router.push(item.path)}
+                style={{
+                  background: item.accent ? c.accent : 'transparent',
+                  color: item.accent ? c.principal : 'rgba(255,255,255,0.7)',
+                  border: item.accent ? 'none' : '0.5px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
+                  fontWeight: item.accent ? '600' : '400', cursor: 'pointer'
+                }}
+              >{item.label}</button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
-
+      {/* Menu mobile déroulant */}
+      {isMobile && menuOuvert && (
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '12px', marginBottom: '24px'
+          background: c.principal, padding: '8px 16px 16px',
+          borderBottom: `0.5px solid ${c.accent}40`,
+          position: 'sticky', top: '56px', zIndex: 99
+        }}>
+          {navItems.map((item, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setMenuOuvert(false)
+                item.action ? item.action() : router.push(item.path)
+              }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                background: item.accent ? c.accent : 'transparent',
+                color: item.accent ? c.principal : 'rgba(255,255,255,0.85)',
+                border: 'none', borderRadius: '8px',
+                padding: '12px 16px', fontSize: '14px',
+                fontWeight: item.accent ? '600' : '400',
+                cursor: 'pointer', marginBottom: '4px'
+              }}
+            >{item.label}</button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
+
+        {/* Stats */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
+          gap: isMobile ? '8px' : '12px',
+          marginBottom: isMobile ? '16px' : '24px'
         }}>
           {[
-            { label: 'Fiches totales', value: fiches.length },
+            { label: 'Fiches', value: fiches.length },
             { label: 'Plats', value: fiches.filter(f => f.categorie === 'Plats').length },
             { label: 'Desserts', value: fiches.filter(f => f.categorie === 'Desserts').length },
           ].map((stat, i) => (
             <div key={i} style={{
-              background: 'white', borderRadius: '10px', padding: '16px',
+              background: 'white', borderRadius: '10px',
+              padding: isMobile ? '12px' : '16px',
               border: `0.5px solid ${c.bordure}`
             }}>
-              <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {stat.label}
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
+              <div style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
                 {stat.value}
               </div>
             </div>
           ))}
         </div>
 
+        {/* Filtres */}
         <div style={{
-          display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap'
+          display: 'flex', gap: '8px', marginBottom: '16px',
+          flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap'
         }}>
           <input
             type="text"
@@ -200,8 +235,8 @@ export default function FichesPage() {
         ) : (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '14px'
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: isMobile ? '10px' : '14px'
           }}>
             {fichesFiltrees.map(fiche => (
               <div
@@ -210,7 +245,8 @@ export default function FichesPage() {
                 style={{
                   background: 'white', borderRadius: '12px',
                   border: `0.5px solid ${c.bordure}`, cursor: 'pointer',
-                  overflow: 'hidden'
+                  overflow: 'hidden', display: 'flex',
+                  flexDirection: isMobile ? 'row' : 'column'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.borderColor = c.accent
@@ -225,32 +261,32 @@ export default function FichesPage() {
                   <img
                     src={fiche.photo_url}
                     alt={fiche.nom}
-                    style={{ width: '100%', height: '160px', objectFit: 'cover' }}
+                    style={{
+                      width: isMobile ? '100px' : '100%',
+                      height: isMobile ? '100px' : '160px',
+                      objectFit: 'cover', flexShrink: 0
+                    }}
                   />
                 )}
-                <div style={{ padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div style={{ fontSize: '15px', fontWeight: '500', color: c.texte }}>
+                <div style={{ padding: isMobile ? '12px' : '16px', flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    <div style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: '500', color: c.texte }}>
                       {fiche.nom}
                     </div>
                     {fiche.categorie && (
                       <span style={{
                         background: c.accentClair, color: c.principal,
-                        borderRadius: '20px', padding: '3px 10px',
-                        fontSize: '11px', fontWeight: '500',
-                        flexShrink: 0, marginLeft: '8px'
+                        borderRadius: '20px', padding: '2px 8px',
+                        fontSize: '10px', fontWeight: '500',
+                        flexShrink: 0, marginLeft: '6px'
                       }}>
                         {fiche.categorie}
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: c.texteMuted, flexWrap: 'wrap' }}>
-                    {fiche.saison && (
-                      <span style={{ fontSize: '11px' }}>{fiche.saison}</span>
-                    )}
-                    {fiche.nb_portions && (
-                      <span>{fiche.nb_portions} portions</span>
-                    )}
+                  <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: c.texteMuted, flexWrap: 'wrap' }}>
+                    {fiche.saison && <span style={{ fontSize: '11px' }}>{fiche.saison}</span>}
+                    {fiche.nb_portions && <span>{fiche.nb_portions} portions</span>}
                     {fiche.prix_ttc && (
                       <span style={{ fontWeight: '500', color: c.texte }}>
                         {Number(fiche.prix_ttc).toFixed(2)} €
