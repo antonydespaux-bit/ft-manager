@@ -103,7 +103,7 @@ export default function ParametresPage() {
         padding: '0 24px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: '56px'
       }}>
-        <Logo height={30} couleur="white" />
+       <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {saved && (
             <span style={{ fontSize: '13px', color: '#9FE1CB', fontWeight: '500' }}>
