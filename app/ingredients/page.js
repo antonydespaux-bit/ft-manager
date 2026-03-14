@@ -32,13 +32,14 @@ export default function IngredientsPage() {
 
   const loadIngredients = async () => {
     const { data } = await supabase
-      .from('ingredients')
-      .select('*')
-      .eq('est_sous_fiche', false)
-      .order('nom')
-    setIngredients(data || [])
-    setSelection([])
-    setLoading(false)
+    .from('ingredients')
+    .select('*')
+    .eq('est_sous_fiche', false)
+    .order('nom')
+    .limit(5000)
+     setIngredients(data || [])
+     setSelection([])
+   setLoading(false)
   }
 
   const ingredientsFiltres = ingredients.filter(i =>
