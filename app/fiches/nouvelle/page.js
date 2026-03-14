@@ -26,6 +26,8 @@ export default function NouvelleFiche() {
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
+  const [photo, setPhoto] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
   const [ingredients, setIngredients] = useState([
     { ingredient_id: '', nom: '', quantite: '', unite: 'kg' }
   ])
@@ -67,6 +69,13 @@ export default function NouvelleFiche() {
     setAllergenes(prev =>
       prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
     )
+  }
+
+  const handlePhoto = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setPhoto(file)
+    setPhotoPreview(URL.createObjectURL(file))
   }
 
   const ajouterIngredient = () => {
@@ -149,6 +158,21 @@ export default function NouvelleFiche() {
       setError('Erreur : ' + errFiche.message)
       setLoading(false)
       return
+    }
+
+    if (photo) {
+      const ext = photo.name.split('.').pop()
+      const path = `${fiche.id}.${ext}`
+      const { error: errPhoto } = await supabase.storage
+        .from('fiches-photos')
+        .upload(path, photo, { upsert: true })
+
+      if (!errPhoto) {
+        const { data: urlData } = supabase.storage
+          .from('fiches-photos')
+          .getPublicUrl(path)
+        await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
+      }
     }
 
     const ingredientsAInserer = ingredients
@@ -247,6 +271,66 @@ export default function NouvelleFiche() {
           </div>
         )}
 
+        {/* Photo */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Photo du plat
+          </div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            {photoPreview ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={photoPreview}
+                  alt="Aperçu"
+                  style={{ width: '160px', height: '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}
+                />
+                <button
+                  onClick={() => { setPhoto(null); setPhotoPreview(null) }}
+                  style={{
+                    position: 'absolute', top: '-8px', right: '-8px',
+                    background: '#A32D2D', color: 'white', border: 'none',
+                    borderRadius: '50%', width: '20px', height: '20px',
+                    fontSize: '12px', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center'
+                  }}
+                >×</button>
+              </div>
+            ) : (
+              <div style={{
+                width: '160px', height: '120px', borderRadius: '8px',
+                border: `1px dashed ${c.bordure}`, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: c.fond, flexDirection: 'column', gap: '6px'
+              }}>
+                <span style={{ fontSize: '24px' }}>📷</span>
+                <span style={{ fontSize: '11px', color: c.texteMuted }}>Aucune photo</span>
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+                Ajouter une photo
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhoto}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  border: `0.5px solid ${c.accent}`,
+                  borderRadius: '8px', fontSize: '13px',
+                  background: c.accentClair, cursor: 'pointer', color: c.texte
+                }}
+              />
+              <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '6px' }}>
+                Formats acceptés : JPG, PNG, WEBP — Max 5MB
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Informations générales */}
         <div style={{
           background: 'white', borderRadius: '12px', padding: '24px',
@@ -314,7 +398,7 @@ export default function NouvelleFiche() {
                   placeholder="Ex : 18.50" step="0.01"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
                 />
-               {prixIndic && (
+                {prixIndic && (
                   <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
                     Prix indicatif ({seuilVert}% food cost) : <strong>{prixIndic} €</strong>
                   </div>
