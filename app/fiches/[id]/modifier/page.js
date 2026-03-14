@@ -291,7 +291,7 @@ export default function ModifierFiche() {
                 type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} step="0.01"
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
               />
-              {prixIndic && !prixTTC && (
+              {prixIndic && (
                 <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
                   Prix indicatif ({seuilVert}% food cost) : <strong>{prixIndic} €</strong>
                 </div>
@@ -426,7 +426,7 @@ export default function ModifierFiche() {
             <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
           </div>
-          {prixIndic && !prixTTC && (
+         {prixIndic && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>

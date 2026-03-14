@@ -314,7 +314,7 @@ export default function NouvelleFiche() {
                   placeholder="Ex : 18.50" step="0.01"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
                 />
-                {prixIndic && !prixTTC && (
+               {prixIndic && (
                   <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
                     Prix indicatif ({seuilVert}% food cost) : <strong>{prixIndic} €</strong>
                   </div>
@@ -470,7 +470,7 @@ export default function NouvelleFiche() {
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{parseFloat(coutPortion).toFixed(2)} €</div>
             </div>
           )}
-          {!isSousFiche && prixIndic && !prixTTC && (
+          {!isSousFiche && prixIndic && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>

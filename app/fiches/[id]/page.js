@@ -314,7 +314,7 @@ export default function FicheDetail() {
               {fiche.prix_ttc ? `${(fiche.prix_ttc / 1.10).toFixed(2)} €` : '—'}
             </div>
           </div>
-          {!fiche.prix_ttc && prixIndic && (
+         {prixIndic && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Prix indicatif TTC
