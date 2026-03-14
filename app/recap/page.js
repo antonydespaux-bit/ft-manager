@@ -63,7 +63,6 @@ export default function RecapPage() {
         if (!m.menu_fiches) return 0
         return m.menu_fiches.reduce((t, mf) => t + (mf.fiches?.cout_portion || 0), 0)
       }).filter(v => v > 0)
-
       const prixHTs = lignes.filter(m => m.prix_vente).map(m => m.prix_vente / 1.10)
       const prixTTCs = lignes.filter(m => m.prix_vente).map(m => m.prix_vente)
       const benefices = lignes.filter(m => m.prix_vente).map(m => {
@@ -75,7 +74,6 @@ export default function RecapPage() {
         if (!cout) return null
         return cout / (m.prix_vente / 1.10) * 100
       }).filter(v => v !== null)
-
       return {
         nb: lignes.length,
         coutMoyen: moyenne(couts),
@@ -86,11 +84,11 @@ export default function RecapPage() {
       }
     }
 
-    const couts = lignes.filter(f => f.cout_portion).map(f => f.cout_portion)
+    const couts = lignes.filter(f => f.cout_portion > 0).map(f => Number(f.cout_portion))
     const prixHTs = lignes.filter(f => f.prix_ttc).map(f => f.prix_ttc / 1.10)
-    const prixTTCs = lignes.filter(f => f.prix_ttc).map(f => f.prix_ttc)
-    const benefices = lignes.filter(f => f.prix_ttc && f.cout_portion).map(f => (f.prix_ttc / 1.10) - f.cout_portion)
-    const ratios = lignes.filter(f => f.prix_ttc && f.cout_portion).map(f => f.cout_portion / (f.prix_ttc / 1.10) * 100)
+    const prixTTCs = lignes.filter(f => f.prix_ttc).map(f => Number(f.prix_ttc))
+    const benefices = lignes.filter(f => f.prix_ttc && f.cout_portion).map(f => (f.prix_ttc / 1.10) - Number(f.cout_portion))
+    const ratios = lignes.filter(f => f.prix_ttc && f.cout_portion).map(f => Number(f.cout_portion) / (f.prix_ttc / 1.10) * 100)
 
     return {
       nb: lignes.length,
@@ -193,24 +191,36 @@ export default function RecapPage() {
                   return (
                     <tr
                       key={item.id}
-                      style={{ borderBottom: i < lignes.length - 1 ? `0.5px solid ${c.bordure}` : 'none', cursor: cat !== 'Menus' ? 'pointer' : 'default', background: 'white' }}
+                      style={{
+                        borderBottom: i < lignes.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
+                        cursor: cat !== 'Menus' ? 'pointer' : 'default',
+                        background: 'white'
+                      }}
                       onClick={() => cat !== 'Menus' && router.push(`/fiches/${item.id}`)}
                       onMouseEnter={e => { if (cat !== 'Menus') e.currentTarget.style.background = c.accentClair }}
                       onMouseLeave={e => e.currentTarget.style.background = 'white'}
                     >
                       <td style={{ padding: '8px 10px', fontWeight: '500', color: c.texte }}>{item.nom}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texteMuted }}>{item.saison || '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>{cout ? `${Number(cout).toFixed(2)} €` : '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>{prixHT ? `${prixHT.toFixed(2)} €` : '—'}</td>
-                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>{prixTTC ? `${Number(prixTTC).toFixed(2)} €` : '—'}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
+                        {cout ? `${Number(cout).toFixed(2)} €` : '—'}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
+                        {prixHT ? `${prixHT.toFixed(2)} €` : '—'}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
+                        {prixTTC ? `${Number(prixTTC).toFixed(2)} €` : '—'}
+                      </td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: benefice ? (benefice > 0 ? '#3B6D11' : '#A32D2D') : c.texteMuted }}>
                         {benefice ? `${benefice.toFixed(2)} €` : '—'}
                       </td>
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                         {fc ? (
-                          <span style={{ background: fcBg(fc), color: fcColor(fc), borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>
-                            {fc} %
-                          </span>
+                          <span style={{
+                            background: fcBg(fc), color: fcColor(fc),
+                            borderRadius: '20px', padding: '2px 8px',
+                            fontSize: '11px', fontWeight: '500'
+                          }}>{fc} %</span>
                         ) : '—'}
                       </td>
                     </tr>
@@ -249,7 +259,10 @@ export default function RecapPage() {
 
       <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        <div className="no-print" style={{ display: 'flex', gap: '10px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="no-print" style={{
+          display: 'flex', gap: '10px', marginBottom: '24px',
+          alignItems: 'center', flexWrap: 'wrap'
+        }}>
           <span style={{ fontSize: '13px', color: c.texteMuted }}>Filtrer par saison :</span>
           <select
             value={saisonFiltree}
@@ -269,15 +282,21 @@ export default function RecapPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
+          <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>
+            Chargement...
+          </div>
         ) : (
-          <div style={{ background: 'white', borderRadius: '12px', border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
+          <div style={{
+            background: 'white', borderRadius: '12px',
+            border: `0.5px solid ${c.bordure}`, overflow: 'hidden'
+          }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: c.principal }}>
                   {colonnes.map(col => (
                     <th key={col} style={{
-                      padding: '12px 16px', textAlign: col === 'Catégorie' ? 'left' : 'right',
+                      padding: '12px 16px',
+                      textAlign: col === 'Catégorie' ? 'left' : 'right',
                       fontSize: '11px', color: c.accent, fontWeight: '500',
                       textTransform: 'uppercase', letterSpacing: '0.04em'
                     }}>{col}</th>
@@ -285,7 +304,7 @@ export default function RecapPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...theme.categories, 'Menus'].map((cat, i) => {
+                {[...theme.categories, 'Menus'].map((cat) => {
                   const stats = statsCategorie(cat)
                   if (!stats) return null
                   const isOpen = categorieOuverte === cat
@@ -312,26 +331,38 @@ export default function RecapPage() {
                               borderRadius: '20px', padding: '3px 12px',
                               fontSize: '12px', fontWeight: '500'
                             }}>{cat}</span>
-                            <span style={{ fontSize: '11px', color: c.texteMuted }}>{stats.nb} fiche{stats.nb > 1 ? 's' : ''}</span>
+                            <span style={{ fontSize: '11px', color: c.texteMuted }}>
+                              {stats.nb} fiche{stats.nb > 1 ? 's' : ''}
+                            </span>
                             <span style={{ fontSize: '11px', color: c.accent, marginLeft: 'auto' }}>
                               {isOpen ? '▲' : '▼'}
                             </span>
                           </div>
                         </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.nb}</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.coutMoyen.toFixed(2)} €</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.prixHTMoyen.toFixed(2)} €</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.prixTTCMoyen.toFixed(2)} €</td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: stats.beneficeMoyen > 0 ? '#3B6D11' : '#A32D2D', fontWeight: '500' }}>
-                          {stats.beneficeMoyen.toFixed(2)} €
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
+                          {stats.nb}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
+                          {stats.coutMoyen > 0 ? `${stats.coutMoyen.toFixed(2)} €` : '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
+                          {stats.prixHTMoyen > 0 ? `${stats.prixHTMoyen.toFixed(2)} €` : '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
+                          {stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)} €` : '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: '500', color: stats.beneficeMoyen > 0 ? '#3B6D11' : stats.beneficeMoyen < 0 ? '#A32D2D' : c.texteMuted }}>
+                          {stats.beneficeMoyen !== 0 ? `${stats.beneficeMoyen.toFixed(2)} €` : '—'}
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          <span style={{
-                            background: fcBg(stats.ratioMoyen),
-                            color: fcColor(stats.ratioMoyen),
-                            borderRadius: '20px', padding: '3px 10px',
-                            fontSize: '12px', fontWeight: '500'
-                          }}>{stats.ratioMoyen.toFixed(1)} %</span>
+                          {stats.ratioMoyen > 0 ? (
+                            <span style={{
+                              background: fcBg(stats.ratioMoyen),
+                              color: fcColor(stats.ratioMoyen),
+                              borderRadius: '20px', padding: '3px 10px',
+                              fontSize: '12px', fontWeight: '500'
+                            }}>{stats.ratioMoyen.toFixed(1)} %</span>
+                          ) : '—'}
                         </td>
                       </tr>
                       {isOpen && <DetailFiches key={`detail-${cat}`} cat={cat} />}
