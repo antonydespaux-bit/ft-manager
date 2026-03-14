@@ -193,11 +193,11 @@ export default function RecapPage() {
                       key={item.id}
                       style={{
                         borderBottom: i < lignes.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
-                        cursor: cat !== 'Menus' ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         background: 'white'
                       }}
-                      onClick={() => cat !== 'Menus' && router.push(`/fiches/${item.id}`)}
-                      onMouseEnter={e => { if (cat !== 'Menus') e.currentTarget.style.background = c.accentClair }}
+                      onClick={() => router.push(cat === 'Menus' ? `/menus/${item.id}` : `/fiches/${item.id}`)}
+                      onMouseEnter={e => e.currentTarget.style.background = c.accentClair}
                       onMouseLeave={e => e.currentTarget.style.background = 'white'}
                     >
                       <td style={{ padding: '8px 10px', fontWeight: '500', color: c.texte }}>{item.nom}</td>
