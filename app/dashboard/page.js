@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [ingredientsPrixHausse, setIngredientsPrixHausse] = useState([])
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(true)
+  const [menuOuvert, setMenuOuvert] = useState(false)
   const router = useRouter()
   const c = theme.couleurs
   const isMobile = useIsMobile()
@@ -53,6 +54,11 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
   const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
   const seuilOrange = parseFloat(params['seuil_orange_cuisine'] || 35)
 
@@ -86,6 +92,18 @@ export default function DashboardPage() {
 
   const maxFiches = Math.max(...fichesByCategorie.map(c => c.nb), 1)
 
+  const navItems = [
+    { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
+    { label: 'Fiches', path: '/fiches' },
+    { label: 'Menus', path: '/menus' },
+    { label: 'Récap', path: '/recap' },
+    { label: 'Sous-fiches', path: '/sous-fiches' },
+    { label: 'Ingrédients', path: '/ingredients' },
+    { label: 'Archives', path: '/archives' },
+    { label: 'Paramètres', path: '/parametres' },
+    { label: 'Déconnexion', path: null, action: handleLogout },
+  ]
+
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
       <div style={{ fontSize: '14px', color: c.texteMuted }}>Chargement...</div>
@@ -95,24 +113,75 @@ export default function DashboardPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
+      {/* Navigation */}
       <div style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 16px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
-        <button onClick={() => router.push('/fiches')} style={{
-          background: 'transparent', color: 'rgba(255,255,255,0.7)',
-          border: '0.5px solid rgba(255,255,255,0.2)',
-          borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
-        }}>← {!isMobile && 'Retour'}</button>
+        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
+
+        {isMobile ? (
+          <button
+            onClick={() => setMenuOuvert(!menuOuvert)}
+            style={{
+              background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
+              color: 'white', fontSize: '18px'
+            }}
+          >☰</button>
+        ) : (
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {navItems.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => item.action ? item.action() : router.push(item.path)}
+                style={{
+                  background: item.accent ? c.accent : 'transparent',
+                  color: item.accent ? c.principal : 'rgba(255,255,255,0.7)',
+                  border: item.accent ? 'none' : '0.5px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
+                  fontWeight: item.accent ? '600' : '400', cursor: 'pointer'
+                }}
+              >{item.label}</button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Menu mobile déroulant */}
+      {isMobile && menuOuvert && (
+        <div style={{
+          background: c.principal, padding: '8px 16px 16px',
+          borderBottom: `0.5px solid ${c.accent}40`,
+          position: 'sticky', top: '56px', zIndex: 99
+        }}>
+          {navItems.map((item, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setMenuOuvert(false)
+                item.action ? item.action() : router.push(item.path)
+              }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                background: item.accent ? c.accent : 'transparent',
+                color: item.accent ? c.principal : 'rgba(255,255,255,0.85)',
+                border: 'none', borderRadius: '8px',
+                padding: '12px 16px', fontSize: '14px',
+                fontWeight: item.accent ? '600' : '400',
+                cursor: 'pointer', marginBottom: '4px'
+              }}
+            >{item.label}</button>
+          ))}
+        </div>
+      )}
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
         <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '20px', fontWeight: '500' }}>
-          Tableau de bord — La Fantaisie
+          Tableau de bord — {params['nom_etablissement'] || 'La Fantaisie'}
         </div>
 
         {/* KPIs principaux */}
@@ -122,7 +191,6 @@ export default function DashboardPage() {
           gap: isMobile ? '10px' : '16px',
           marginBottom: '24px'
         }}>
-          {/* Food cost moyen */}
           <div style={{
             background: foodCostMoyen ? fichesFCColor(foodCostMoyen).bg : 'white',
             borderRadius: '12px', padding: isMobile ? '14px' : '20px',
@@ -139,11 +207,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Total fiches */}
           <div style={{
             background: 'white', borderRadius: '12px', padding: isMobile ? '14px' : '20px',
-            border: `0.5px solid ${c.bordure}`
-          }}>
+            border: `0.5px solid ${c.bordure}`, cursor: 'pointer'
+          }} onClick={() => router.push('/fiches')}>
             <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', marginBottom: '8px' }}>
               Fiches actives
             </div>
@@ -155,7 +222,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Fiches en alerte */}
           <div style={{
             background: fichesAlerte.length > 0 ? '#FCEBEB' : '#EAF3DE',
             borderRadius: '12px', padding: isMobile ? '14px' : '20px',
@@ -172,7 +238,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Prix en hausse */}
           <div style={{
             background: ingredientsPrixHausse.length > 0 ? '#FAEEDA' : 'white',
             borderRadius: '12px', padding: isMobile ? '14px' : '20px',
