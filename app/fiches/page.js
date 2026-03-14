@@ -59,7 +59,7 @@ export default function FichesPage() {
         justifyContent: 'space-between',
         height: '56px'
       }}>
-        <Logo height={30} couleur="white" />
+        <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => router.push('/fiches/nouvelle')} style={{
             background: c.accent, color: c.principal, border: 'none',

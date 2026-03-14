@@ -40,13 +40,14 @@ export const theme = {
   ]
 }
 
-export function Logo({ height = 40, couleur = 'white' }) {
+export function Logo({ height = 40, couleur = 'white', onClick }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 200 30"
       height={height}
-      style={{ display: 'block' }}
+      style={{ display: 'block', cursor: onClick ? 'pointer' : 'default' }}
+      onClick={onClick}
     >
       <text
         x="100"
