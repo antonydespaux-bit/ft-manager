@@ -25,6 +25,9 @@ export default function ModifierFiche() {
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
+  const [photo, setPhoto] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoExistante, setPhotoExistante] = useState(null)
   const [ingredients, setIngredients] = useState([])
   const [listeIngredients, setListeIngredients] = useState([])
   const [params, setParams] = useState({})
@@ -68,6 +71,10 @@ export default function ModifierFiche() {
     setDescription(ficheData.description || '')
     setSaison(ficheData.saison || 'Printemps 2026')
     setAllergenes(ficheData.allergenes || [])
+    if (ficheData.photo_url) {
+      setPhotoExistante(ficheData.photo_url)
+      setPhotoPreview(ficheData.photo_url)
+    }
 
     const { data: ingsData } = await supabase
       .from('fiche_ingredients')
@@ -93,6 +100,24 @@ export default function ModifierFiche() {
     setAllergenes(prev =>
       prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
     )
+  }
+
+  const handlePhoto = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setPhoto(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
+  const supprimerPhoto = async () => {
+    if (photoExistante) {
+      const path = photoExistante.split('/').pop()
+      await supabase.storage.from('fiches-photos').remove([path])
+      await supabase.from('fiches').update({ photo_url: null }).eq('id', params_route.id)
+    }
+    setPhoto(null)
+    setPhotoPreview(null)
+    setPhotoExistante(null)
   }
 
   const ajouterIngredient = () => {
@@ -151,6 +176,23 @@ export default function ModifierFiche() {
     const cout = calculerCout()
     const coutPortion = nbPortions ? (cout / parseFloat(nbPortions)) : null
 
+    let photoUrl = photoExistante
+
+    if (photo) {
+      const ext = photo.name.split('.').pop()
+      const path = `${params_route.id}.${ext}`
+      const { error: errPhoto } = await supabase.storage
+        .from('fiches-photos')
+        .upload(path, photo, { upsert: true })
+
+      if (!errPhoto) {
+        const { data: urlData } = supabase.storage
+          .from('fiches-photos')
+          .getPublicUrl(path)
+        photoUrl = urlData.publicUrl
+      }
+    }
+
     await supabase
       .from('fiches')
       .update({
@@ -161,15 +203,13 @@ export default function ModifierFiche() {
         description,
         saison,
         allergenes,
+        photo_url: photoUrl,
         cout_portion: coutPortion,
         updated_at: new Date().toISOString()
       })
       .eq('id', params_route.id)
 
-    await supabase
-      .from('fiche_ingredients')
-      .delete()
-      .eq('fiche_id', params_route.id)
+    await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id)
 
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)
@@ -241,6 +281,66 @@ export default function ModifierFiche() {
             padding: '12px 16px', fontSize: '13px', marginBottom: '20px'
           }}>{error}</div>
         )}
+
+        {/* Photo */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Photo du plat
+          </div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            {photoPreview ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={photoPreview}
+                  alt="Aperçu"
+                  style={{ width: '160px', height: '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}
+                />
+                <button
+                  onClick={supprimerPhoto}
+                  style={{
+                    position: 'absolute', top: '-8px', right: '-8px',
+                    background: '#A32D2D', color: 'white', border: 'none',
+                    borderRadius: '50%', width: '20px', height: '20px',
+                    fontSize: '12px', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center'
+                  }}
+                >×</button>
+              </div>
+            ) : (
+              <div style={{
+                width: '160px', height: '120px', borderRadius: '8px',
+                border: `1px dashed ${c.bordure}`, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: c.fond, flexDirection: 'column', gap: '6px'
+              }}>
+                <span style={{ fontSize: '24px' }}>📷</span>
+                <span style={{ fontSize: '11px', color: c.texteMuted }}>Aucune photo</span>
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+                {photoPreview ? 'Changer la photo' : 'Ajouter une photo'}
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhoto}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  border: `0.5px solid ${c.accent}`,
+                  borderRadius: '8px', fontSize: '13px',
+                  background: c.accentClair, cursor: 'pointer', color: c.texte
+                }}
+              />
+              <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '6px' }}>
+                Formats acceptés : JPG, PNG, WEBP — Max 5MB
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Informations générales */}
         <div style={{
@@ -426,7 +526,7 @@ export default function ModifierFiche() {
             <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
           </div>
-         {prixIndic && (
+          {prixIndic && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>

@@ -54,11 +54,7 @@ export default function FicheDetail() {
 
     const { data: ingsData } = await supabase
       .from('fiche_ingredients')
-      .select(`
-        quantite,
-        unite,
-        ingredients (id, nom, prix_kg, unite)
-      `)
+      .select(`quantite, unite, ingredients (id, nom, prix_kg, unite)`)
       .eq('fiche_id', params_route.id)
 
     setIngredients(ingsData || [])
@@ -93,6 +89,10 @@ export default function FicheDetail() {
 
   const handleDelete = async () => {
     if (!confirm('Supprimer définitivement cette fiche ?')) return
+    if (fiche.photo_url) {
+      const path = fiche.photo_url.split('/').pop()
+      await supabase.storage.from('fiches-photos').remove([path])
+    }
     await supabase.from('fiches').delete().eq('id', params_route.id)
     router.push('/fiches')
   }
@@ -131,85 +131,94 @@ export default function FicheDetail() {
           <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => window.print()}
-            style={{
-              background: c.accent, color: c.principal, border: 'none',
-              borderRadius: '8px', padding: '8px 16px',
-              fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-            }}
-          >Imprimer</button>
-          <button
-            onClick={() => router.push(`/fiches/${params_route.id}/modifier`)}
-            style={{
-              background: 'transparent', color: 'rgba(255,255,255,0.7)',
-              border: '0.5px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px', padding: '8px 16px',
-              fontSize: '13px', cursor: 'pointer'
-            }}
-          >Modifier</button>
-          <button
-            onClick={handleDelete}
-            style={{
-              background: 'transparent', color: '#F09595',
-              border: '0.5px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px', padding: '8px 16px',
-              fontSize: '13px', cursor: 'pointer'
-            }}
-          >Supprimer</button>
+          <button onClick={() => window.print()} style={{
+            background: c.accent, color: c.principal, border: 'none',
+            borderRadius: '8px', padding: '8px 16px',
+            fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+          }}>Imprimer</button>
+          <button onClick={() => router.push(`/fiches/${params_route.id}/modifier`)} style={{
+            background: 'transparent', color: 'rgba(255,255,255,0.7)',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '8px 16px',
+            fontSize: '13px', cursor: 'pointer'
+          }}>Modifier</button>
+          <button onClick={handleDelete} style={{
+            background: 'transparent', color: '#F09595',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '8px 16px',
+            fontSize: '13px', cursor: 'pointer'
+          }}>Supprimer</button>
         </div>
       </div>
 
       <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* En-tête */}
+        {/* En-tête avec photo */}
         <div style={{
           background: 'white', borderRadius: '12px', padding: '24px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <div>
-              <h1 style={{ fontSize: '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {fiche.categorie && (
-                  <span style={{
-                    background: c.accentClair, color: c.principal,
-                    borderRadius: '20px', padding: '3px 12px',
-                    fontSize: '12px', fontWeight: '500'
-                  }}>{fiche.categorie}</span>
-                )}
-                {fiche.saison && (
-                  <span style={{
-                    background: c.fond, color: c.texteMuted,
-                    borderRadius: '20px', padding: '3px 12px',
-                    fontSize: '12px', border: `0.5px solid ${c.bordure}`
-                  }}>{fiche.saison}</span>
-                )}
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+
+            {/* Photo */}
+            {fiche.photo_url && (
+              <img
+                src={fiche.photo_url}
+                alt={fiche.nom}
+                style={{
+                  width: '180px', height: '140px', objectFit: 'cover',
+                  borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
+                  flexShrink: 0
+                }}
+              />
+            )}
+
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <div>
+                  <h1 style={{ fontSize: '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {fiche.categorie && (
+                      <span style={{
+                        background: c.accentClair, color: c.principal,
+                        borderRadius: '20px', padding: '3px 12px',
+                        fontSize: '12px', fontWeight: '500'
+                      }}>{fiche.categorie}</span>
+                    )}
+                    {fiche.saison && (
+                      <span style={{
+                        background: c.fond, color: c.texteMuted,
+                        borderRadius: '20px', padding: '3px 12px',
+                        fontSize: '12px', border: `0.5px solid ${c.bordure}`
+                      }}>{fiche.saison}</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{
+                  background: c.principal, color: c.accent,
+                  borderRadius: '10px', padding: '10px 16px', textAlign: 'center', flexShrink: 0
+                }}>
+                  <div style={{ fontSize: '11px', opacity: 0.7 }}>Portions</div>
+                  <div style={{ fontSize: '24px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
+                </div>
               </div>
-            </div>
-            <div style={{
-              background: c.principal, color: c.accent,
-              borderRadius: '10px', padding: '10px 16px', textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '11px', opacity: 0.7 }}>Portions</div>
-              <div style={{ fontSize: '24px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
+
+              {fiche.description && (
+                <div style={{
+                  background: c.fond, borderRadius: '8px', padding: '12px 16px',
+                  fontSize: '13px', color: c.texteMuted, lineHeight: '1.6'
+                }}>
+                  {fiche.description}
+                </div>
+              )}
             </div>
           </div>
-
-          {fiche.description && (
-            <div style={{
-              background: c.fond, borderRadius: '8px', padding: '12px 16px',
-              fontSize: '13px', color: c.texteMuted, lineHeight: '1.6'
-            }}>
-              {fiche.description}
-            </div>
-          )}
 
           {/* Allergènes */}
           {fiche.allergenes && fiche.allergenes.length > 0 && (
             <div style={{
               background: '#FCEBEB', borderRadius: '8px', padding: '14px 16px',
-              marginTop: '12px', border: '0.5px solid #F09595'
+              marginTop: '16px', border: '0.5px solid #F09595'
             }}>
               <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
                 Allergènes présents
@@ -314,7 +323,7 @@ export default function FicheDetail() {
               {fiche.prix_ttc ? `${(fiche.prix_ttc / 1.10).toFixed(2)} €` : '—'}
             </div>
           </div>
-         {prixIndic && (
+          {prixIndic && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Prix indicatif TTC

@@ -1,21 +1,50 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase, getParametres } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import { theme, Logo } from '../../lib/theme.jsx'
+import { theme, Logo } from '../../../lib/theme.jsx'
 
-export default function FichesPage() {
-  const [fiches, setFiches] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [recherche, setRecherche] = useState('')
-  const [categorie, setCategorie] = useState('toutes')
-  const [saison, setSaison] = useState('toutes')
+const ALLERGENES = [
+  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
+  { id: 'soja', label: 'Soja', emoji: '🫘' },
+  { id: 'lait', label: 'Lait', emoji: '🥛' },
+  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
+  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
+  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
+  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
+  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
+  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
+  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
+]
+
+export default function NouvelleFiche() {
+  const [nom, setNom] = useState('')
+  const [categorie, setCategorie] = useState('Plats')
+  const [nbPortions, setNbPortions] = useState('')
+  const [unitePortions, setUnitePortions] = useState('portions')
+  const [prixTTC, setPrixTTC] = useState('')
+  const [description, setDescription] = useState('')
+  const [saison, setSaison] = useState('Printemps 2026')
+  const [allergenes, setAllergenes] = useState([])
+  const [photo, setPhoto] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const [ingredients, setIngredients] = useState([
+    { ingredient_id: '', nom: '', quantite: '', unite: 'kg' }
+  ])
+  const [listeIngredients, setListeIngredients] = useState([])
+  const [params, setParams] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const router = useRouter()
   const c = theme.couleurs
+  const saisons = theme.saisons
+  const categories = [...theme.categories, 'Sous-fiche']
+  const isSousFiche = categorie === 'Sous-fiche'
 
   useEffect(() => {
     checkUser()
-    loadFiches()
+    loadIngredients()
+    loadParams()
   }, [])
 
   const checkUser = async () => {
@@ -23,235 +52,526 @@ export default function FichesPage() {
     if (!session) router.push('/')
   }
 
-  const loadFiches = async () => {
-    const { data, error } = await supabase
-      .from('fiches')
+  const loadParams = async () => {
+    const p = await getParametres()
+    setParams(p)
+  }
+
+  const loadIngredients = async () => {
+    const { data } = await supabase
+      .from('ingredients')
       .select('*')
-      .neq('categorie', 'Sous-fiche')
-      .order('created_at', { ascending: false })
-    if (!error) setFiches(data || [])
-    setLoading(false)
+      .order('nom')
+    setListeIngredients(data || [])
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+  const toggleAllergene = (id) => {
+    setAllergenes(prev =>
+      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+    )
   }
 
-  const fichesFiltrees = fiches.filter(f => {
-    const matchRecherche = f.nom.toLowerCase().includes(recherche.toLowerCase())
-    const matchCategorie = categorie === 'toutes' || f.categorie === categorie
-    const matchSaison = saison === 'toutes' || f.saison === saison
-    return matchRecherche && matchCategorie && matchSaison
-  })
+  const handlePhoto = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setPhoto(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
 
-  const categories = ['toutes', ...new Set(fiches.map(f => f.categorie).filter(Boolean))]
+  const ajouterIngredient = () => {
+    setIngredients([...ingredients, { ingredient_id: '', nom: '', quantite: '', unite: 'kg' }])
+  }
+
+  const supprimerIngredient = (index) => {
+    setIngredients(ingredients.filter((_, i) => i !== index))
+  }
+
+  const modifierIngredient = (index, champ, valeur) => {
+    const nouveaux = [...ingredients]
+    nouveaux[index][champ] = valeur
+    if (champ === 'ingredient_id') {
+      const ing = listeIngredients.find(i => i.id === valeur)
+      if (ing) {
+        nouveaux[index].nom = ing.nom
+        nouveaux[index].unite = ing.unite || 'kg'
+      }
+    }
+    setIngredients(nouveaux)
+  }
+
+  const calculerCout = () => {
+    return ingredients.reduce((total, ing) => {
+      const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+      if (ingData?.prix_kg && ing.quantite) {
+        return total + (ingData.prix_kg * parseFloat(ing.quantite))
+      }
+      return total
+    }, 0)
+  }
+
+  const calculerCoutPortion = () => {
+    const cout = calculerCout()
+    if (!cout || !nbPortions) return null
+    return (cout / parseFloat(nbPortions)).toFixed(4)
+  }
+
+  const foodCost = () => {
+    const cout = calculerCout()
+    if (!prixTTC || !cout || !nbPortions) return null
+    const coutParPortion = cout / parseFloat(nbPortions)
+    const prixHT = parseFloat(prixTTC) / 1.10
+    return (coutParPortion / prixHT * 100).toFixed(1)
+  }
+
+  const prixIndicatif = () => {
+    const coutPortion = calculerCoutPortion()
+    if (!coutPortion) return null
+    const seuil = parseFloat(params['seuil_vert_cuisine'] || 28) / 100
+    const tva = 1 + parseFloat(params['tva_restauration'] || 10) / 100
+    return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
+  }
+
+  const handleSubmit = async () => {
+    if (!nom) { setError('Le nom de la fiche est obligatoire'); return }
+    if (!nbPortions) { setError('Le nombre de portions est obligatoire'); return }
+    setLoading(true)
+    setError('')
+
+    const coutPortion = calculerCoutPortion()
+
+    const { data: fiche, error: errFiche } = await supabase
+      .from('fiches')
+      .insert([{
+        nom,
+        categorie,
+        nb_portions: parseInt(nbPortions),
+        prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
+        description,
+        saison,
+        allergenes,
+        cout_portion: coutPortion ? parseFloat(coutPortion) : null
+      }])
+      .select()
+      .single()
+
+    if (errFiche) {
+      setError('Erreur : ' + errFiche.message)
+      setLoading(false)
+      return
+    }
+
+    // Upload photo si présente
+    if (photo) {
+      const ext = photo.name.split('.').pop()
+      const path = `${fiche.id}.${ext}`
+      const { error: errPhoto } = await supabase.storage
+        .from('fiches-photos')
+        .upload(path, photo, { upsert: true })
+
+      if (!errPhoto) {
+        const { data: urlData } = supabase.storage
+          .from('fiches-photos')
+          .getPublicUrl(path)
+        await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
+      }
+    }
+
+    const ingredientsAInserer = ingredients
+      .filter(i => i.ingredient_id && i.quantite)
+      .map(i => ({
+        fiche_id: fiche.id,
+        ingredient_id: i.ingredient_id,
+        quantite: parseFloat(i.quantite),
+        unite: i.unite
+      }))
+
+    if (ingredientsAInserer.length > 0) {
+      await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
+    }
+
+    if (isSousFiche && coutPortion) {
+      await supabase.from('ingredients').insert([{
+        nom: fiche.nom,
+        prix_kg: parseFloat(coutPortion),
+        unite: unitePortions,
+        est_sous_fiche: true,
+        fiche_id: fiche.id
+      }])
+    }
+
+    router.push(isSousFiche ? '/sous-fiches' : '/fiches')
+  }
+
+  const fc = foodCost()
+  const coutPortion = calculerCoutPortion()
+  const prixIndic = prixIndicatif()
+  const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div className="no-print" style={{
+      <div style={{
         background: c.principal,
         borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '56px'
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', height: '56px'
       }}>
-        <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => router.push('/fiches/nouvelle')} style={{
-            background: c.accent, color: c.principal, border: 'none',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
-            fontWeight: '600', cursor: 'pointer'
-          }}>+ Nouvelle fiche</button>
-          <button onClick={() => router.push('/menus')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Menus</button>
-          <button onClick={() => router.push('/recap')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Récap</button>
-          <button onClick={() => router.push('/sous-fiches')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Sous-fiches</button>
-          <button onClick={() => router.push('/ingredients')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Ingrédients</button>
-          <button onClick={() => router.push('/archives')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-             border: '0.5px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Archives</button>
-          <button onClick={() => router.push('/parametres')} style={{
-          background: 'transparent', color: 'rgba(255,255,255,0.7)',
-          border: '0.5px solid rgba(255,255,255,0.2)',
-          borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Paramètres</button>
-          <button onClick={handleLogout} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer'
-          }}>Déconnexion</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
+          <button
+            onClick={() => router.push(isSousFiche ? '/sous-fiches' : '/fiches')}
+            style={{
+              background: 'transparent',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px', padding: '6px 12px',
+              fontSize: '13px', cursor: 'pointer',
+              color: 'rgba(255,255,255,0.7)'
+            }}
+          >← Retour</button>
+          <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>
+            {isSousFiche ? 'Nouvelle sous-fiche' : 'Nouvelle fiche technique'}
+          </span>
         </div>
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          style={{
+            background: loading ? c.texteMuted : c.accent,
+            color: c.principal, border: 'none', borderRadius: '8px',
+            padding: '8px 20px', fontSize: '13px', fontWeight: '600',
+            cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {loading ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '12px', marginBottom: '24px'
-        }}>
-          {[
-            { label: 'Fiches totales', value: fiches.length },
-            { label: 'Plats', value: fiches.filter(f => f.categorie === 'Plats').length },
-            { label: 'Desserts', value: fiches.filter(f => f.categorie === 'Desserts').length },
-          ].map((stat, i) => (
-            <div key={i} style={{
-              background: 'white', borderRadius: '10px', padding: '16px',
-              border: `0.5px solid ${c.bordure}`
-            }}>
-              <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {stat.label}
-              </div>
-              <div style={{ fontSize: '28px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
-                {stat.value}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="no-print" style={{
-          display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap'
-        }}>
-          <input
-            type="text"
-            placeholder="Rechercher une fiche..."
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
-            style={{
-              flex: '1', minWidth: '200px', padding: '10px 14px',
-              borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
-              fontSize: '14px', background: 'white', outline: 'none', color: c.texte
-            }}
-          />
-          <select
-            value={categorie}
-            onChange={(e) => setCategorie(e.target.value)}
-            style={{
-              padding: '10px 14px', borderRadius: '8px',
-              border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-              background: 'white', outline: 'none', cursor: 'pointer', color: c.texte
-            }}
-          >
-            {categories.map(c => (
-              <option key={c} value={c}>
-                {c === 'toutes' ? 'Toutes les catégories' : c}
-              </option>
-            ))}
-          </select>
-          <select
-            value={saison}
-            onChange={(e) => setSaison(e.target.value)}
-            style={{
-              padding: '10px 14px', borderRadius: '8px',
-              border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-              background: 'white', outline: 'none', cursor: 'pointer', color: c.texte
-            }}
-          >
-            <option value="toutes">Toutes les saisons</option>
-            {theme.saisons.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted, fontSize: '14px' }}>
-            Chargement...
-          </div>
-        ) : fichesFiltrees.length === 0 ? (
+        {error && (
           <div style={{
-            textAlign: 'center', padding: '60px', background: 'white',
-            borderRadius: '12px', border: `0.5px solid ${c.bordure}`
-          }}>
-            <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>
-              {fiches.length === 0 ? 'Aucune fiche pour le moment' : 'Aucune fiche ne correspond à votre recherche'}
-            </div>
-            {fiches.length === 0 && (
-              <button onClick={() => router.push('/fiches/nouvelle')} style={{
-                background: c.accent, color: c.principal, border: 'none',
-                borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
-                cursor: 'pointer', fontWeight: '600'
-              }}>
-                Créer la première fiche
-              </button>
-            )}
-          </div>
-        ) : (
+            background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px',
+            padding: '12px 16px', fontSize: '13px', marginBottom: '20px'
+          }}>{error}</div>
+        )}
+
+        {isSousFiche && (
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '14px'
+            background: c.violetClair, color: '#3C3489', borderRadius: '8px',
+            padding: '10px 14px', fontSize: '13px', marginBottom: '16px',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            border: '0.5px solid #AFA9EC'
           }}>
-            {fichesFiltrees.map(fiche => (
-              <div
-                key={fiche.id}
-                onClick={() => router.push(`/fiches/${fiche.id}`)}
-                style={{
-                  background: 'white', borderRadius: '12px', padding: '18px',
-                  border: `0.5px solid ${c.bordure}`, cursor: 'pointer',
-                  transition: 'border-color 0.15s, box-shadow 0.15s'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = c.accent
-                  e.currentTarget.style.boxShadow = `0 2px 12px ${c.accent}20`
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = c.bordure
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: '500', color: c.texte }}>
-                    {fiche.nom}
-                  </div>
-                  {fiche.categorie && (
-                    <span style={{
-                      background: c.accentClair, color: c.principal,
-                      borderRadius: '20px', padding: '3px 10px',
-                      fontSize: '11px', fontWeight: '500',
-                      flexShrink: 0, marginLeft: '8px'
-                    }}>
-                      {fiche.categorie}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: c.texteMuted, flexWrap: 'wrap' }}>
-                  {fiche.saison && (
-                    <span style={{ fontSize: '11px' }}>{fiche.saison}</span>
-                  )}
-                  {fiche.nb_portions && (
-                    <span>{fiche.nb_portions} portions</span>
-                  )}
-                  {fiche.prix_ttc && (
-                    <span style={{ fontWeight: '500', color: c.texte }}>
-                      {Number(fiche.prix_ttc).toFixed(2)} €
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+            <span style={{
+              background: c.violet, color: 'white', borderRadius: '6px',
+              padding: '2px 8px', fontSize: '11px', fontWeight: '500'
+            }}>SF</span>
+            Cette fiche sera disponible comme ingrédient dans les fiches principales
           </div>
         )}
+
+        {/* Photo */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Photo du plat
+          </div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            {photoPreview ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={photoPreview}
+                  alt="Aperçu"
+                  style={{ width: '160px', height: '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}
+                />
+                <button
+                  onClick={() => { setPhoto(null); setPhotoPreview(null) }}
+                  style={{
+                    position: 'absolute', top: '-8px', right: '-8px',
+                    background: '#A32D2D', color: 'white', border: 'none',
+                    borderRadius: '50%', width: '20px', height: '20px',
+                    fontSize: '12px', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center'
+                  }}
+                >×</button>
+              </div>
+            ) : (
+              <div style={{
+                width: '160px', height: '120px', borderRadius: '8px',
+                border: `1px dashed ${c.bordure}`, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: c.fond, flexDirection: 'column', gap: '6px'
+              }}>
+                <span style={{ fontSize: '24px' }}>📷</span>
+                <span style={{ fontSize: '11px', color: c.texteMuted }}>Aucune photo</span>
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+                Ajouter une photo
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhoto}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  border: `0.5px solid ${c.accent}`,
+                  borderRadius: '8px', fontSize: '13px',
+                  background: c.accentClair, cursor: 'pointer', color: c.texte
+                }}
+              />
+              <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '6px' }}>
+                Formats acceptés : JPG, PNG, WEBP — Max 5MB
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Informations générales */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${isSousFiche ? '#AFA9EC' : c.bordure}`,
+          marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Informations générales
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
+              <input
+                type="text" value={nom} onChange={e => setNom(e.target.value)}
+                placeholder={isSousFiche ? 'Ex : Sauce béarnaise' : 'Ex : Blanquette de veau'}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
+              <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px',
+                border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+                background: 'white', outline: 'none', color: c.texte
+              }}>
+                {categories.map(cat => <option key={cat}>{cat}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
+              <select value={saison} onChange={e => setSaison(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px',
+                border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+                background: 'white', outline: 'none', color: c.texte
+              }}>
+                {saisons.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                {isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
+                  placeholder="Ex : 10"
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                />
+                {isSousFiche && (
+                  <select value={unitePortions} onChange={e => setUnitePortions(e.target.value)} style={{
+                    padding: '10px 12px', borderRadius: '8px',
+                    border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+                    background: 'white', outline: 'none', color: c.texte
+                  }}>
+                    {['portions', 'kg', 'L', 'cl', 'ml', 'u'].map(u => <option key={u}>{u}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+            {!isSousFiche && (
+              <div>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix de vente TTC (€)</label>
+                <input
+                  type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)}
+                  placeholder="Ex : 18.50" step="0.01"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                />
+                {prixIndic && (
+                  <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
+                    Prix indicatif ({seuilVert}% food cost) : <strong>{prixIndic} €</strong>
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description / Présentation</label>
+              <textarea
+                value={description} onChange={e => setDescription(e.target.value)}
+                placeholder="Notes de présentation, dressage..." rows={3}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Ingrédients */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Ingrédients
+          </div>
+          {listeIngredients.length === 0 && (
+            <div style={{ background: '#FAEEDA', color: '#633806', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>
+              Aucun ingrédient disponible.
+              <span onClick={() => router.push('/ingredients')} style={{ textDecoration: 'underline', cursor: 'pointer', marginLeft: '4px' }}>Créez-en d'abord ici.</span>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
+            {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
+              <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
+            ))}
+          </div>
+          {ingredients.map((ing, index) => {
+            const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+            return (
+              <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
+                <select
+                  value={ing.ingredient_id}
+                  onChange={e => modifierIngredient(index, 'ingredient_id', e.target.value)}
+                  style={{
+                    padding: '8px 10px', borderRadius: '8px',
+                    border: `0.5px solid ${ingData?.est_sous_fiche ? '#AFA9EC' : c.bordure}`,
+                    fontSize: '13px', background: ingData?.est_sous_fiche ? '#EEEDFE' : 'white',
+                    outline: 'none', color: c.texte, width: '100%', minWidth: 0
+                  }}
+                >
+                  <option value="">-- Choisir --</option>
+                  {listeIngredients.filter(i => !i.est_sous_fiche).map(i => (
+                    <option key={i.id} value={i.id}>{i.nom}</option>
+                  ))}
+                  {listeIngredients.some(i => i.est_sous_fiche) && (
+                    <>
+                      <option disabled>── Sous-fiches ──</option>
+                      {listeIngredients.filter(i => i.est_sous_fiche).map(i => (
+                        <option key={i.id} value={i.id}>[SF] {i.nom}</option>
+                      ))}
+                    </>
+                  )}
+                </select>
+                <input
+                  type="number" value={ing.quantite} step="0.01"
+                  onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
+                  placeholder="0"
+                  style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}
+                />
+                <select
+                  value={ing.unite}
+                  onChange={e => modifierIngredient(index, 'unite', e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: 'white', outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}
+                >
+                  {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => (
+                    <option key={u}>{u}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => supprimerIngredient(index)}
+                  style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}
+                >×</button>
+              </div>
+            )
+          })}
+          <button
+            onClick={ajouterIngredient}
+            style={{ background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`, borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}
+          >+ Ajouter un ingrédient</button>
+        </div>
+
+        {/* Allergènes */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Allergènes
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+            {ALLERGENES.map(a => (
+              <div
+                key={a.id}
+                onClick={() => toggleAllergene(a.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`,
+                  background: allergenes.includes(a.id) ? '#FCEBEB' : 'white',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>{a.emoji}</span>
+                <span style={{
+                  fontSize: '13px', fontWeight: allergenes.includes(a.id) ? '500' : '400',
+                  color: allergenes.includes(a.id) ? '#A32D2D' : c.texte
+                }}>{a.label}</span>
+                {allergenes.includes(a.id) && (
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#A32D2D', fontWeight: '500' }}>✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {allergenes.length > 0 && (
+            <div style={{
+              marginTop: '12px', padding: '10px 14px', background: '#FCEBEB',
+              borderRadius: '8px', fontSize: '12px', color: '#A32D2D',
+              border: '0.5px solid #F09595'
+            }}>
+              {allergenes.length} allergène{allergenes.length > 1 ? 's' : ''} sélectionné{allergenes.length > 1 ? 's' : ''} : {allergenes.map(id => ALLERGENES.find(a => a.id === id)?.label).join(', ')}
+            </div>
+          )}
+        </div>
+
+        {/* Récapitulatif */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '20px',
+          border: `0.5px solid ${c.bordure}`, display: 'flex', gap: '24px', flexWrap: 'wrap'
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
+            <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
+          </div>
+          {isSousFiche && coutPortion && (
+            <div style={{ background: c.violetClair, borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: '#3C3489', fontWeight: '500', textTransform: 'uppercase' }}>Coût / {unitePortions}</div>
+              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: '#3C3489' }}>{parseFloat(coutPortion).toFixed(4)} €</div>
+            </div>
+          )}
+          {!isSousFiche && coutPortion && (
+            <div>
+              <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût / portion</div>
+              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{parseFloat(coutPortion).toFixed(2)} €</div>
+            </div>
+          )}
+          {!isSousFiche && prixIndic && (
+            <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
+              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
+              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>Basé sur {seuilVert}% food cost</div>
+            </div>
+          )}
+          {!isSousFiche && fc && (
+            <div>
+              <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Food cost</div>
+              <div style={{
+                fontSize: '22px', fontWeight: '500', marginTop: '4px',
+                color: fc < seuilVert ? '#3B6D11' : fc < parseFloat(params['seuil_orange_cuisine'] || 35) ? '#854F0B' : '#A32D2D'
+              }}>{fc} %</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
