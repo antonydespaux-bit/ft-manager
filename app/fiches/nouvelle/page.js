@@ -151,24 +151,20 @@ export default function NouvelleFiche() {
         background: c.principal,
         borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '56px'
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', height: '56px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={() => router.push(isSousFiche ? '/sous-fiches' : '/fiches')}
             style={{
               background: 'transparent',
-              border: `0.5px solid rgba(255,255,255,0.2)`,
+              border: '0.5px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '6px 12px',
               fontSize: '13px', cursor: 'pointer',
               color: 'rgba(255,255,255,0.7)'
             }}
-          >
-            ← Retour
-          </button>
+          >← Retour</button>
           <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>
             {isSousFiche ? 'Nouvelle sous-fiche' : 'Nouvelle fiche technique'}
           </span>
@@ -193,9 +189,7 @@ export default function NouvelleFiche() {
           <div style={{
             background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px',
             padding: '12px 16px', fontSize: '13px', marginBottom: '20px'
-          }}>
-            {error}
-          </div>
+          }}>{error}</div>
         )}
 
         {isSousFiche && (
@@ -203,7 +197,7 @@ export default function NouvelleFiche() {
             background: c.violetClair, color: '#3C3489', borderRadius: '8px',
             padding: '10px 14px', fontSize: '13px', marginBottom: '16px',
             display: 'flex', alignItems: 'center', gap: '8px',
-            border: `0.5px solid #AFA9EC`
+            border: '0.5px solid #AFA9EC'
           }}>
             <span style={{
               background: c.violet, color: 'white', borderRadius: '6px',
@@ -222,34 +216,24 @@ export default function NouvelleFiche() {
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
             Informations générales
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                Nom *
-              </label>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
               <input
                 type="text" value={nom} onChange={e => setNom(e.target.value)}
                 placeholder={isSousFiche ? 'Ex : Sauce béarnaise' : 'Ex : Blanquette de veau'}
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte
-                }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
               />
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                Catégorie
-              </label>
-              <select
-                value={categorie} onChange={e => setCategorie(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-                  background: 'white', outline: 'none', color: c.texte
-                }}
-              >
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
+              <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px',
+                border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+                background: 'white', outline: 'none', color: c.texte
+              }}>
                 {['Entrée', 'Plat', 'Dessert', 'Sauce', 'Garniture', 'Sous-fiche'].map(cat => (
                   <option key={cat}>{cat}</option>
                 ))}
@@ -257,20 +241,13 @@ export default function NouvelleFiche() {
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                Saison
-              </label>
-              <select
-                value={saison} onChange={e => setSaison(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-                  background: 'white', outline: 'none', color: c.texte
-                }}
-              >
-                {saisons.map(s => (
-                  <option key={s}>{s}</option>
-                ))}
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
+              <select value={saison} onChange={e => setSaison(e.target.value)} style={{
+                width: '100%', padding: '10px 12px', borderRadius: '8px',
+                border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+                background: 'white', outline: 'none', color: c.texte
+              }}>
+                {saisons.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
 
@@ -282,23 +259,15 @@ export default function NouvelleFiche() {
                 <input
                   type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
                   placeholder="Ex : 10"
-                  style={{
-                    flex: 1, padding: '10px 12px', borderRadius: '8px',
-                    border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte
-                  }}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
                 />
                 {isSousFiche && (
-                  <select
-                    value={unitePortions} onChange={e => setUnitePortions(e.target.value)}
-                    style={{
-                      padding: '10px 12px', borderRadius: '8px',
-                      border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-                      background: 'white', outline: 'none', color: c.texte
-                    }}
-                  >
-                    {['portions', 'kg', 'L', 'cl', 'ml', 'u'].map(u => (
-                      <option key={u}>{u}</option>
-                    ))}
+                  <select value={unitePortions} onChange={e => setUnitePortions(e.target.value)} style={{
+                    padding: '10px 12px', borderRadius: '8px',
+                    border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+                    background: 'white', outline: 'none', color: c.texte
+                  }}>
+                    {['portions', 'kg', 'L', 'cl', 'ml', 'u'].map(u => <option key={u}>{u}</option>)}
                   </select>
                 )}
               </div>
@@ -306,32 +275,21 @@ export default function NouvelleFiche() {
 
             {!isSousFiche && (
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                  Prix de vente TTC (€)
-                </label>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix de vente TTC (€)</label>
                 <input
                   type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)}
                   placeholder="Ex : 18.50" step="0.01"
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: '8px',
-                    border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte
-                  }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
                 />
               </div>
             )}
 
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                Description / Présentation
-              </label>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description / Présentation</label>
               <textarea
                 value={description} onChange={e => setDescription(e.target.value)}
                 placeholder="Notes de présentation, dressage..." rows={3}
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: '8px',
-                  border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none',
-                  resize: 'vertical', fontFamily: 'inherit', color: c.texte
-                }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte }}
               />
             </div>
           </div>
@@ -358,7 +316,7 @@ export default function NouvelleFiche() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '8px', marginBottom: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
             {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
               <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
             ))}
@@ -367,7 +325,7 @@ export default function NouvelleFiche() {
           {ingredients.map((ing, index) => {
             const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
             return (
-              <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '8px', marginBottom: '8px' }}>
+              <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
                 <select
                   value={ing.ingredient_id}
                   onChange={e => modifierIngredient(index, 'ingredient_id', e.target.value)}
@@ -376,7 +334,10 @@ export default function NouvelleFiche() {
                     border: `0.5px solid ${ingData?.est_sous_fiche ? '#AFA9EC' : c.bordure}`,
                     fontSize: '13px',
                     background: ingData?.est_sous_fiche ? '#EEEDFE' : 'white',
-                    outline: 'none', color: c.texte
+                    outline: 'none', color: c.texte,
+                    width: '100%', minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                   }}
                 >
                   <option value="">-- Choisir --</option>
@@ -396,20 +357,12 @@ export default function NouvelleFiche() {
                   type="number" value={ing.quantite} step="0.01"
                   onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
                   placeholder="0"
-                  style={{
-                    padding: '8px 10px', borderRadius: '8px',
-                    border: `0.5px solid ${c.bordure}`, fontSize: '13px',
-                    outline: 'none', color: c.texte
-                  }}
+                  style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}
                 />
                 <select
                   value={ing.unite}
                   onChange={e => modifierIngredient(index, 'unite', e.target.value)}
-                  style={{
-                    padding: '8px 10px', borderRadius: '8px',
-                    border: `0.5px solid ${c.bordure}`, fontSize: '13px',
-                    background: 'white', outline: 'none', color: c.texte
-                  }}
+                  style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: 'white', outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}
                 >
                   {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => (
                     <option key={u}>{u}</option>
@@ -417,11 +370,7 @@ export default function NouvelleFiche() {
                 </select>
                 <button
                   onClick={() => supprimerIngredient(index)}
-                  style={{
-                    background: 'transparent', border: `0.5px solid ${c.bordure}`,
-                    borderRadius: '8px', width: '36px', height: '36px',
-                    cursor: 'pointer', color: '#aaa', fontSize: '16px'
-                  }}
+                  style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}
                 >×</button>
               </div>
             )
@@ -434,9 +383,7 @@ export default function NouvelleFiche() {
               border: `0.5px solid ${c.vert}40`, borderRadius: '8px',
               padding: '8px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px'
             }}
-          >
-            + Ajouter un ingrédient
-          </button>
+          >+ Ajouter un ingrédient</button>
         </div>
 
         {/* Récapitulatif */}
@@ -450,12 +397,8 @@ export default function NouvelleFiche() {
           </div>
           {isSousFiche && coutPortion && (
             <div style={{ background: c.violetClair, borderRadius: '8px', padding: '14px' }}>
-              <div style={{ fontSize: '11px', color: '#3C3489', fontWeight: '500', textTransform: 'uppercase' }}>
-                Coût / {unitePortions}
-              </div>
-              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: '#3C3489' }}>
-                {parseFloat(coutPortion).toFixed(4)} €
-              </div>
+              <div style={{ fontSize: '11px', color: '#3C3489', fontWeight: '500', textTransform: 'uppercase' }}>Coût / {unitePortions}</div>
+              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: '#3C3489' }}>{parseFloat(coutPortion).toFixed(4)} €</div>
             </div>
           )}
           {!isSousFiche && fc && (
