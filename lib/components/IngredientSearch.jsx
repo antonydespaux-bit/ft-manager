@@ -15,6 +15,8 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
   useEffect(() => {
     if (ingSelectione) {
       setRecherche(ingSelectione.nom)
+    } else {
+      setRecherche('')
     }
   }, [value])
 
@@ -28,9 +30,7 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
     setRecherche(e.target.value)
     setOuvert(true)
     setSurbrillance(-1)
-    if (e.target.value === '') {
-      onChange('')
-    }
+    if (e.target.value === '') onChange('')
   }
 
   const handleSelect = (ing) => {
@@ -78,8 +78,7 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
           border: `0.5px solid ${estSousFiche ? '#AFA9EC' : c.bordure}`,
           fontSize: '13px',
           background: estSousFiche ? '#EEEDFE' : 'white',
-          outline: 'none', color: c.texte,
-          minWidth: 0
+          outline: 'none', color: c.texte, minWidth: 0
         }}
       />
 
@@ -95,30 +94,26 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
             marginTop: '4px'
           }}
         >
-          {ingredientsFiltres.filter(i => !i.est_sous_fiche).length > 0 && (
-            <>
-              {ingredientsFiltres.filter(i => !i.est_sous_fiche).map((ing, i) => (
-                <div
-                  key={ing.id}
-                  onMouseDown={() => handleSelect(ing)}
-                  style={{
-                    padding: '10px 14px', cursor: 'pointer', fontSize: '13px',
-                    color: c.texte,
-                    background: surbrillance === i ? c.accentClair : 'white',
-                    borderBottom: `0.5px solid ${c.bordure}`
-                  }}
-                  onMouseEnter={() => setSurbrillance(i)}
-                >
-                  <div style={{ fontWeight: '500' }}>{ing.nom}</div>
-                  {ing.prix_kg && (
-                    <div style={{ fontSize: '11px', color: c.texteMuted }}>
-                      {Number(ing.prix_kg).toFixed(2)} € / {ing.unite || 'kg'}
-                    </div>
-                  )}
+          {ingredientsFiltres.filter(i => !i.est_sous_fiche).map((ing, i) => (
+            <div
+              key={ing.id}
+              onMouseDown={() => handleSelect(ing)}
+              style={{
+                padding: '10px 14px', cursor: 'pointer', fontSize: '13px',
+                color: c.texte,
+                background: surbrillance === i ? c.accentClair : 'white',
+                borderBottom: `0.5px solid ${c.bordure}`
+              }}
+              onMouseEnter={() => setSurbrillance(i)}
+            >
+              <div style={{ fontWeight: '500' }}>{ing.nom}</div>
+              {ing.prix_kg && (
+                <div style={{ fontSize: '11px', color: c.texteMuted }}>
+                  {Number(ing.prix_kg).toFixed(2)} € / {ing.unite || 'kg'}
                 </div>
-              ))}
-            </>
-          )}
+              )}
+            </div>
+          ))}
           {ingredientsFiltres.filter(i => i.est_sous_fiche).length > 0 && (
             <>
               <div style={{ padding: '6px 14px', fontSize: '11px', color: c.texteMuted, background: c.fond, fontWeight: '500', textTransform: 'uppercase' }}>
@@ -130,7 +125,7 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
                   onMouseDown={() => handleSelect(ing)}
                   style={{
                     padding: '10px 14px', cursor: 'pointer', fontSize: '13px',
-                    color: '#3C3489', background: surbrillance === ingredientsFiltres.filter(j => !j.est_sous_fiche).length + i ? '#EEEDFE' : 'white',
+                    color: '#3C3489', background: 'white',
                     borderBottom: `0.5px solid ${c.bordure}`
                   }}
                 >
