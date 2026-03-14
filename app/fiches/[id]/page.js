@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase, getParametres } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
+import { useIsMobile } from '../../../lib/useIsMobile'
 
 const ALLERGENES = [
   { id: 'arachides', label: 'Arachides', emoji: '🥜' },
@@ -25,6 +26,7 @@ export default function FicheDetail() {
   const router = useRouter()
   const params_route = useParams()
   const c = theme.couleurs
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     checkUser()
@@ -114,111 +116,106 @@ export default function FicheDetail() {
 
       <div className="no-print" style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 24px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px'
+        padding: '0 16px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', height: '56px',
+        position: 'sticky', top: 0, zIndex: 100
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
-          <button
-            onClick={() => router.push('/fiches')}
-            style={{
-              background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px', padding: '6px 12px',
-              fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
-            }}
-          >← Retour</button>
-          <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+          <button onClick={() => router.push('/fiches')} style={{
+            background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '6px 10px',
+            fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
+          }}>← Retour</button>
+          {!isMobile && (
+            <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={() => window.print()} style={{
             background: c.accent, color: c.principal, border: 'none',
-            borderRadius: '8px', padding: '8px 16px',
+            borderRadius: '8px', padding: '8px 12px',
             fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-          }}>Imprimer</button>
+          }}>{isMobile ? '🖨️' : 'Imprimer'}</button>
           <button onClick={() => router.push(`/fiches/${params_route.id}/modifier`)} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 16px',
+            borderRadius: '8px', padding: '8px 12px',
             fontSize: '13px', cursor: 'pointer'
-          }}>Modifier</button>
-          <button onClick={handleDelete} style={{
-            background: 'transparent', color: '#F09595',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 16px',
-            fontSize: '13px', cursor: 'pointer'
-          }}>Supprimer</button>
+          }}>{isMobile ? '✏️' : 'Modifier'}</button>
+          {!isMobile && (
+            <button onClick={handleDelete} style={{
+              background: 'transparent', color: '#F09595',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px', padding: '8px 12px',
+              fontSize: '13px', cursor: 'pointer'
+            }}>Supprimer</button>
+          )}
         </div>
       </div>
 
-      <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* En-tête avec photo */}
+        {/* En-tête */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: '24px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '12px'
         }}>
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+          {fiche.photo_url && (
+            <img src={fiche.photo_url} alt={fiche.nom}
+              style={{
+                width: '100%', height: isMobile ? '200px' : '250px',
+                objectFit: 'cover', borderRadius: '8px',
+                marginBottom: '16px'
+              }}
+            />
+          )}
 
-            {/* Photo */}
-            {fiche.photo_url && (
-              <img
-                src={fiche.photo_url}
-                alt={fiche.nom}
-                style={{
-                  width: '180px', height: '140px', objectFit: 'cover',
-                  borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
-                  flexShrink: 0
-                }}
-              />
-            )}
-
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <div>
-                  <h1 style={{ fontSize: '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {fiche.categorie && (
-                      <span style={{
-                        background: c.accentClair, color: c.principal,
-                        borderRadius: '20px', padding: '3px 12px',
-                        fontSize: '12px', fontWeight: '500'
-                      }}>{fiche.categorie}</span>
-                    )}
-                    {fiche.saison && (
-                      <span style={{
-                        background: c.fond, color: c.texteMuted,
-                        borderRadius: '20px', padding: '3px 12px',
-                        fontSize: '12px', border: `0.5px solid ${c.bordure}`
-                      }}>{fiche.saison}</span>
-                    )}
-                  </div>
-                </div>
-                <div style={{
-                  background: c.principal, color: c.accent,
-                  borderRadius: '10px', padding: '10px 16px', textAlign: 'center', flexShrink: 0
-                }}>
-                  <div style={{ fontSize: '11px', opacity: 0.7 }}>Portions</div>
-                  <div style={{ fontSize: '24px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
-                </div>
+              <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>
+                {fiche.nom}
+              </h1>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {fiche.categorie && (
+                  <span style={{
+                    background: c.accentClair, color: c.principal,
+                    borderRadius: '20px', padding: '3px 12px',
+                    fontSize: '12px', fontWeight: '500'
+                  }}>{fiche.categorie}</span>
+                )}
+                {fiche.saison && (
+                  <span style={{
+                    background: c.fond, color: c.texteMuted,
+                    borderRadius: '20px', padding: '3px 12px',
+                    fontSize: '12px', border: `0.5px solid ${c.bordure}`
+                  }}>{fiche.saison}</span>
+                )}
               </div>
-
-              {fiche.description && (
-                <div style={{
-                  background: c.fond, borderRadius: '8px', padding: '12px 16px',
-                  fontSize: '13px', color: c.texteMuted, lineHeight: '1.6'
-                }}>
-                  {fiche.description}
-                </div>
-              )}
+            </div>
+            <div style={{
+              background: c.principal, color: c.accent,
+              borderRadius: '10px', padding: '8px 14px', textAlign: 'center',
+              flexShrink: 0, marginLeft: '12px'
+            }}>
+              <div style={{ fontSize: '10px', opacity: 0.7 }}>Portions</div>
+              <div style={{ fontSize: '20px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
             </div>
           </div>
 
-          {/* Allergènes */}
+          {fiche.description && (
+            <div style={{
+              background: c.fond, borderRadius: '8px', padding: '12px',
+              fontSize: '13px', color: c.texteMuted, lineHeight: '1.6'
+            }}>
+              {fiche.description}
+            </div>
+          )}
+
           {fiche.allergenes && fiche.allergenes.length > 0 && (
             <div style={{
-              background: '#FCEBEB', borderRadius: '8px', padding: '14px 16px',
-              marginTop: '16px', border: '0.5px solid #F09595'
+              background: '#FCEBEB', borderRadius: '8px', padding: '12px',
+              marginTop: '12px', border: '0.5px solid #F09595'
             }}>
               <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
                 Allergènes présents
@@ -231,7 +228,7 @@ export default function FicheDetail() {
                     <span key={id} style={{
                       background: 'white', color: '#A32D2D',
                       border: '0.5px solid #F09595', borderRadius: '20px',
-                      padding: '4px 12px', fontSize: '12px', fontWeight: '500',
+                      padding: '4px 10px', fontSize: '12px', fontWeight: '500',
                       display: 'flex', alignItems: 'center', gap: '4px'
                     }}>
                       {allergene.emoji} {allergene.label}
@@ -241,112 +238,139 @@ export default function FicheDetail() {
               </div>
             </div>
           )}
+
+          {isMobile && (
+            <button onClick={handleDelete} style={{
+              marginTop: '12px', width: '100%', padding: '10px',
+              background: 'transparent', color: '#A32D2D',
+              border: '0.5px solid #F09595', borderRadius: '8px',
+              fontSize: '13px', cursor: 'pointer'
+            }}>Supprimer cette fiche</button>
+          )}
         </div>
 
-        {/* Tableau des ingrédients */}
+        {/* Ingrédients */}
         <div style={{
           background: 'white', borderRadius: '12px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '16px', overflow: 'hidden'
+          border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden'
         }}>
           <div style={{
-            padding: '16px 20px', borderBottom: `0.5px solid ${c.bordure}`,
+            padding: '14px 16px', borderBottom: `0.5px solid ${c.bordure}`,
             fontSize: '13px', fontWeight: '500', color: c.texteMuted,
             textTransform: 'uppercase', letterSpacing: '0.04em'
           }}>
             Ingrédients
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: c.fond }}>
-                {['Ingrédient', 'Quantité', 'Unité', 'Prix unit.', 'Coût'].map((h, i) => (
-                  <th key={i} style={{
-                    padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right',
-                    fontSize: '11px', color: c.texteMuted, fontWeight: '500',
-                    textTransform: 'uppercase', borderBottom: `0.5px solid ${c.bordure}`
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
+
+          {isMobile ? (
+            <div style={{ padding: '12px' }}>
               {ingredients.map((ing, i) => {
                 const coutLigne = ing.ingredients?.prix_kg && ing.quantite
                   ? ing.ingredients.prix_kg * ing.quantite : null
                 return (
-                  <tr key={i} style={{ borderBottom: i < ingredients.length - 1 ? `0.5px solid ${c.bordure}` : 'none' }}>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: c.texte }}>
-                      {ing.ingredients?.nom || '—'}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texte }}>
-                      {ing.quantite}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texteMuted }}>
-                      {ing.unite}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texteMuted }}>
-                      {ing.ingredients?.prix_kg ? `${Number(ing.ingredients.prix_kg).toFixed(2)} €` : '—'}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', fontWeight: '500', color: c.texte }}>
-                      {coutLigne ? `${coutLigne.toFixed(2)} €` : '—'}
-                    </td>
-                  </tr>
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '10px 0',
+                    borderBottom: i < ingredients.length - 1 ? `0.5px solid ${c.bordure}` : 'none'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{ing.ingredients?.nom || '—'}</div>
+                      <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>
+                        {ing.quantite} {ing.unite}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      {coutLigne && (
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{coutLigne.toFixed(2)} €</div>
+                      )}
+                      {ing.ingredients?.prix_kg && (
+                        <div style={{ fontSize: '11px', color: c.texteMuted }}>{Number(ing.ingredients.prix_kg).toFixed(2)} €/kg</div>
+                      )}
+                    </div>
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: c.fond }}>
+                  {['Ingrédient', 'Quantité', 'Unité', 'Prix unit.', 'Coût'].map((h, i) => (
+                    <th key={i} style={{
+                      padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right',
+                      fontSize: '11px', color: c.texteMuted, fontWeight: '500',
+                      textTransform: 'uppercase', borderBottom: `0.5px solid ${c.bordure}`
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ingredients.map((ing, i) => {
+                  const coutLigne = ing.ingredients?.prix_kg && ing.quantite
+                    ? ing.ingredients.prix_kg * ing.quantite : null
+                  return (
+                    <tr key={i} style={{ borderBottom: i < ingredients.length - 1 ? `0.5px solid ${c.bordure}` : 'none' }}>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: c.texte }}>{ing.ingredients?.nom || '—'}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texte }}>{ing.quantite}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texteMuted }}>{ing.unite}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texteMuted }}>
+                        {ing.ingredients?.prix_kg ? `${Number(ing.ingredients.prix_kg).toFixed(2)} €` : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', fontWeight: '500', color: c.texte }}>
+                        {coutLigne ? `${coutLigne.toFixed(2)} €` : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Récapitulatif financier */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: '20px',
+          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '20px',
           border: `0.5px solid ${c.bordure}`,
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px'
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '10px'
         }}>
-          <div style={{ background: c.fond, borderRadius: '8px', padding: '14px' }}>
-            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coût total</div>
-            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{cout ? `${cout.toFixed(2)} €` : '—'}</div>
+          <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{cout ? `${cout.toFixed(2)} €` : '—'}</div>
           </div>
-          <div style={{ background: c.fond, borderRadius: '8px', padding: '14px' }}>
-            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coût / portion</div>
-            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
+          <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût / portion</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
               {cout && fiche.nb_portions ? `${(cout / fiche.nb_portions).toFixed(2)} €` : '—'}
             </div>
           </div>
-          <div style={{ background: c.fond, borderRadius: '8px', padding: '14px' }}>
-            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Prix TTC</div>
-            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
+          <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Prix TTC</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
               {fiche.prix_ttc ? `${Number(fiche.prix_ttc).toFixed(2)} €` : '—'}
             </div>
           </div>
-          <div style={{ background: c.fond, borderRadius: '8px', padding: '14px' }}>
-            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Prix HT</div>
-            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
+          <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Prix HT</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
               {fiche.prix_ttc ? `${(fiche.prix_ttc / 1.10).toFixed(2)} €` : '—'}
             </div>
           </div>
           {prixIndic && (
-            <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
-              <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Prix indicatif TTC
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.vert }}>
-                {prixIndic} €
-              </div>
-              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>
-                Basé sur {seuilVert}% food cost
-              </div>
+            <div style={{ background: c.vertClair, borderRadius: '8px', padding: '12px' }}>
+              <div style={{ fontSize: '10px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
+              <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
+              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>Basé sur {seuilVert}%</div>
             </div>
           )}
           {fc && (
             <div style={{
               background: fc < seuilVert ? '#EAF3DE' : fc < seuilOrange ? '#FAEEDA' : '#FCEBEB',
-              borderRadius: '8px', padding: '14px'
+              borderRadius: '8px', padding: '12px'
             }}>
-              <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>
-                Food cost
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>
-                {fc} %
-              </div>
+              <div style={{ fontSize: '10px', fontWeight: '500', textTransform: 'uppercase', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>Food cost</div>
+              <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>{fc} %</div>
             </div>
           )}
         </div>
