@@ -2,6 +2,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
+import { theme, Logo } from '../../../lib/theme.jsx'
+
+const ALLERGENES = [
+  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
+  { id: 'soja', label: 'Soja', emoji: '🫘' },
+  { id: 'lait', label: 'Lait', emoji: '🥛' },
+  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
+  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
+  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
+  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
+  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
+  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
+  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
+]
 
 export default function FicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -9,6 +23,7 @@ export default function FicheDetail() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const params = useParams()
+  const c = theme.couleurs
 
   useEffect(() => {
     checkUser()
@@ -51,13 +66,21 @@ export default function FicheDetail() {
       return total
     }, 0)
   }
-const foodCost = () => {
-  const cout = calculerCout()
-  if (!fiche?.prix_ttc || !cout || !fiche?.nb_portions) return null
-  const coutParPortion = cout / fiche.nb_portions
-  const prixHT = fiche.prix_ttc / 1.10
-  return (coutParPortion / prixHT * 100).toFixed(1)
-}
+
+  const foodCost = () => {
+    const cout = calculerCout()
+    if (!fiche?.prix_ttc || !cout || !fiche?.nb_portions) return null
+    const coutParPortion = cout / fiche.nb_portions
+    const prixHT = fiche.prix_ttc / 1.10
+    return (coutParPortion / prixHT * 100).toFixed(1)
+  }
+
+  const prixIndicatif = () => {
+    const cout = calculerCout()
+    if (!cout || !fiche?.nb_portions) return null
+    const coutPortion = cout / fiche.nb_portions
+    return (coutPortion / 0.28 * 1.10).toFixed(2)
+  }
 
   const handleDelete = async () => {
     if (!confirm('Supprimer définitivement cette fiche ?')) return
@@ -66,106 +89,137 @@ const foodCost = () => {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f0' }}>
-      <div style={{ fontSize: '14px', color: '#888' }}>Chargement...</div>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
+      <div style={{ fontSize: '14px', color: c.texteMuted }}>Chargement...</div>
     </div>
   )
 
   const cout = calculerCout()
   const fc = foodCost()
+  const prixIndic = prixIndicatif()
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f0' }}>
+    <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      {/* Barre du haut — masquée à l'impression */}
+      {/* Barre du haut */}
       <div className="no-print" style={{
-        background: 'white', borderBottom: '0.5px solid #e0e0d8',
+        background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 24px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: '56px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
           <button
             onClick={() => router.push('/fiches')}
             style={{
-              background: 'transparent', border: '0.5px solid #ddd',
+              background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '6px 12px',
-              fontSize: '13px', cursor: 'pointer', color: '#666'
+              fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
             }}
-          >
-            ← Retour
-          </button>
-          <span style={{ fontSize: '15px', fontWeight: '500' }}>{fiche.nom}</span>
+          >← Retour</button>
+          <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => window.print()}
             style={{
-              background: '#1D9E75', color: 'white', border: 'none',
+              background: c.accent, color: c.principal, border: 'none',
               borderRadius: '8px', padding: '8px 16px',
-              fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+              fontSize: '13px', fontWeight: '600', cursor: 'pointer'
             }}
-          >
-            Imprimer
-          </button>
+          >Imprimer</button>
           <button
             onClick={() => router.push(`/fiches/${params.id}/modifier`)}
             style={{
-              background: 'transparent', color: '#666', border: '0.5px solid #ddd',
+              background: 'transparent', color: 'rgba(255,255,255,0.7)',
+              border: '0.5px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '8px 16px',
               fontSize: '13px', cursor: 'pointer'
             }}
-          >
-            Modifier
-          </button>
+          >Modifier</button>
           <button
             onClick={handleDelete}
             style={{
-              background: 'transparent', color: '#A32D2D', border: '0.5px solid #ddd',
+              background: 'transparent', color: '#F09595',
+              border: '0.5px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '8px 16px',
               fontSize: '13px', cursor: 'pointer'
             }}
-          >
-            Supprimer
-          </button>
+          >Supprimer</button>
         </div>
       </div>
 
-      {/* Contenu imprimable */}
       <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* En-tête de la fiche */}
+        {/* En-tête */}
         <div style={{
           background: 'white', borderRadius: '12px', padding: '24px',
-          border: '0.5px solid #e0e0d8', marginBottom: '16px'
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
-              <h1 style={{ fontSize: '22px', fontWeight: '500', marginBottom: '6px' }}>{fiche.nom}</h1>
+              <h1 style={{ fontSize: '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {fiche.categorie && (
                   <span style={{
-                    background: '#E1F5EE', color: '#085041',
+                    background: c.accentClair, color: c.principal,
                     borderRadius: '20px', padding: '3px 12px',
                     fontSize: '12px', fontWeight: '500'
                   }}>{fiche.categorie}</span>
                 )}
+                {fiche.saison && (
+                  <span style={{
+                    background: c.fond, color: c.texteMuted,
+                    borderRadius: '20px', padding: '3px 12px',
+                    fontSize: '12px', border: `0.5px solid ${c.bordure}`
+                  }}>{fiche.saison}</span>
+                )}
               </div>
             </div>
             <div style={{
-              background: '#1D9E75', color: 'white',
-              borderRadius: '10px', padding: '8px 16px', textAlign: 'center'
+              background: c.principal, color: c.accent,
+              borderRadius: '10px', padding: '10px 16px', textAlign: 'center'
             }}>
-              <div style={{ fontSize: '11px', opacity: 0.85 }}>Portions</div>
-              <div style={{ fontSize: '22px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
+              <div style={{ fontSize: '11px', opacity: 0.7 }}>Portions</div>
+              <div style={{ fontSize: '24px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
             </div>
           </div>
 
           {fiche.description && (
             <div style={{
-              background: '#f5f5f0', borderRadius: '8px', padding: '12px 16px',
-              fontSize: '13px', color: '#555', lineHeight: '1.6'
+              background: c.fond, borderRadius: '8px', padding: '12px 16px',
+              fontSize: '13px', color: c.texteMuted, lineHeight: '1.6'
             }}>
               {fiche.description}
+            </div>
+          )}
+
+          {/* Allergènes */}
+          {fiche.allergenes && fiche.allergenes.length > 0 && (
+            <div style={{
+              background: '#FCEBEB', borderRadius: '8px', padding: '14px 16px',
+              marginTop: '12px', border: '0.5px solid #F09595'
+            }}>
+              <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                Allergènes présents
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {fiche.allergenes.map(id => {
+                  const allergene = ALLERGENES.find(a => a.id === id)
+                  if (!allergene) return null
+                  return (
+                    <span key={id} style={{
+                      background: 'white', color: '#A32D2D',
+                      border: '0.5px solid #F09595', borderRadius: '20px',
+                      padding: '4px 12px', fontSize: '12px', fontWeight: '500',
+                      display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      {allergene.emoji} {allergene.label}
+                    </span>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -173,24 +227,23 @@ const foodCost = () => {
         {/* Tableau des ingrédients */}
         <div style={{
           background: 'white', borderRadius: '12px',
-          border: '0.5px solid #e0e0d8', marginBottom: '16px', overflow: 'hidden'
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px', overflow: 'hidden'
         }}>
           <div style={{
-            padding: '16px 20px', borderBottom: '0.5px solid #e0e0d8',
-            fontSize: '13px', fontWeight: '500', color: '#888',
+            padding: '16px 20px', borderBottom: `0.5px solid ${c.bordure}`,
+            fontSize: '13px', fontWeight: '500', color: c.texteMuted,
             textTransform: 'uppercase', letterSpacing: '0.04em'
           }}>
             Ingrédients
           </div>
-
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9f9f6' }}>
+              <tr style={{ background: c.fond }}>
                 {['Ingrédient', 'Quantité', 'Unité', 'Prix unit.', 'Coût'].map((h, i) => (
                   <th key={i} style={{
                     padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right',
-                    fontSize: '11px', color: '#888', fontWeight: '500',
-                    textTransform: 'uppercase', borderBottom: '0.5px solid #e0e0d8'
+                    fontSize: '11px', color: c.texteMuted, fontWeight: '500',
+                    textTransform: 'uppercase', borderBottom: `0.5px solid ${c.bordure}`
                   }}>{h}</th>
                 ))}
               </tr>
@@ -200,20 +253,20 @@ const foodCost = () => {
                 const coutLigne = ing.ingredients?.prix_kg && ing.quantite
                   ? ing.ingredients.prix_kg * ing.quantite : null
                 return (
-                  <tr key={i} style={{ borderBottom: i < ingredients.length - 1 ? '0.5px solid #f0f0e8' : 'none' }}>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500' }}>
+                  <tr key={i} style={{ borderBottom: i < ingredients.length - 1 ? `0.5px solid ${c.bordure}` : 'none' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: '500', color: c.texte }}>
                       {ing.ingredients?.nom || '—'}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texte }}>
                       {ing.quantite}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: '#888' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texteMuted }}>
                       {ing.unite}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: '#888' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', color: c.texteMuted }}>
                       {ing.ingredients?.prix_kg ? `${Number(ing.ingredients.prix_kg).toFixed(2)} €` : '—'}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', fontWeight: '500' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '14px', textAlign: 'right', fontWeight: '500', color: c.texte }}>
                       {coutLigne ? `${coutLigne.toFixed(2)} €` : '—'}
                     </td>
                   </tr>
@@ -226,40 +279,55 @@ const foodCost = () => {
         {/* Récapitulatif financier */}
         <div style={{
           background: 'white', borderRadius: '12px', padding: '20px',
-          border: '0.5px solid #e0e0d8',
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px'
+          border: `0.5px solid ${c.bordure}`,
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px'
         }}>
           {[
+            { label: 'Coût total', value: cout ? `${cout.toFixed(2)} €` : '—' },
             { label: 'Coût / portion', value: cout && fiche.nb_portions ? `${(cout / fiche.nb_portions).toFixed(2)} €` : '—' },
-            { label: 'Coût total matière', value: cout ? `${cout.toFixed(2)} €` : '—' },
-            { label: 'Prix de vente TTC', value: fiche.prix_ttc ? `${Number(fiche.prix_ttc).toFixed(2)} €` : '—' },
+            { label: 'Prix TTC', value: fiche.prix_ttc ? `${Number(fiche.prix_ttc).toFixed(2)} €` : '—' },
             { label: 'Prix HT', value: fiche.prix_ttc ? `${(fiche.prix_ttc / 1.10).toFixed(2)} €` : '—' },
-            {
-              label: 'Food cost', value: fc ? `${fc} %` : '—',
-              color: fc ? (fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D') : '#888',
-              bg: fc ? (fc < 30 ? '#EAF3DE' : fc < 40 ? '#FAEEDA' : '#FCEBEB') : 'transparent'
-            },
           ].map((stat, i) => (
-            <div key={i} style={{
-              background: stat.bg || '#f9f9f6',
-              borderRadius: '8px', padding: '14px'
-            }}>
-              <div style={{ fontSize: '11px', color: stat.color || '#888', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div key={i} style={{ background: c.fond, borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {stat.label}
               </div>
-              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: stat.color || '#1a1a1a' }}>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>
                 {stat.value}
               </div>
             </div>
           ))}
+          {!fiche.prix_ttc && prixIndic && (
+            <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Prix indicatif TTC
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.vert }}>
+                {prixIndic} €
+              </div>
+              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>
+                Basé sur 28% food cost
+              </div>
+            </div>
+          )}
+          {fc && (
+            <div style={{
+              background: fc < 30 ? '#EAF3DE' : fc < 40 ? '#FAEEDA' : '#FCEBEB',
+              borderRadius: '8px', padding: '14px'
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>
+                Food cost
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: fc < 30 ? '#3B6D11' : fc < 40 ? '#854F0B' : '#A32D2D' }}>
+                {fc} %
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Pied de page imprimable */}
-        <div style={{
-          marginTop: '16px', textAlign: 'center',
-          fontSize: '11px', color: '#bbb'
-        }}>
-          Fiche technique — {fiche.nom} — {new Date().toLocaleDateString('fr-FR')}
+        {/* Pied de page impression */}
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', color: '#bbb' }}>
+          {theme.hotel.nom} — {fiche.nom} — {new Date().toLocaleDateString('fr-FR')}
         </div>
       </div>
     </div>

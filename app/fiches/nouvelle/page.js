@@ -4,14 +4,28 @@ import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 
+const ALLERGENES = [
+  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
+  { id: 'soja', label: 'Soja', emoji: '🫘' },
+  { id: 'lait', label: 'Lait', emoji: '🥛' },
+  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
+  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
+  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
+  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
+  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
+  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
+  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
+]
+
 export default function NouvelleFiche() {
   const [nom, setNom] = useState('')
-  const [categorie, setCategorie] = useState('Plat')
+  const [categorie, setCategorie] = useState('Plats')
   const [nbPortions, setNbPortions] = useState('')
   const [unitePortions, setUnitePortions] = useState('portions')
   const [prixTTC, setPrixTTC] = useState('')
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
+  const [allergenes, setAllergenes] = useState([])
   const [ingredients, setIngredients] = useState([
     { ingredient_id: '', nom: '', quantite: '', unite: 'kg' }
   ])
@@ -20,7 +34,6 @@ export default function NouvelleFiche() {
   const [error, setError] = useState('')
   const router = useRouter()
   const c = theme.couleurs
-
   const saisons = theme.saisons
   const categories = [...theme.categories, 'Sous-fiche']
   const isSousFiche = categorie === 'Sous-fiche'
@@ -41,6 +54,12 @@ export default function NouvelleFiche() {
       .select('*')
       .order('nom')
     setListeIngredients(data || [])
+  }
+
+  const toggleAllergene = (id) => {
+    setAllergenes(prev =>
+      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+    )
   }
 
   const ajouterIngredient = () => {
@@ -81,12 +100,18 @@ export default function NouvelleFiche() {
   }
 
   const foodCost = () => {
-  const cout = calculerCout()
-  if (!prixTTC || !cout || !nbPortions) return null
-  const coutParPortion = cout / parseFloat(nbPortions)
-  const prixHT = parseFloat(prixTTC) / 1.10
-  return (coutParPortion / prixHT * 100).toFixed(1)
-}
+    const cout = calculerCout()
+    if (!prixTTC || !cout || !nbPortions) return null
+    const coutParPortion = cout / parseFloat(nbPortions)
+    const prixHT = parseFloat(prixTTC) / 1.10
+    return (coutParPortion / prixHT * 100).toFixed(1)
+  }
+
+  const prixIndicatif = () => {
+    const coutPortion = calculerCoutPortion()
+    if (!coutPortion) return null
+    return (parseFloat(coutPortion) / 0.28 * 1.10).toFixed(2)
+  }
 
   const handleSubmit = async () => {
     if (!nom) { setError('Le nom de la fiche est obligatoire'); return }
@@ -94,7 +119,6 @@ export default function NouvelleFiche() {
     setLoading(true)
     setError('')
 
-    const coutTotal = calculerCout()
     const coutPortion = calculerCoutPortion()
 
     const { data: fiche, error: errFiche } = await supabase
@@ -106,6 +130,7 @@ export default function NouvelleFiche() {
         prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
         description,
         saison,
+        allergenes,
         cout_portion: coutPortion ? parseFloat(coutPortion) : null
       }])
       .select()
@@ -145,6 +170,7 @@ export default function NouvelleFiche() {
 
   const fc = foodCost()
   const coutPortion = calculerCoutPortion()
+  const prixIndic = prixIndicatif()
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
@@ -157,6 +183,8 @@ export default function NouvelleFiche() {
         justifyContent: 'space-between', height: '56px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
           <button
             onClick={() => router.push(isSousFiche ? '/sous-fiches' : '/fiches')}
             style={{
@@ -219,7 +247,6 @@ export default function NouvelleFiche() {
             Informations générales
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
               <input
@@ -228,7 +255,6 @@ export default function NouvelleFiche() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
               />
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
               <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{
@@ -236,12 +262,9 @@ export default function NouvelleFiche() {
                 border: `0.5px solid ${c.bordure}`, fontSize: '14px',
                 background: 'white', outline: 'none', color: c.texte
               }}>
-                {categories.map(cat => (
-                  <option key={cat}>{cat}</option>
-                ))}
+                {categories.map(cat => <option key={cat}>{cat}</option>)}
               </select>
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
               <select value={saison} onChange={e => setSaison(e.target.value)} style={{
@@ -252,7 +275,6 @@ export default function NouvelleFiche() {
                 {saisons.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
                 {isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}
@@ -274,7 +296,6 @@ export default function NouvelleFiche() {
                 )}
               </div>
             </div>
-
             {!isSousFiche && (
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix de vente TTC (€)</label>
@@ -283,9 +304,13 @@ export default function NouvelleFiche() {
                   placeholder="Ex : 18.50" step="0.01"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
                 />
+                {prixIndic && !prixTTC && (
+                  <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
+                    Prix indicatif (28% food cost) : <strong>{prixIndic} €</strong>
+                  </div>
+                )}
               </div>
             )}
-
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description / Présentation</label>
               <textarea
@@ -305,25 +330,17 @@ export default function NouvelleFiche() {
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
             Ingrédients
           </div>
-
           {listeIngredients.length === 0 && (
-            <div style={{
-              background: '#FAEEDA', color: '#633806', borderRadius: '8px',
-              padding: '12px 16px', fontSize: '13px', marginBottom: '16px'
-            }}>
+            <div style={{ background: '#FAEEDA', color: '#633806', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>
               Aucun ingrédient disponible.
-              <span onClick={() => router.push('/ingredients')} style={{ textDecoration: 'underline', cursor: 'pointer', marginLeft: '4px' }}>
-                Créez-en d'abord ici.
-              </span>
+              <span onClick={() => router.push('/ingredients')} style={{ textDecoration: 'underline', cursor: 'pointer', marginLeft: '4px' }}>Créez-en d'abord ici.</span>
             </div>
           )}
-
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
             {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
               <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
             ))}
           </div>
-
           {ingredients.map((ing, index) => {
             const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
             return (
@@ -334,12 +351,8 @@ export default function NouvelleFiche() {
                   style={{
                     padding: '8px 10px', borderRadius: '8px',
                     border: `0.5px solid ${ingData?.est_sous_fiche ? '#AFA9EC' : c.bordure}`,
-                    fontSize: '13px',
-                    background: ingData?.est_sous_fiche ? '#EEEDFE' : 'white',
-                    outline: 'none', color: c.texte,
-                    width: '100%', minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                    fontSize: '13px', background: ingData?.est_sous_fiche ? '#EEEDFE' : 'white',
+                    outline: 'none', color: c.texte, width: '100%', minWidth: 0
                   }}
                 >
                   <option value="">-- Choisir --</option>
@@ -377,15 +390,53 @@ export default function NouvelleFiche() {
               </div>
             )
           })}
-
           <button
             onClick={ajouterIngredient}
-            style={{
-              background: c.vertClair, color: c.vert,
-              border: `0.5px solid ${c.vert}40`, borderRadius: '8px',
-              padding: '8px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px'
-            }}
+            style={{ background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`, borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}
           >+ Ajouter un ingrédient</button>
+        </div>
+
+        {/* Allergènes */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Allergènes
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+            {ALLERGENES.map(a => (
+              <div
+                key={a.id}
+                onClick={() => toggleAllergene(a.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`,
+                  background: allergenes.includes(a.id) ? '#FCEBEB' : 'white',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>{a.emoji}</span>
+                <span style={{
+                  fontSize: '13px', fontWeight: allergenes.includes(a.id) ? '500' : '400',
+                  color: allergenes.includes(a.id) ? '#A32D2D' : c.texte
+                }}>{a.label}</span>
+                {allergenes.includes(a.id) && (
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#A32D2D', fontWeight: '500' }}>✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {allergenes.length > 0 && (
+            <div style={{
+              marginTop: '12px', padding: '10px 14px', background: '#FCEBEB',
+              borderRadius: '8px', fontSize: '12px', color: '#A32D2D',
+              border: '0.5px solid #F09595'
+            }}>
+              {allergenes.length} allergène{allergenes.length > 1 ? 's' : ''} sélectionné{allergenes.length > 1 ? 's' : ''} : {allergenes.map(id => ALLERGENES.find(a => a.id === id)?.label).join(', ')}
+            </div>
+          )}
         </div>
 
         {/* Récapitulatif */}
@@ -401,6 +452,19 @@ export default function NouvelleFiche() {
             <div style={{ background: c.violetClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: '#3C3489', fontWeight: '500', textTransform: 'uppercase' }}>Coût / {unitePortions}</div>
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: '#3C3489' }}>{parseFloat(coutPortion).toFixed(4)} €</div>
+            </div>
+          )}
+          {!isSousFiche && coutPortion && (
+            <div>
+              <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût / portion</div>
+              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{parseFloat(coutPortion).toFixed(2)} €</div>
+            </div>
+          )}
+          {!isSousFiche && prixIndic && !prixTTC && (
+            <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
+              <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
+              <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
+              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>Basé sur 28% food cost</div>
             </div>
           )}
           {!isSousFiche && fc && (

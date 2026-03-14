@@ -4,6 +4,19 @@ import { supabase } from '../../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../../lib/theme.jsx'
 
+const ALLERGENES = [
+  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
+  { id: 'soja', label: 'Soja', emoji: '🫘' },
+  { id: 'lait', label: 'Lait', emoji: '🥛' },
+  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
+  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
+  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
+  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
+  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
+  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
+  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
+]
+
 export default function ModifierFiche() {
   const [nom, setNom] = useState('')
   const [categorie, setCategorie] = useState('Plats')
@@ -11,6 +24,7 @@ export default function ModifierFiche() {
   const [prixTTC, setPrixTTC] = useState('')
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
+  const [allergenes, setAllergenes] = useState([])
   const [ingredients, setIngredients] = useState([])
   const [listeIngredients, setListeIngredients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -46,6 +60,7 @@ export default function ModifierFiche() {
     setPrixTTC(ficheData.prix_ttc || '')
     setDescription(ficheData.description || '')
     setSaison(ficheData.saison || 'Printemps 2026')
+    setAllergenes(ficheData.allergenes || [])
 
     const { data: ingsData } = await supabase
       .from('fiche_ingredients')
@@ -65,6 +80,12 @@ export default function ModifierFiche() {
       .order('nom')
     setListeIngredients(liste || [])
     setLoading(false)
+  }
+
+  const toggleAllergene = (id) => {
+    setAllergenes(prev =>
+      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+    )
   }
 
   const ajouterIngredient = () => {
@@ -106,6 +127,13 @@ export default function ModifierFiche() {
     return (coutParPortion / prixHT * 100).toFixed(1)
   }
 
+  const prixIndicatif = () => {
+    const cout = calculerCout()
+    if (!cout || !nbPortions) return null
+    const coutPortion = cout / parseFloat(nbPortions)
+    return (coutPortion / 0.28 * 1.10).toFixed(2)
+  }
+
   const handleSubmit = async () => {
     if (!nom) { setError('Le nom est obligatoire'); return }
     setSaving(true)
@@ -123,6 +151,7 @@ export default function ModifierFiche() {
         prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
         description,
         saison,
+        allergenes,
         cout_portion: coutPortion,
         updated_at: new Date().toISOString()
       })
@@ -150,6 +179,7 @@ export default function ModifierFiche() {
   }
 
   const fc = foodCost()
+  const prixIndic = prixIndicatif()
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
@@ -166,6 +196,8 @@ export default function ModifierFiche() {
         justifyContent: 'space-between', height: '56px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
           <button
             onClick={() => router.push(`/fiches/${params.id}`)}
             style={{
@@ -199,6 +231,7 @@ export default function ModifierFiche() {
           }}>{error}</div>
         )}
 
+        {/* Informations générales */}
         <div style={{
           background: 'white', borderRadius: '12px', padding: '24px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
@@ -207,7 +240,6 @@ export default function ModifierFiche() {
             Informations générales
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
               <input
@@ -215,7 +247,6 @@ export default function ModifierFiche() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
               />
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
               <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{
@@ -226,7 +257,6 @@ export default function ModifierFiche() {
                 {categories.map(cat => <option key={cat}>{cat}</option>)}
               </select>
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
               <select value={saison} onChange={e => setSaison(e.target.value)} style={{
@@ -237,7 +267,6 @@ export default function ModifierFiche() {
                 {theme.saisons.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
               <input
@@ -245,15 +274,18 @@ export default function ModifierFiche() {
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
               />
             </div>
-
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix de vente TTC (€)</label>
               <input
                 type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} step="0.01"
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
               />
+              {prixIndic && !prixTTC && (
+                <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
+                  Prix indicatif (28% food cost) : <strong>{prixIndic} €</strong>
+                </div>
+              )}
             </div>
-
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
               <textarea
@@ -264,6 +296,7 @@ export default function ModifierFiche() {
           </div>
         </div>
 
+        {/* Ingrédients */}
         <div style={{
           background: 'white', borderRadius: '12px', padding: '24px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
@@ -271,13 +304,11 @@ export default function ModifierFiche() {
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
             Ingrédients
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
             {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
               <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
             ))}
           </div>
-
           {ingredients.map((ing, index) => {
             const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
             return (
@@ -288,8 +319,7 @@ export default function ModifierFiche() {
                   style={{
                     padding: '8px 10px', borderRadius: '8px',
                     border: `0.5px solid ${ingData?.est_sous_fiche ? '#AFA9EC' : c.bordure}`,
-                    fontSize: '13px',
-                    background: ingData?.est_sous_fiche ? '#EEEDFE' : 'white',
+                    fontSize: '13px', background: ingData?.est_sous_fiche ? '#EEEDFE' : 'white',
                     outline: 'none', color: c.texte, width: '100%', minWidth: 0
                   }}
                 >
@@ -327,26 +357,72 @@ export default function ModifierFiche() {
               </div>
             )
           })}
-
           <button
             onClick={ajouterIngredient}
-            style={{
-              background: c.vertClair, color: c.vert,
-              border: `0.5px solid ${c.vert}40`, borderRadius: '8px',
-              padding: '8px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px'
-            }}
+            style={{ background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`, borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px' }}
           >+ Ajouter un ingrédient</button>
         </div>
 
+        {/* Allergènes */}
+        <div style={{
+          background: 'white', borderRadius: '12px', padding: '24px',
+          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
+            Allergènes
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+            {ALLERGENES.map(a => (
+              <div
+                key={a.id}
+                onClick={() => toggleAllergene(a.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`,
+                  background: allergenes.includes(a.id) ? '#FCEBEB' : 'white',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>{a.emoji}</span>
+                <span style={{
+                  fontSize: '13px', fontWeight: allergenes.includes(a.id) ? '500' : '400',
+                  color: allergenes.includes(a.id) ? '#A32D2D' : c.texte
+                }}>{a.label}</span>
+                {allergenes.includes(a.id) && (
+                  <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#A32D2D', fontWeight: '500' }}>✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {allergenes.length > 0 && (
+            <div style={{
+              marginTop: '12px', padding: '10px 14px', background: '#FCEBEB',
+              borderRadius: '8px', fontSize: '12px', color: '#A32D2D',
+              border: '0.5px solid #F09595'
+            }}>
+              {allergenes.length} allergène{allergenes.length > 1 ? 's' : ''} sélectionné{allergenes.length > 1 ? 's' : ''} : {allergenes.map(id => ALLERGENES.find(a => a.id === id)?.label).join(', ')}
+            </div>
+          )}
+        </div>
+
+        {/* Récapitulatif */}
         {fc && (
           <div style={{
             background: 'white', borderRadius: '12px', padding: '20px',
-            border: `0.5px solid ${c.bordure}`, display: 'flex', gap: '24px'
+            border: `0.5px solid ${c.bordure}`, display: 'flex', gap: '24px', flexWrap: 'wrap'
           }}>
             <div>
               <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
             </div>
+            {prixIndic && !prixTTC && (
+              <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
+                <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
+                <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
+                <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>Basé sur 28% food cost</div>
+              </div>
+            )}
             <div>
               <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Food cost</div>
               <div style={{
