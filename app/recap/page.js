@@ -11,6 +11,8 @@ export default function RecapPage() {
   const [loading, setLoading] = useState(true)
   const [saisonFiltree, setSaisonFiltree] = useState('toutes')
   const [categorieOuverte, setCategorieOuverte] = useState(null)
+  const [modifArchive, setModifArchive] = useState({})
+  const [saving, setSaving] = useState(false)
   const router = useRouter()
   const c = theme.couleurs
 
@@ -29,15 +31,18 @@ export default function RecapPage() {
       .from('fiches')
       .select('*')
       .neq('categorie', 'Sous-fiche')
+      .eq('archive', false)
       .order('nom')
 
     const { data: menusData } = await supabase
       .from('menus')
       .select(`*, menu_fiches(id, service, fiches(id, nom, cout_portion))`)
+      .eq('archive', false)
       .order('nom')
 
     setFiches(fichesData || [])
     setMenus(menusData || [])
+    setModifArchive({})
     setLoading(false)
   }
 
@@ -114,6 +119,27 @@ export default function RecapPage() {
     return '#FCEBEB'
   }
 
+  const toggleArchive = (id) => {
+    setModifArchive(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const sauvegarderArchives = async () => {
+    setSaving(true)
+    const ids = Object.keys(modifArchive).filter(id => modifArchive[id])
+    for (const id of ids) {
+      const isFiche = fiches.find(f => f.id === id)
+      if (isFiche) {
+        await supabase.from('fiches').update({ archive: true }).eq('id', id)
+      } else {
+        await supabase.from('menus').update({ archive: true }).eq('id', id)
+      }
+    }
+    await loadData()
+    setSaving(false)
+  }
+
+  const nbArchivesSelectionnes = Object.values(modifArchive).filter(Boolean).length
+
   const exportExcel = () => {
     const wb = XLSX.utils.book_new()
 
@@ -164,12 +190,12 @@ export default function RecapPage() {
 
     return (
       <tr>
-        <td colSpan={7} style={{ padding: '0', background: c.fond }}>
+        <td colSpan={8} style={{ padding: '0', background: c.fond }}>
           <div style={{ padding: '12px 16px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
                 <tr>
-                  {['Nom', 'Saison', 'Coût / portion', 'Prix HT', 'Prix TTC', 'Bénéfice', 'Food cost'].map(h => (
+                  {['Nom', 'Saison', 'Coût / portion', 'Prix HT', 'Prix TTC', 'Bénéfice', 'Food cost', 'Archiver'].map(h => (
                     <th key={h} style={{
                       padding: '6px 10px', textAlign: h === 'Nom' ? 'left' : 'right',
                       color: c.texteMuted, fontWeight: '500', fontSize: '11px',
@@ -187,20 +213,20 @@ export default function RecapPage() {
                   const prixHT = prixTTC ? prixTTC / 1.10 : null
                   const benefice = prixHT && cout ? prixHT - cout : null
                   const fc = prixHT && cout ? (cout / prixHT * 100).toFixed(1) : null
+                  const aArchiver = modifArchive[item.id] || false
 
                   return (
                     <tr
                       key={item.id}
                       style={{
                         borderBottom: i < lignes.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
-                        cursor: 'pointer',
-                        background: 'white'
+                        background: aArchiver ? '#FAEEDA' : 'white'
                       }}
-                      onClick={() => router.push(cat === 'Menus' ? `/menus/${item.id}` : `/fiches/${item.id}`)}
-                      onMouseEnter={e => e.currentTarget.style.background = c.accentClair}
-                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
                     >
-                      <td style={{ padding: '8px 10px', fontWeight: '500', color: c.texte }}>{item.nom}</td>
+                      <td
+                        style={{ padding: '8px 10px', fontWeight: '500', color: c.texte, cursor: 'pointer' }}
+                        onClick={() => router.push(cat === 'Menus' ? `/menus/${item.id}` : `/fiches/${item.id}`)}
+                      >{item.nom}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texteMuted }}>{item.saison || '—'}</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texte }}>
                         {cout ? `${Number(cout).toFixed(2)} €` : '—'}
@@ -223,6 +249,14 @@ export default function RecapPage() {
                           }}>{fc} %</span>
                         ) : '—'}
                       </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                        <input
+                          type="checkbox"
+                          checked={aArchiver}
+                          onChange={() => toggleArchive(item.id)}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: c.accent }}
+                        />
+                      </td>
                     </tr>
                   )
                 })}
@@ -244,6 +278,20 @@ export default function RecapPage() {
       }}>
         <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {nbArchivesSelectionnes > 0 && (
+            <button onClick={sauvegarderArchives} disabled={saving} style={{
+              background: saving ? c.texteMuted : '#854F0B',
+              color: 'white', border: 'none', borderRadius: '8px',
+              padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+            }}>
+              {saving ? 'Archivage...' : `Archiver ${nbArchivesSelectionnes} fiche${nbArchivesSelectionnes > 1 ? 's' : ''}`}
+            </button>
+          )}
+          <button onClick={() => router.push('/archives')} style={{
+            background: 'transparent', color: 'rgba(255,255,255,0.7)',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer'
+          }}>Archives</button>
           <button onClick={exportExcel} style={{
             background: c.vert, color: 'white', border: 'none',
             borderRadius: '8px', padding: '8px 16px', fontSize: '13px',
@@ -282,9 +330,7 @@ export default function RecapPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>
-            Chargement...
-          </div>
+          <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
         ) : (
           <div style={{
             background: 'white', borderRadius: '12px',
@@ -339,9 +385,7 @@ export default function RecapPage() {
                             </span>
                           </div>
                         </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
-                          {stats.nb}
-                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>{stats.nb}</td>
                         <td style={{ padding: '14px 16px', textAlign: 'right', color: c.texte }}>
                           {stats.coutMoyen > 0 ? `${stats.coutMoyen.toFixed(2)} €` : '—'}
                         </td>
