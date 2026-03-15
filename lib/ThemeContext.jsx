@@ -1,12 +1,17 @@
 'use client'
 import { createContext, useContext, useState, useEffect } from 'react'
 
-const ThemeContext = createContext()
+const ThemeContext = createContext({
+  darkMode: false,
+  toggleDarkMode: () => {}
+})
 
 export function ThemeProvider({ children }) {
   const [darkMode, setDarkMode] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const saved = localStorage.getItem('darkMode')
     if (saved === 'true') setDarkMode(true)
   }, [])
@@ -15,6 +20,10 @@ export function ThemeProvider({ children }) {
     const newValue = !darkMode
     setDarkMode(newValue)
     localStorage.setItem('darkMode', newValue.toString())
+  }
+
+  if (!mounted) {
+    return <>{children}</>
   }
 
   return (
