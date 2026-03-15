@@ -4,6 +4,8 @@ import { supabase, getParametres } from '../../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
+import { useTheme } from '../../../../lib/useTheme'
+import { useAutosave } from '../../../../lib/useAutosave'
 import IngredientSearch from '../../../../components/IngredientSearch'
 
 const ALLERGENES = [
@@ -36,11 +38,23 @@ export default function ModifierFiche() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [draftRestored, setDraftRestored] = useState(false)
   const router = useRouter()
   const params_route = useParams()
-  const c = theme.couleurs
+  const { c } = useTheme()
   const categories = [...theme.categories, 'Sous-fiche']
   const isMobile = useIsMobile()
+
+  const autosaveData = {
+    nom, categorie, nbPortions, prixTTC,
+    description, saison, allergenes, ingredients
+  }
+
+  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(
+    `modifier-fiche-${params_route.id}`,
+    autosaveData,
+    60000
+  )
 
   useEffect(() => {
     checkUser()
@@ -60,11 +74,7 @@ export default function ModifierFiche() {
 
   const loadData = async () => {
     const { data: ficheData } = await supabase
-      .from('fiches')
-      .select('*')
-      .eq('id', params_route.id)
-      .single()
-
+      .from('fiches').select('*').eq('id', params_route.id).single()
     if (!ficheData) { router.push('/fiches'); return }
 
     setNom(ficheData.nom)
@@ -92,12 +102,27 @@ export default function ModifierFiche() {
     })))
 
     const { data: liste } = await supabase
-      .from('ingredients')
-      .select('*')
-      .order('nom')
-      .limit(5000)
+      .from('ingredients').select('*').order('nom').limit(5000)
     setListeIngredients(liste || [])
     setLoading(false)
+  }
+
+  const restaurerBrouillon = () => {
+    const draft = getDraft()
+    if (!draft) return
+    setNom(draft.nom || '')
+    setCategorie(draft.categorie || 'Plats')
+    setNbPortions(draft.nbPortions || '')
+    setPrixTTC(draft.prixTTC || '')
+    setDescription(draft.description || '')
+    setSaison(draft.saison || 'Printemps 2026')
+    setAllergenes(draft.allergenes || [])
+    setIngredients(draft.ingredients || [])
+    setDraftRestored(true)
+  }
+
+  const ignorerBrouillon = () => {
+    clearDraft()
   }
 
   const toggleAllergene = (id) => {
@@ -185,28 +210,22 @@ export default function ModifierFiche() {
       const ext = photo.name.split('.').pop()
       const path = `${params_route.id}.${ext}`
       const { error: errPhoto } = await supabase.storage
-        .from('fiches-photos')
-        .upload(path, photo, { upsert: true })
+        .from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
-        const { data: urlData } = supabase.storage
-          .from('fiches-photos')
-          .getPublicUrl(path)
+        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
         photoUrl = urlData.publicUrl
       }
     }
 
-    await supabase
-      .from('fiches')
-      .update({
-        nom, categorie,
-        nb_portions: nbPortions ? parseInt(nbPortions) : null,
-        prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
-        description, saison, allergenes,
-        photo_url: photoUrl,
-        cout_portion: coutPortion,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', params_route.id)
+    await supabase.from('fiches').update({
+      nom, categorie,
+      nb_portions: nbPortions ? parseInt(nbPortions) : null,
+      prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
+      description, saison, allergenes,
+      photo_url: photoUrl,
+      cout_portion: coutPortion,
+      updated_at: new Date().toISOString()
+    }).eq('id', params_route.id)
 
     await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id)
 
@@ -223,6 +242,7 @@ export default function ModifierFiche() {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
 
+    clearDraft()
     router.push(`/fiches/${params_route.id}`)
   }
 
@@ -247,60 +267,79 @@ export default function ModifierFiche() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+          <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
           <button onClick={() => router.push(`/fiches/${params_route.id}`)} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '6px 10px',
-            fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
+            borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
           }}>← Retour</button>
-          {!isMobile && (
-            <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Modifier — {nom}</span>
-          )}
+          {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Modifier — {nom}</span>}
         </div>
-        <button onClick={handleSubmit} disabled={saving} style={{
-          background: saving ? c.texteMuted : c.accent,
-          color: c.principal, border: 'none', borderRadius: '8px',
-          padding: '8px 16px', fontSize: '13px', fontWeight: '600',
-          cursor: saving ? 'not-allowed' : 'pointer'
-        }}>
-          {saving ? '...' : 'Enregistrer'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {lastSaved && (
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
+              {!isMobile && `Sauvegardé à ${lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+              {isMobile && '✓'}
+            </span>
+          )}
+          <button onClick={handleSubmit} disabled={saving} style={{
+            background: saving ? c.texteMuted : c.accent,
+            color: c.principal, border: 'none', borderRadius: '8px',
+            padding: '8px 16px', fontSize: '13px', fontWeight: '600',
+            cursor: saving ? 'not-allowed' : 'pointer'
+          }}>
+            {saving ? '...' : 'Enregistrer'}
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        {error && (
+        {/* Bandeau brouillon */}
+        {hasDraft && !draftRestored && (
           <div style={{
-            background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px',
-            padding: '12px 16px', fontSize: '13px', marginBottom: '16px'
-          }}>{error}</div>
+            background: '#FAEEDA', border: '0.5px solid #FAC775',
+            borderRadius: '10px', padding: '14px 16px', marginBottom: '16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            flexWrap: 'wrap', gap: '10px'
+          }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '500', color: '#633806' }}>📋 Un brouillon a été trouvé</div>
+              <div style={{ fontSize: '12px', color: '#854F0B', marginTop: '2px' }}>Voulez-vous restaurer vos modifications précédentes ?</div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={restaurerBrouillon} style={{
+                padding: '8px 14px', background: '#854F0B', color: 'white',
+                border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500'
+              }}>Restaurer</button>
+              <button onClick={ignorerBrouillon} style={{
+                padding: '8px 14px', background: 'transparent', color: '#854F0B',
+                border: '0.5px solid #FAC775', borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
+              }}>Ignorer</button>
+            </div>
+          </div>
+        )}
+
+        {draftRestored && (
+          <div style={{ background: '#E8F2EF', border: `0.5px solid #4A7B6F40`, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#4A7B6F' }}>
+            ✓ Brouillon restauré avec succès !
+          </div>
+        )}
+
+        {error && (
+          <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>
         )}
 
         {/* Photo */}
-        <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '12px'
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>
-            Photo du plat
-          </div>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Photo du plat</div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
             {photoPreview ? (
               <div style={{ position: 'relative', flexShrink: 0 }}>
-                <img src={photoPreview} alt="Aperçu"
-                  style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}
-                />
-                <button onClick={supprimerPhoto}
-                  style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}
-                >×</button>
+                <img src={photoPreview} alt="Aperçu" style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }} />
+                <button onClick={supprimerPhoto} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
               </div>
             ) : (
-              <div style={{
-                width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px',
-                borderRadius: '8px', border: `1px dashed ${c.bordure}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0
-              }}>
+              <div style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', borderRadius: '8px', border: `1px dashed ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
                 <span style={{ fontSize: '20px' }}>📷</span>
                 <span style={{ fontSize: '10px', color: c.texteMuted }}>Aucune photo</span>
               </div>
@@ -318,38 +357,25 @@ export default function ModifierFiche() {
         </div>
 
         {/* Informations générales */}
-        <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '12px'
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>
-            Informations générales
-          </div>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Informations générales</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
               <input type="text" value={nom} onChange={e => setNom(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
-                <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{
-                  width: '100%', padding: '12px', borderRadius: '8px',
-                  border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-                  background: 'white', outline: 'none', color: c.texte
-                }}>
+                <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
                   {categories.map(cat => <option key={cat}>{cat}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
-                <select value={saison} onChange={e => setSaison(e.target.value)} style={{
-                  width: '100%', padding: '12px', borderRadius: '8px',
-                  border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-                  background: 'white', outline: 'none', color: c.texte
-                }}>
+                <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
                   {theme.saisons.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
@@ -358,13 +384,13 @@ export default function ModifierFiche() {
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
                 <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix TTC (€)</label>
                 <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} step="0.01"
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                 />
                 {prixIndic && (
                   <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
@@ -376,54 +402,36 @@ export default function ModifierFiche() {
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte }}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte, background: c.blanc }}
               />
             </div>
           </div>
         </div>
 
         {/* Ingrédients */}
-        <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '12px'
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>
-            Ingrédients
-          </div>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Ingrédients</div>
 
           {isMobile ? (
             <>
               {ingredients.map((ing, index) => (
-                <div key={index} style={{
-                  background: c.fond, borderRadius: '8px', padding: '12px',
-                  marginBottom: '8px', border: `0.5px solid ${c.bordure}`
-                }}>
+                <div key={index} style={{ background: c.fond, borderRadius: '8px', padding: '12px', marginBottom: '8px', border: `0.5px solid ${c.bordure}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500' }}>Ingrédient {index + 1}</span>
-                    <button onClick={() => supprimerIngredient(index)}
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '16px' }}
-                    >×</button>
+                    <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '16px' }}>×</button>
                   </div>
                   <div style={{ marginBottom: '8px' }}>
-                    <IngredientSearch
-                      ingredients={listeIngredients}
-                      value={ing.ingredient_id}
-                      onChange={val => modifierIngredient(index, 'ingredient_id', val)}
-                    />
+                    <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <input type="number" value={ing.quantite} step="0.01"
                       onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
                       placeholder="Quantité"
-                      style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                      style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                     />
-                    <select value={ing.unite}
-                      onChange={e => modifierIngredient(index, 'unite', e.target.value)}
-                      style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: 'white', outline: 'none', color: c.texte }}
-                    >
-                      {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => (
-                        <option key={u}>{u}</option>
-                      ))}
+                    <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
+                      style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                      {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
                 </div>
@@ -438,73 +446,43 @@ export default function ModifierFiche() {
               </div>
               {ingredients.map((ing, index) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
-                  <IngredientSearch
-                    ingredients={listeIngredients}
-                    value={ing.ingredient_id}
-                    onChange={val => modifierIngredient(index, 'ingredient_id', val)}
-                  />
+                  <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   <input type="number" value={ing.quantite} step="0.01"
                     onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
-                    style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}
+                    style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />
-                  <select value={ing.unite}
-                    onChange={e => modifierIngredient(index, 'unite', e.target.value)}
-                    style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: 'white', outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}
-                  >
-                    {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => (
-                      <option key={u}>{u}</option>
-                    ))}
+                  <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
+                    style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}>
+                    {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                   </select>
                   <button onClick={() => supprimerIngredient(index)}
-                    style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}
-                  >×</button>
+                    style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
                 </div>
               ))}
             </>
           )}
 
-          <button onClick={ajouterIngredient}
-            style={{
-              background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`,
-              borderRadius: '8px', padding: '10px 16px', fontSize: '13px',
-              cursor: 'pointer', marginTop: '8px', width: isMobile ? '100%' : 'auto'
-            }}
-          >+ Ajouter un ingrédient</button>
+          <button onClick={ajouterIngredient} style={{
+            background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`,
+            borderRadius: '8px', padding: '10px 16px', fontSize: '13px',
+            cursor: 'pointer', marginTop: '8px', width: isMobile ? '100%' : 'auto'
+          }}>+ Ajouter un ingrédient</button>
         </div>
 
         {/* Allergènes */}
-        <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '12px'
-        }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>
-            Allergènes
-          </div>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Allergènes</div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
             {ALLERGENES.map(a => (
               <div key={a.id} onClick={() => toggleAllergene(a.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '10px 12px', borderRadius: '8px', cursor: 'pointer',
-                  border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`,
-                  background: allergenes.includes(a.id) ? '#FCEBEB' : 'white'
-                }}
-              >
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`, background: allergenes.includes(a.id) ? '#FCEBEB' : c.blanc }}>
                 <span style={{ fontSize: '16px' }}>{a.emoji}</span>
-                <span style={{
-                  fontSize: isMobile ? '12px' : '13px',
-                  fontWeight: allergenes.includes(a.id) ? '500' : '400',
-                  color: allergenes.includes(a.id) ? '#A32D2D' : c.texte
-                }}>{a.label}</span>
+                <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: allergenes.includes(a.id) ? '500' : '400', color: allergenes.includes(a.id) ? '#A32D2D' : c.texte }}>{a.label}</span>
               </div>
             ))}
           </div>
           {allergenes.length > 0 && (
-            <div style={{
-              marginTop: '12px', padding: '10px 14px', background: '#FCEBEB',
-              borderRadius: '8px', fontSize: '12px', color: '#A32D2D',
-              border: '0.5px solid #F09595'
-            }}>
+            <div style={{ marginTop: '12px', padding: '10px 14px', background: '#FCEBEB', borderRadius: '8px', fontSize: '12px', color: '#A32D2D', border: '0.5px solid #F09595' }}>
               {allergenes.length} allergène{allergenes.length > 1 ? 's' : ''} : {allergenes.map(id => ALLERGENES.find(a => a.id === id)?.label).join(', ')}
             </div>
           )}
@@ -512,11 +490,9 @@ export default function ModifierFiche() {
 
         {/* Récapitulatif */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '20px',
+          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
           border: `0.5px solid ${c.bordure}`,
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: '10px'
+          display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px'
         }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
@@ -530,10 +506,7 @@ export default function ModifierFiche() {
             </div>
           )}
           {fc && (
-            <div style={{
-              background: fc < seuilVert ? '#EAF3DE' : fc < seuilOrange ? '#FAEEDA' : '#FCEBEB',
-              borderRadius: '8px', padding: '12px'
-            }}>
+            <div style={{ background: fc < seuilVert ? '#EAF3DE' : fc < seuilOrange ? '#FAEEDA' : '#FCEBEB', borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: '500', textTransform: 'uppercase', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>Food cost</div>
               <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>{fc} %</div>
             </div>
