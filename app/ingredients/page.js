@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 
 export default function IngredientsPage() {
   const [ingredients, setIngredients] = useState([])
@@ -17,8 +18,8 @@ export default function IngredientsPage() {
   const [ajoutVisible, setAjoutVisible] = useState(false)
   const [saving, setSaving] = useState(false)
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -93,7 +94,7 @@ export default function IngredientsPage() {
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
         <div style={{ display: 'flex', gap: '8px' }}>
           {selection.length > 0 && (
             <button onClick={supprimerSelection} disabled={supprimant} style={{
@@ -124,10 +125,9 @@ export default function IngredientsPage() {
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 
-        {/* Formulaire ajout */}
         {ajoutVisible && (
           <div style={{
-            background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '20px',
+            background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
             border: `0.5px solid ${c.accent}`, marginBottom: '16px'
           }}>
             <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>
@@ -138,7 +138,7 @@ export default function IngredientsPage() {
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
                 <input type="text" value={nouveauNom} onChange={e => setNouveauNom(e.target.value)}
                   placeholder="Ex : Beurre doux"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                 />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -146,13 +146,13 @@ export default function IngredientsPage() {
                   <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix HT (€)</label>
                   <input type="text" value={nouveauPrix} onChange={e => setNouveauPrix(e.target.value)}
                     placeholder="Ex : 4.50"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                   />
                 </div>
                 <div>
                   <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Unité</label>
                   <select value={nouvelleUnite} onChange={e => setNouvelleUnite(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: 'white', outline: 'none', color: c.texte }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}
                   >
                     {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce'].map(u => <option key={u}>{u}</option>)}
                   </select>
@@ -169,17 +169,13 @@ export default function IngredientsPage() {
           </div>
         )}
 
-        {/* Barre de recherche */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="Rechercher un ingrédient..."
-            value={recherche}
-            onChange={e => setRecherche(e.target.value)}
+          <input type="text" placeholder="Rechercher un ingrédient..."
+            value={recherche} onChange={e => setRecherche(e.target.value)}
             style={{
-              flex: 1, padding: '10px 14px',
-              borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
-              fontSize: '14px', background: 'white', outline: 'none', color: c.texte
+              flex: 1, padding: '10px 14px', borderRadius: '8px',
+              border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+              background: c.blanc, outline: 'none', color: c.texte
             }}
           />
           <span style={{ fontSize: '12px', color: c.texteMuted, whiteSpace: 'nowrap' }}>
@@ -191,11 +187,9 @@ export default function IngredientsPage() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
         ) : isMobile ? (
-          // Version mobile
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '8px 12px', background: 'white', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}>
-              <input
-                type="checkbox"
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '8px 12px', background: c.blanc, borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}>
+              <input type="checkbox"
                 checked={selection.length === ingredientsFiltres.length && ingredientsFiltres.length > 0}
                 onChange={toggleTout}
                 style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: c.accent }}
@@ -205,18 +199,12 @@ export default function IngredientsPage() {
               </span>
             </div>
             {ingredientsFiltres.map(ing => (
-              <div
-                key={ing.id}
-                style={{
-                  background: selection.includes(ing.id) ? c.accentClair : 'white',
-                  borderRadius: '8px', padding: '12px',
-                  border: `0.5px solid ${c.bordure}`, marginBottom: '6px',
-                  display: 'flex', alignItems: 'center', gap: '12px'
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selection.includes(ing.id)}
+              <div key={ing.id} style={{
+                background: selection.includes(ing.id) ? c.accentClair : c.blanc,
+                borderRadius: '8px', padding: '12px', border: `0.5px solid ${c.bordure}`,
+                marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '12px'
+              }}>
+                <input type="checkbox" checked={selection.includes(ing.id)}
                   onChange={() => toggleSelection(ing.id)}
                   style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: c.accent, flexShrink: 0 }}
                 />
@@ -230,17 +218,12 @@ export default function IngredientsPage() {
             ))}
           </div>
         ) : (
-          // Version desktop
-          <div style={{
-            background: 'white', borderRadius: '12px',
-            border: `0.5px solid ${c.bordure}`, overflow: 'hidden'
-          }}>
+          <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: c.principal }}>
                   <th style={{ padding: '10px 16px', width: '40px' }}>
-                    <input
-                      type="checkbox"
+                    <input type="checkbox"
                       checked={selection.length === ingredientsFiltres.length && ingredientsFiltres.length > 0}
                       onChange={toggleTout}
                       style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: c.accent }}
@@ -253,17 +236,12 @@ export default function IngredientsPage() {
               </thead>
               <tbody>
                 {ingredientsFiltres.map((ing, i) => (
-                  <tr
-                    key={ing.id}
-                    style={{
-                      borderBottom: i < ingredientsFiltres.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
-                      background: selection.includes(ing.id) ? c.accentClair : 'white'
-                    }}
-                  >
+                  <tr key={ing.id} style={{
+                    borderBottom: i < ingredientsFiltres.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
+                    background: selection.includes(ing.id) ? c.accentClair : c.blanc
+                  }}>
                     <td style={{ padding: '10px 16px' }}>
-                      <input
-                        type="checkbox"
-                        checked={selection.includes(ing.id)}
+                      <input type="checkbox" checked={selection.includes(ing.id)}
                         onChange={() => toggleSelection(ing.id)}
                         style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: c.accent }}
                       />

@@ -4,14 +4,15 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 
 export default function SousFichesPage() {
   const [fiches, setFiches] = useState([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -60,10 +61,7 @@ export default function SousFichesPage() {
           }}>← {!isMobile && 'Retour'}</button>
           {!isMobile && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{
-                background: c.violet, color: 'white', borderRadius: '6px',
-                padding: '2px 8px', fontSize: '11px', fontWeight: '500'
-              }}>SF</span>
+              <span style={{ background: c.violet, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>SF</span>
               <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Sous-fiches techniques</span>
             </div>
           )}
@@ -77,12 +75,9 @@ export default function SousFichesPage() {
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 
-        {/* Stats */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
-          gap: isMobile ? '8px' : '12px',
-          marginBottom: isMobile ? '16px' : '24px'
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: isMobile ? '8px' : '12px', marginBottom: isMobile ? '16px' : '24px'
         }}>
           {[
             { label: 'Sous-fiches totales', value: fiches.length },
@@ -90,31 +85,23 @@ export default function SousFichesPage() {
             { label: 'Utilisées comme ingrédient', value: fiches.length },
           ].map((stat, i) => (
             <div key={i} style={{
-              background: 'white', borderRadius: '10px',
-              padding: isMobile ? '12px' : '16px',
-              border: `0.5px solid ${c.bordure}`
+              background: c.blanc, borderRadius: '10px',
+              padding: isMobile ? '12px' : '16px', border: `0.5px solid ${c.bordure}`
             }}>
               <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
                 {stat.label}
               </div>
-              <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: '500', color: c.texte }}>
-                {stat.value}
-              </div>
+              <div style={{ fontSize: isMobile ? '20px' : '26px', fontWeight: '500', color: c.texte }}>{stat.value}</div>
             </div>
           ))}
         </div>
 
-        {/* Recherche */}
-        <input
-          type="text"
-          placeholder="Rechercher une sous-fiche..."
-          value={recherche}
-          onChange={e => setRecherche(e.target.value)}
+        <input type="text" placeholder="Rechercher une sous-fiche..."
+          value={recherche} onChange={e => setRecherche(e.target.value)}
           style={{
-            width: '100%', padding: '10px 14px',
-            borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
-            fontSize: '14px', background: 'white', outline: 'none',
-            color: c.texte, marginBottom: '16px'
+            width: '100%', padding: '10px 14px', borderRadius: '8px',
+            border: `0.5px solid ${c.bordure}`, fontSize: '14px',
+            background: c.blanc, outline: 'none', color: c.texte, marginBottom: '16px'
           }}
         />
 
@@ -122,12 +109,10 @@ export default function SousFichesPage() {
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
         ) : fichesFiltrees.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', background: 'white',
+            textAlign: 'center', padding: '60px', background: c.blanc,
             borderRadius: '12px', border: `0.5px solid ${c.bordure}`
           }}>
-            <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>
-              Aucune sous-fiche pour le moment
-            </div>
+            <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>Aucune sous-fiche pour le moment</div>
             <button onClick={() => router.push('/fiches/nouvelle')} style={{
               background: c.accent, color: c.principal, border: 'none',
               borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
@@ -142,52 +127,34 @@ export default function SousFichesPage() {
           }}>
             {fichesFiltrees.map(fiche => (
               <div key={fiche.id} style={{
-                background: 'white', borderRadius: '12px', padding: '18px',
+                background: c.blanc, borderRadius: '12px', padding: '18px',
                 border: `0.5px solid ${c.bordure}`
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{
-                      background: c.violet, color: 'white', borderRadius: '6px',
-                      padding: '2px 8px', fontSize: '11px', fontWeight: '500', flexShrink: 0
-                    }}>SF</span>
+                    <span style={{ background: c.violet, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500', flexShrink: 0 }}>SF</span>
                     <span style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: '500', color: c.texte }}>{fiche.nom}</span>
                   </div>
                   {fiche.cout_portion && (
-                    <div style={{
-                      background: c.violetClair, borderRadius: '8px',
-                      padding: '6px 10px', textAlign: 'right', flexShrink: 0, marginLeft: '8px'
-                    }}>
+                    <div style={{ background: c.violetClair, borderRadius: '8px', padding: '6px 10px', textAlign: 'right', flexShrink: 0, marginLeft: '8px' }}>
                       <div style={{ fontSize: '10px', color: '#3C3489', opacity: 0.7 }}>/ portion</div>
-                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#3C3489' }}>
-                        {Number(fiche.cout_portion).toFixed(3)} €
-                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#3C3489' }}>{Number(fiche.cout_portion).toFixed(3)} €</div>
                     </div>
                   )}
                 </div>
-
                 <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '14px' }}>
                   {fiche.nb_portions} portion{fiche.nb_portions > 1 ? 's' : ''}
                   {fiche.saison && ` — ${fiche.saison}`}
                 </div>
-
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => router.push(`/fiches/${fiche.id}`)}
-                    style={{
-                      flex: 1, padding: '8px', background: c.violetClair, color: '#3C3489',
-                      border: `0.5px solid #AFA9EC`, borderRadius: '8px',
-                      fontSize: '12px', cursor: 'pointer', fontWeight: '500'
-                    }}
-                  >Voir</button>
-                  <button
-                    onClick={() => router.push(`/fiches/${fiche.id}/modifier`)}
-                    style={{
-                      flex: 1, padding: '8px', background: 'transparent', color: c.texteMuted,
-                      border: `0.5px solid ${c.bordure}`, borderRadius: '8px',
-                      fontSize: '12px', cursor: 'pointer'
-                    }}
-                  >Modifier</button>
+                  <button onClick={() => router.push(`/fiches/${fiche.id}`)} style={{
+                    flex: 1, padding: '8px', background: c.violetClair, color: '#3C3489',
+                    border: `0.5px solid #AFA9EC`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500'
+                  }}>Voir</button>
+                  <button onClick={() => router.push(`/fiches/${fiche.id}/modifier`)} style={{
+                    flex: 1, padding: '8px', background: 'transparent', color: c.texteMuted,
+                    border: `0.5px solid ${c.bordure}`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
+                  }}>Modifier</button>
                 </div>
               </div>
             ))}

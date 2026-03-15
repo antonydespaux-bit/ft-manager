@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 import * as XLSX from 'xlsx'
 
 export default function ImportPage() {
@@ -16,8 +17,8 @@ export default function ImportPage() {
   const [progression, setProgression] = useState(0)
   const [etape, setEtape] = useState('')
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   const normaliserPrix = (valeur) => {
     if (!valeur) return null
@@ -71,34 +72,21 @@ export default function ImportPage() {
 
     for (let i = 0; i < donnees.length; i += batchSize) {
       const batch = donnees.slice(i, i + batchSize)
-
       for (const ing of batch) {
         try {
           const { data: existing } = await supabase
-            .from('ingredients')
-            .select('id, prix_kg')
-            .eq('nom', ing.nom)
-            .single()
-
+            .from('ingredients').select('id, prix_kg').eq('nom', ing.nom).single()
           if (existing) {
             if (existing.prix_kg !== ing.prix_kg) {
-              await supabase
-                .from('ingredients')
-                .update({ prix_kg: ing.prix_kg, unite: ing.unite })
-                .eq('id', existing.id)
+              await supabase.from('ingredients').update({ prix_kg: ing.prix_kg, unite: ing.unite }).eq('id', existing.id)
               misAJour++
             }
           } else {
-            await supabase
-              .from('ingredients')
-              .insert([ing])
+            await supabase.from('ingredients').insert([ing])
             importes++
           }
-        } catch (e) {
-          erreurs++
-        }
+        } catch (e) { erreurs++ }
       }
-
       const done = Math.min(i + batchSize, total)
       setProgression(Math.round((done / total) * 100))
       setEtape(`Traitement ${done} / ${total} ingrédients...`)
@@ -113,13 +101,7 @@ export default function ImportPage() {
   const handleRecalcul = async () => {
     setRecalcul(true)
     setEtape('Recalcul du coût de toutes les fiches...')
-
-    const { error } = await supabase.rpc('recalculer_cout_portions')
-
-    if (error) {
-      console.error(error)
-    }
-
+    await supabase.rpc('recalculer_cout_portions')
     setRecalcul(false)
     setEtape('')
     setResultat(prev => ({ ...prev, recalculDone: true }))
@@ -134,7 +116,7 @@ export default function ImportPage() {
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
         <button onClick={() => router.push('/ingredients')} style={{
           background: 'transparent', color: 'rgba(255,255,255,0.7)',
           border: '0.5px solid rgba(255,255,255,0.2)',
@@ -144,9 +126,9 @@ export default function ImportPage() {
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '700px', margin: '0 auto' }}>
 
-        {/* Bouton recalcul rapide */}
+        {/* Recalcul rapide */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '20px',
+          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
         }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
@@ -155,23 +137,17 @@ export default function ImportPage() {
           <div style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '14px' }}>
             Recalcule automatiquement le coût de toutes les fiches techniques en fonction des prix actuels des ingrédients.
           </div>
-          <button
-            onClick={handleRecalcul}
-            disabled={recalcul}
-            style={{
-              width: '100%', padding: '14px',
-              background: recalcul ? c.texteMuted : c.vert,
-              color: 'white', border: 'none', borderRadius: '8px',
-              fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {recalcul ? `${etape}` : '🔄 Recalculer toutes les fiches'}
+          <button onClick={handleRecalcul} disabled={recalcul} style={{
+            width: '100%', padding: '14px', background: recalcul ? c.texteMuted : c.vert,
+            color: 'white', border: 'none', borderRadius: '8px',
+            fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
+          }}>
+            {recalcul ? etape : '🔄 Recalculer toutes les fiches'}
           </button>
           {resultat?.recalculDone && (
             <div style={{
               marginTop: '10px', padding: '10px 14px', background: c.vertClair,
-              borderRadius: '8px', fontSize: '13px', color: c.vert,
-              border: `0.5px solid ${c.vert}40`
+              borderRadius: '8px', fontSize: '13px', color: c.vert, border: `0.5px solid ${c.vert}40`
             }}>
               ✓ Toutes les fiches ont été mises à jour avec les prix actuels !
             </div>
@@ -180,7 +156,7 @@ export default function ImportPage() {
 
         {/* Import Excel */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '28px',
+          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '28px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '20px'
         }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
@@ -189,8 +165,7 @@ export default function ImportPage() {
 
           <div style={{
             background: c.fond, borderRadius: '8px', padding: '14px 16px',
-            fontSize: '13px', color: c.texteMuted, marginBottom: '20px',
-            border: `0.5px solid ${c.bordure}`
+            fontSize: '13px', color: c.texteMuted, marginBottom: '20px', border: `0.5px solid ${c.bordure}`
           }}>
             <strong style={{ color: c.texte }}>Colonne A</strong> — Nom de l'article<br />
             <strong style={{ color: c.texte }}>Colonne B</strong> — Prix HT (avec . ou ,)<br />
@@ -200,15 +175,11 @@ export default function ImportPage() {
             </div>
           </div>
 
-          <input
-            type="file" accept=".xlsx,.xls,.csv"
-            onChange={handleFichier}
+          <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFichier}
             style={{
-              width: '100%', padding: '12px',
-              border: `0.5px solid ${c.accent}`,
-              borderRadius: '8px', fontSize: '13px',
-              background: c.accentClair, cursor: 'pointer',
-              color: c.texte, marginBottom: '16px'
+              width: '100%', padding: '12px', border: `0.5px solid ${c.accent}`,
+              borderRadius: '8px', fontSize: '13px', background: c.accentClair,
+              cursor: 'pointer', color: c.texte, marginBottom: '16px'
             }}
           />
 
@@ -223,9 +194,8 @@ export default function ImportPage() {
                     <tr style={{ background: c.fond }}>
                       {['Nom', 'Prix HT', 'Unité'].map(h => (
                         <th key={h} style={{
-                          padding: '8px 12px', textAlign: 'left',
-                          fontSize: '11px', color: c.texteMuted,
-                          fontWeight: '500', textTransform: 'uppercase',
+                          padding: '8px 12px', textAlign: 'left', fontSize: '11px',
+                          color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase',
                           border: `0.5px solid ${c.bordure}`
                         }}>{h}</th>
                       ))}
@@ -245,110 +215,73 @@ export default function ImportPage() {
             </div>
           )}
 
-          {/* Barre de progression */}
           {loading && (
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '6px' }}>
-                {etape}
-              </div>
+              <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '6px' }}>{etape}</div>
               <div style={{ background: c.fond, borderRadius: '20px', height: '8px', overflow: 'hidden', border: `0.5px solid ${c.bordure}` }}>
-                <div style={{
-                  background: c.accent, height: '100%', borderRadius: '20px',
-                  width: `${progression}%`, transition: 'width 0.3s ease'
-                }} />
+                <div style={{ background: c.accent, height: '100%', borderRadius: '20px', width: `${progression}%`, transition: 'width 0.3s ease' }} />
               </div>
-              <div style={{ fontSize: '12px', color: c.accent, marginTop: '4px', textAlign: 'right' }}>
-                {progression}%
-              </div>
+              <div style={{ fontSize: '12px', color: c.accent, marginTop: '4px', textAlign: 'right' }}>{progression}%</div>
             </div>
           )}
 
           {fichierPret && (
-            <button
-              onClick={handleImport}
-              disabled={loading}
-              style={{
-                width: '100%', padding: '14px',
-                background: loading ? c.texteMuted : c.accent,
-                color: c.principal, border: 'none',
-                borderRadius: '8px', fontSize: '13px',
-                fontWeight: '600', letterSpacing: '1px',
-                textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
+            <button onClick={handleImport} disabled={loading} style={{
+              width: '100%', padding: '14px', background: loading ? c.texteMuted : c.accent,
+              color: c.principal, border: 'none', borderRadius: '8px', fontSize: '13px',
+              fontWeight: '600', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer'
+            }}>
               {loading ? `Import en cours... ${progression}%` : `Importer / Mettre à jour ${donnees.length} ingrédients`}
             </button>
           )}
         </div>
 
         {resultat && (
-          <div style={{
-            background: c.vertClair, border: `0.5px solid ${c.vert}40`,
-            borderRadius: '12px', padding: '20px'
-          }}>
+          <div style={{ background: c.vertClair, border: `0.5px solid ${c.vert}40`, borderRadius: '12px', padding: '20px' }}>
             <div style={{ fontWeight: '600', marginBottom: '10px', color: c.vert }}>Import terminé !</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-              <div style={{ background: 'white', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+              <div style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: '500', color: c.vert }}>{resultat.importes}</div>
                 <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Nouveaux</div>
               </div>
-              <div style={{ background: 'white', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+              <div style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: '500', color: '#854F0B' }}>{resultat.misAJour}</div>
                 <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Mis à jour</div>
               </div>
-              <div style={{ background: 'white', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+              <div style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: '500', color: resultat.erreurs > 0 ? '#A32D2D' : c.texte }}>{resultat.erreurs}</div>
                 <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Erreurs</div>
               </div>
             </div>
 
             {resultat.misAJour > 0 && !resultat.recalculDone && (
-              <div style={{
-                background: '#FAEEDA', borderRadius: '8px', padding: '14px',
-                marginBottom: '12px', border: '0.5px solid #FAC775'
-              }}>
+              <div style={{ background: '#FAEEDA', borderRadius: '8px', padding: '14px', marginBottom: '12px', border: '0.5px solid #FAC775' }}>
                 <div style={{ fontSize: '13px', color: '#633806', fontWeight: '500', marginBottom: '8px' }}>
                   ⚠️ {resultat.misAJour} prix ont été mis à jour
                 </div>
                 <div style={{ fontSize: '12px', color: '#633806', marginBottom: '10px' }}>
                   Voulez-vous recalculer le coût de toutes les fiches avec les nouveaux prix ?
                 </div>
-                <button
-                  onClick={handleRecalcul}
-                  disabled={recalcul}
-                  style={{
-                    width: '100%', padding: '12px',
-                    background: recalcul ? c.texteMuted : c.vert,
-                    color: 'white', border: 'none', borderRadius: '8px',
-                    fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
-                  }}
-                >
+                <button onClick={handleRecalcul} disabled={recalcul} style={{
+                  width: '100%', padding: '12px', background: recalcul ? c.texteMuted : c.vert,
+                  color: 'white', border: 'none', borderRadius: '8px',
+                  fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
+                }}>
                   {recalcul ? 'Recalcul en cours...' : '🔄 Recalculer toutes les fiches maintenant'}
                 </button>
               </div>
             )}
 
             {resultat.recalculDone && (
-              <div style={{
-                background: c.vertClair, borderRadius: '8px', padding: '12px',
-                marginBottom: '12px', border: `0.5px solid ${c.vert}40`,
-                fontSize: '13px', color: c.vert, fontWeight: '500'
-              }}>
+              <div style={{ background: c.vertClair, borderRadius: '8px', padding: '12px', marginBottom: '12px', border: `0.5px solid ${c.vert}40`, fontSize: '13px', color: c.vert, fontWeight: '500' }}>
                 ✓ Toutes les fiches ont été recalculées avec les nouveaux prix !
               </div>
             )}
 
-            <button
-              onClick={() => router.push('/fiches')}
-              style={{
-                width: '100%', padding: '10px 20px',
-                background: c.vert, color: 'white',
-                border: 'none', borderRadius: '8px',
-                fontSize: '13px', cursor: 'pointer', fontWeight: '500'
-              }}
-            >
-              Voir les fiches
-            </button>
+            <button onClick={() => router.push('/fiches')} style={{
+              width: '100%', padding: '10px 20px', background: c.vert, color: 'white',
+              border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500'
+            }}>Voir les fiches</button>
           </div>
         )}
       </div>

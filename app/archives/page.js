@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 
 export default function ArchivesPage() {
   const [fiches, setFiches] = useState([])
@@ -11,8 +12,8 @@ export default function ArchivesPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('fiches')
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -26,38 +27,24 @@ export default function ArchivesPage() {
 
   const loadData = async () => {
     const { data: fichesData } = await supabase
-      .from('fiches')
-      .select('*')
-      .eq('archive', true)
-      .order('nom')
-
+      .from('fiches').select('*').eq('archive', true).order('nom')
     const { data: menusData } = await supabase
-      .from('menus')
-      .select('*')
-      .eq('archive', true)
-      .order('nom')
-
+      .from('menus').select('*').eq('archive', true).order('nom')
     setFiches(fichesData || [])
     setMenus(menusData || [])
     setLoading(false)
   }
 
   const restaurer = async (id, type) => {
-    if (type === 'fiche') {
-      await supabase.from('fiches').update({ archive: false }).eq('id', id)
-    } else {
-      await supabase.from('menus').update({ archive: false }).eq('id', id)
-    }
+    if (type === 'fiche') await supabase.from('fiches').update({ archive: false }).eq('id', id)
+    else await supabase.from('menus').update({ archive: false }).eq('id', id)
     loadData()
   }
 
   const supprimer = async (id, type) => {
     if (!confirm('Supprimer définitivement ? Cette action est irréversible.')) return
-    if (type === 'fiche') {
-      await supabase.from('fiches').delete().eq('id', id)
-    } else {
-      await supabase.from('menus').delete().eq('id', id)
-    }
+    if (type === 'fiche') await supabase.from('fiches').delete().eq('id', id)
+    else await supabase.from('menus').delete().eq('id', id)
     loadData()
   }
 
@@ -72,7 +59,7 @@ export default function ArchivesPage() {
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
         <button onClick={() => router.push('/fiches')} style={{
           background: 'transparent', color: 'rgba(255,255,255,0.7)',
           border: '0.5px solid rgba(255,255,255,0.2)',
@@ -82,20 +69,15 @@ export default function ArchivesPage() {
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 
-        {/* Onglets */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           {['fiches', 'menus'].map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                padding: '8px 20px', borderRadius: '8px', fontSize: '13px',
-                fontWeight: tab === t ? '600' : '400', cursor: 'pointer',
-                background: tab === t ? c.principal : 'white',
-                color: tab === t ? c.accent : c.texteMuted,
-                border: `0.5px solid ${tab === t ? c.principal : c.bordure}`
-              }}
-            >
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: '8px 20px', borderRadius: '8px', fontSize: '13px',
+              fontWeight: tab === t ? '600' : '400', cursor: 'pointer',
+              background: tab === t ? c.principal : c.blanc,
+              color: tab === t ? c.accent : c.texteMuted,
+              border: `0.5px solid ${tab === t ? c.principal : c.bordure}`
+            }}>
               {t === 'fiches' ? `Fiches (${fiches.length})` : `Menus (${menus.length})`}
             </button>
           ))}
@@ -105,7 +87,7 @@ export default function ArchivesPage() {
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
         ) : items.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', background: 'white',
+            textAlign: 'center', padding: '60px', background: c.blanc,
             borderRadius: '12px', border: `0.5px solid ${c.bordure}`
           }}>
             <div style={{ fontSize: '14px', color: c.texteMuted }}>
@@ -113,74 +95,45 @@ export default function ArchivesPage() {
             </div>
           </div>
         ) : isMobile ? (
-          // Version mobile
           <div>
             {items.map(item => (
               <div key={item.id} style={{
-                background: 'white', borderRadius: '12px', padding: '16px',
-                border: `0.5px solid ${c.bordure}`, marginBottom: '10px',
-                opacity: 0.8
+                background: c.blanc, borderRadius: '12px', padding: '16px',
+                border: `0.5px solid ${c.bordure}`, marginBottom: '10px', opacity: 0.8
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <span style={{
-                        background: '#FAEEDA', color: '#633806',
-                        borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '500'
-                      }}>ARCHIVÉ</span>
+                      <span style={{ background: '#FAEEDA', color: '#633806', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '500' }}>ARCHIVÉ</span>
                     </div>
                     <div style={{ fontSize: '15px', fontWeight: '500', color: c.texte }}>{item.nom}</div>
-                    {item.categorie && (
-                      <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>{item.categorie}</div>
-                    )}
-                    {item.saison && (
-                      <div style={{ fontSize: '11px', color: c.texteMuted }}>{item.saison}</div>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
-                    {(item.cout_portion || item.prix_ttc || item.prix_vente) && (
-                      <div style={{ fontSize: '13px', color: c.texte, fontWeight: '500' }}>
-                        {item.prix_ttc || item.prix_vente ? `${Number(item.prix_ttc || item.prix_vente).toFixed(2)} €` : '—'}
-                      </div>
-                    )}
+                    {item.categorie && <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>{item.categorie}</div>}
+                    {item.saison && <div style={{ fontSize: '11px', color: c.texteMuted }}>{item.saison}</div>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => restaurer(item.id, tab === 'fiches' ? 'fiche' : 'menu')}
-                    style={{
-                      flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px',
-                      cursor: 'pointer', fontWeight: '500',
-                      background: c.vertClair, color: c.vert,
-                      border: `0.5px solid ${c.vert}40`
-                    }}
-                  >Restaurer</button>
-                  <button
-                    onClick={() => supprimer(item.id, tab === 'fiches' ? 'fiche' : 'menu')}
-                    style={{
-                      padding: '10px 16px', borderRadius: '8px', fontSize: '13px',
-                      cursor: 'pointer', background: 'transparent',
-                      color: '#A32D2D', border: '0.5px solid #ddd'
-                    }}
-                  >Supprimer</button>
+                  <button onClick={() => restaurer(item.id, tab === 'fiches' ? 'fiche' : 'menu')} style={{
+                    flex: 1, padding: '10px', borderRadius: '8px', fontSize: '13px',
+                    cursor: 'pointer', fontWeight: '500',
+                    background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`
+                  }}>Restaurer</button>
+                  <button onClick={() => supprimer(item.id, tab === 'fiches' ? 'fiche' : 'menu')} style={{
+                    padding: '10px 16px', borderRadius: '8px', fontSize: '13px',
+                    cursor: 'pointer', background: 'transparent', color: '#A32D2D', border: '0.5px solid #ddd'
+                  }}>Supprimer</button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          // Version desktop
-          <div style={{
-            background: 'white', borderRadius: '12px',
-            border: `0.5px solid ${c.bordure}`, overflow: 'hidden'
-          }}>
+          <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: c.principal }}>
                   {['Nom', 'Catégorie', 'Saison', 'Coût / portion', 'Prix TTC', 'Actions'].map((h, i) => (
                     <th key={h} style={{
                       padding: '12px 16px', textAlign: i === 0 ? 'left' : 'right',
-                      fontSize: '11px', color: c.accent, fontWeight: '500',
-                      textTransform: 'uppercase', letterSpacing: '0.04em'
+                      fontSize: '11px', color: c.accent, fontWeight: '500', textTransform: 'uppercase'
                     }}>{h}</th>
                   ))}
                 </tr>
@@ -189,14 +142,11 @@ export default function ArchivesPage() {
                 {items.map((item, i) => (
                   <tr key={item.id} style={{
                     borderBottom: i < items.length - 1 ? `0.5px solid ${c.bordure}` : 'none',
-                    background: 'white', opacity: 0.8
+                    background: c.blanc, opacity: 0.8
                   }}>
                     <td style={{ padding: '12px 16px', fontWeight: '500', color: c.texte }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          background: '#FAEEDA', color: '#633806',
-                          borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '500'
-                        }}>ARCHIVÉ</span>
+                        <span style={{ background: '#FAEEDA', color: '#633806', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: '500' }}>ARCHIVÉ</span>
                         {item.nom}
                       </div>
                     </td>
@@ -210,23 +160,15 @@ export default function ArchivesPage() {
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => restaurer(item.id, tab === 'fiches' ? 'fiche' : 'menu')}
-                          style={{
-                            padding: '5px 12px', borderRadius: '6px', fontSize: '12px',
-                            cursor: 'pointer', fontWeight: '500',
-                            background: c.vertClair, color: c.vert,
-                            border: `0.5px solid ${c.vert}40`
-                          }}
-                        >Restaurer</button>
-                        <button
-                          onClick={() => supprimer(item.id, tab === 'fiches' ? 'fiche' : 'menu')}
-                          style={{
-                            padding: '5px 12px', borderRadius: '6px', fontSize: '12px',
-                            cursor: 'pointer', background: 'transparent',
-                            color: '#A32D2D', border: '0.5px solid #ddd'
-                          }}
-                        >Supprimer</button>
+                        <button onClick={() => restaurer(item.id, tab === 'fiches' ? 'fiche' : 'menu')} style={{
+                          padding: '5px 12px', borderRadius: '6px', fontSize: '12px',
+                          cursor: 'pointer', fontWeight: '500',
+                          background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`
+                        }}>Restaurer</button>
+                        <button onClick={() => supprimer(item.id, tab === 'fiches' ? 'fiche' : 'menu')} style={{
+                          padding: '5px 12px', borderRadius: '6px', fontSize: '12px',
+                          cursor: 'pointer', background: 'transparent', color: '#A32D2D', border: '0.5px solid #ddd'
+                        }}>Supprimer</button>
                       </div>
                     </td>
                   </tr>
