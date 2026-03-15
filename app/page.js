@@ -27,7 +27,6 @@ export default function LoginPage() {
       return
     }
 
-    // Récupérer le rôle
     const { data: profil } = await supabase
       .from('profils')
       .select('role')
@@ -36,11 +35,12 @@ export default function LoginPage() {
 
     const role = profil?.role
 
-    // Redirection selon le rôle
-    if (role === 'bar') {
-      router.push('/bar')
-    } else {
+    if (role === 'cuisine') {
       router.push('/dashboard')
+    } else if (role === 'bar') {
+      router.push('/bar/dashboard')
+    } else {
+      router.push('/choix')
     }
   }
 
@@ -52,7 +52,6 @@ export default function LoginPage() {
     }}>
       <div style={{ width: '100%', maxWidth: '380px' }}>
 
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
             background: c.principal, borderRadius: '16px',
@@ -67,7 +66,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Formulaire */}
         <div style={{
           background: 'white', borderRadius: '16px', padding: '32px',
           border: `0.5px solid ${c.bordure}`,
@@ -90,8 +88,7 @@ export default function LoginPage() {
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Email
               </label>
-              <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="votre@email.com" required
                 style={{
                   width: '100%', padding: '12px 14px', borderRadius: '8px',
@@ -105,8 +102,7 @@ export default function LoginPage() {
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Mot de passe
               </label>
-              <input
-                type="password" value={password} onChange={e => setPassword(e.target.value)}
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required
                 style={{
                   width: '100%', padding: '12px 14px', borderRadius: '8px',
