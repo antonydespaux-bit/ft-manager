@@ -6,6 +6,7 @@ import { theme, Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
 import { useTheme } from '../../../../lib/useTheme'
 import { useAutosave } from '../../../../lib/useAutosave'
+import { log } from '../../../../lib/useLog'
 import IngredientSearch from '../../../../components/IngredientSearch'
 
 const ALLERGENES = [
@@ -45,16 +46,8 @@ export default function ModifierFiche() {
   const categories = [...theme.categories, 'Sous-fiche']
   const isMobile = useIsMobile()
 
-  const autosaveData = {
-    nom, categorie, nbPortions, prixTTC,
-    description, saison, allergenes, ingredients
-  }
-
-  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(
-    `modifier-fiche-${params_route.id}`,
-    autosaveData,
-    60000
-  )
+  const autosaveData = { nom, categorie, nbPortions, prixTTC, description, saison, allergenes, ingredients }
+  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(`modifier-fiche-${params_route.id}`, autosaveData, 60000)
 
   useEffect(() => {
     checkUser()
@@ -73,8 +66,7 @@ export default function ModifierFiche() {
   }
 
   const loadData = async () => {
-    const { data: ficheData } = await supabase
-      .from('fiches').select('*').eq('id', params_route.id).single()
+    const { data: ficheData } = await supabase.from('fiches').select('*').eq('id', params_route.id).single()
     if (!ficheData) { router.push('/fiches'); return }
 
     setNom(ficheData.nom)
@@ -84,10 +76,7 @@ export default function ModifierFiche() {
     setDescription(ficheData.description || '')
     setSaison(ficheData.saison || 'Printemps 2026')
     setAllergenes(ficheData.allergenes || [])
-    if (ficheData.photo_url) {
-      setPhotoExistante(ficheData.photo_url)
-      setPhotoPreview(ficheData.photo_url)
-    }
+    if (ficheData.photo_url) { setPhotoExistante(ficheData.photo_url); setPhotoPreview(ficheData.photo_url) }
 
     const { data: ingsData } = await supabase
       .from('fiche_ingredients')
@@ -101,8 +90,7 @@ export default function ModifierFiche() {
       unite: i.unite
     })))
 
-    const { data: liste } = await supabase
-      .from('ingredients').select('*').order('nom').limit(5000)
+    const { data: liste } = await supabase.from('ingredients').select('*').order('nom').limit(5000)
     setListeIngredients(liste || [])
     setLoading(false)
   }
@@ -121,14 +109,8 @@ export default function ModifierFiche() {
     setDraftRestored(true)
   }
 
-  const ignorerBrouillon = () => {
-    clearDraft()
-  }
-
   const toggleAllergene = (id) => {
-    setAllergenes(prev =>
-      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
-    )
+    setAllergenes(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id])
   }
 
   const handlePhoto = (e) => {
@@ -144,9 +126,7 @@ export default function ModifierFiche() {
       await supabase.storage.from('fiches-photos').remove([path])
       await supabase.from('fiches').update({ photo_url: null }).eq('id', params_route.id)
     }
-    setPhoto(null)
-    setPhotoPreview(null)
-    setPhotoExistante(null)
+    setPhoto(null); setPhotoPreview(null); setPhotoExistante(null)
   }
 
   const ajouterIngredient = () => {
@@ -162,10 +142,7 @@ export default function ModifierFiche() {
     nouveaux[index][champ] = valeur
     if (champ === 'ingredient_id') {
       const ing = listeIngredients.find(i => i.id === valeur)
-      if (ing) {
-        nouveaux[index].nom = ing.nom
-        nouveaux[index].unite = ing.unite || 'kg'
-      }
+      if (ing) { nouveaux[index].nom = ing.nom; nouveaux[index].unite = ing.unite || 'kg' }
     }
     setIngredients(nouveaux)
   }
@@ -173,9 +150,7 @@ export default function ModifierFiche() {
   const calculerCout = () => {
     return ingredients.reduce((total, ing) => {
       const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
-      if (ingData?.prix_kg && ing.quantite) {
-        return total + (ingData.prix_kg * parseFloat(ing.quantite))
-      }
+      if (ingData?.prix_kg && ing.quantite) return total + (ingData.prix_kg * parseFloat(ing.quantite))
       return total
     }, 0)
   }
@@ -183,9 +158,7 @@ export default function ModifierFiche() {
   const foodCost = () => {
     const cout = calculerCout()
     if (!prixTTC || !cout || !nbPortions) return null
-    const coutParPortion = cout / parseFloat(nbPortions)
-    const prixHT = parseFloat(prixTTC) / 1.10
-    return (coutParPortion / prixHT * 100).toFixed(1)
+    return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / 1.10) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
@@ -209,8 +182,7 @@ export default function ModifierFiche() {
     if (photo) {
       const ext = photo.name.split('.').pop()
       const path = `${params_route.id}.${ext}`
-      const { error: errPhoto } = await supabase.storage
-        .from('fiches-photos').upload(path, photo, { upsert: true })
+      const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
         photoUrl = urlData.publicUrl
@@ -221,26 +193,28 @@ export default function ModifierFiche() {
       nom, categorie,
       nb_portions: nbPortions ? parseInt(nbPortions) : null,
       prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
-      description, saison, allergenes,
-      photo_url: photoUrl,
-      cout_portion: coutPortion,
-      updated_at: new Date().toISOString()
+      description, saison, allergenes, photo_url: photoUrl,
+      cout_portion: coutPortion, updated_at: new Date().toISOString()
     }).eq('id', params_route.id)
 
     await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id)
 
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)
-      .map(i => ({
-        fiche_id: params_route.id,
-        ingredient_id: i.ingredient_id,
-        quantite: parseFloat(i.quantite),
-        unite: i.unite
-      }))
+      .map(i => ({ fiche_id: params_route.id, ingredient_id: i.ingredient_id, quantite: parseFloat(i.quantite), unite: i.unite }))
 
     if (ingredientsAInserer.length > 0) {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
+
+    await log({
+      action: 'MODIFICATION',
+      entite: 'fiche',
+      entite_id: params_route.id,
+      entite_nom: nom,
+      section: 'cuisine',
+      details: `Catégorie: ${categorie}, Saison: ${saison}`
+    })
 
     clearDraft()
     router.push(`/fiches/${params_route.id}`)
@@ -275,17 +249,10 @@ export default function ModifierFiche() {
           {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Modifier — {nom}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {lastSaved && (
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
-              {!isMobile && `Sauvegardé à ${lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
-              {isMobile && '✓'}
-            </span>
-          )}
+          {lastSaved && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>{!isMobile && `Sauvegardé à ${lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}{isMobile && '✓'}</span>}
           <button onClick={handleSubmit} disabled={saving} style={{
-            background: saving ? c.texteMuted : c.accent,
-            color: c.principal, border: 'none', borderRadius: '8px',
-            padding: '8px 16px', fontSize: '13px', fontWeight: '600',
-            cursor: saving ? 'not-allowed' : 'pointer'
+            background: saving ? c.texteMuted : c.accent, color: c.principal, border: 'none',
+            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer'
           }}>
             {saving ? '...' : 'Enregistrer'}
           </button>
@@ -294,40 +261,20 @@ export default function ModifierFiche() {
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* Bandeau brouillon */}
         {hasDraft && !draftRestored && (
-          <div style={{
-            background: '#FAEEDA', border: '0.5px solid #FAC775',
-            borderRadius: '10px', padding: '14px 16px', marginBottom: '16px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            flexWrap: 'wrap', gap: '10px'
-          }}>
+          <div style={{ background: '#FAEEDA', border: '0.5px solid #FAC775', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '13px', fontWeight: '500', color: '#633806' }}>📋 Un brouillon a été trouvé</div>
               <div style={{ fontSize: '12px', color: '#854F0B', marginTop: '2px' }}>Voulez-vous restaurer vos modifications précédentes ?</div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={restaurerBrouillon} style={{
-                padding: '8px 14px', background: '#854F0B', color: 'white',
-                border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500'
-              }}>Restaurer</button>
-              <button onClick={ignorerBrouillon} style={{
-                padding: '8px 14px', background: 'transparent', color: '#854F0B',
-                border: '0.5px solid #FAC775', borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
-              }}>Ignorer</button>
+              <button onClick={restaurerBrouillon} style={{ padding: '8px 14px', background: '#854F0B', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>Restaurer</button>
+              <button onClick={() => clearDraft()} style={{ padding: '8px 14px', background: 'transparent', color: '#854F0B', border: '0.5px solid #FAC775', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>Ignorer</button>
             </div>
           </div>
         )}
 
-        {draftRestored && (
-          <div style={{ background: '#E8F2EF', border: `0.5px solid #4A7B6F40`, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#4A7B6F' }}>
-            ✓ Brouillon restauré avec succès !
-          </div>
-        )}
-
-        {error && (
-          <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>
-        )}
+        {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
         {/* Photo */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
@@ -345,9 +292,7 @@ export default function ModifierFiche() {
               </div>
             )}
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>
-                {photoPreview ? 'Changer la photo' : 'Ajouter une photo'}
-              </label>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>{photoPreview ? 'Changer la photo' : 'Ajouter une photo'}</label>
               <input type="file" accept="image/*" onChange={handlePhoto}
                 style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${c.accent}`, borderRadius: '8px', fontSize: '13px', background: c.accentClair, cursor: 'pointer', color: c.texte }}
               />
@@ -392,11 +337,7 @@ export default function ModifierFiche() {
                 <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} step="0.01"
                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                 />
-                {prixIndic && (
-                  <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
-                    Indicatif ({seuilVert}%) : <strong>{prixIndic} €</strong>
-                  </div>
-                )}
+                {prixIndic && <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>Indicatif ({seuilVert}%) : <strong>{prixIndic} €</strong></div>}
               </div>
             </div>
             <div>
@@ -411,7 +352,6 @@ export default function ModifierFiche() {
         {/* Ingrédients */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Ingrédients</div>
-
           {isMobile ? (
             <>
               {ingredients.map((ing, index) => (
@@ -424,9 +364,7 @@ export default function ModifierFiche() {
                     <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <input type="number" value={ing.quantite} step="0.01"
-                      onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
-                      placeholder="Quantité"
+                    <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="Quantité"
                       style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                     />
                     <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
@@ -447,26 +385,21 @@ export default function ModifierFiche() {
               {ingredients.map((ing, index) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
                   <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
-                  <input type="number" value={ing.quantite} step="0.01"
-                    onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
+                  <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />
                   <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}>
                     {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                   </select>
-                  <button onClick={() => supprimerIngredient(index)}
-                    style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
+                  <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
                 </div>
               ))}
             </>
           )}
-
-          <button onClick={ajouterIngredient} style={{
-            background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`,
-            borderRadius: '8px', padding: '10px 16px', fontSize: '13px',
-            cursor: 'pointer', marginTop: '8px', width: isMobile ? '100%' : 'auto'
-          }}>+ Ajouter un ingrédient</button>
+          <button onClick={ajouterIngredient} style={{ background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`, borderRadius: '8px', padding: '10px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px', width: isMobile ? '100%' : 'auto' }}>
+            + Ajouter un ingrédient
+          </button>
         </div>
 
         {/* Allergènes */}
@@ -489,11 +422,7 @@ export default function ModifierFiche() {
         </div>
 
         {/* Récapitulatif */}
-        <div style={{
-          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
-          border: `0.5px solid ${c.bordure}`,
-          display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px'
-        }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>

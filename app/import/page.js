@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
+import { log } from '../../lib/useLog'
 import * as XLSX from 'xlsx'
 
 export default function ImportPage() {
@@ -93,6 +94,14 @@ export default function ImportPage() {
       await new Promise(r => setTimeout(r, 10))
     }
 
+    await log({
+      action: 'IMPORT',
+      entite: 'ingredients',
+      entite_nom: `${importes} nouveaux, ${misAJour} mis à jour`,
+      section: 'cuisine',
+      details: `${total} ingrédients traités`
+    })
+
     setLoading(false)
     setResultat({ importes, misAJour, erreurs, total })
     setEtape('')
@@ -127,10 +136,7 @@ export default function ImportPage() {
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '700px', margin: '0 auto' }}>
 
         {/* Recalcul rapide */}
-        <div style={{
-          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '16px'
-        }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, marginBottom: '16px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
             Mise à jour en masse des fiches
           </div>
@@ -145,42 +151,27 @@ export default function ImportPage() {
             {recalcul ? etape : '🔄 Recalculer toutes les fiches'}
           </button>
           {resultat?.recalculDone && (
-            <div style={{
-              marginTop: '10px', padding: '10px 14px', background: c.vertClair,
-              borderRadius: '8px', fontSize: '13px', color: c.vert, border: `0.5px solid ${c.vert}40`
-            }}>
+            <div style={{ marginTop: '10px', padding: '10px 14px', background: c.vertClair, borderRadius: '8px', fontSize: '13px', color: c.vert, border: `0.5px solid ${c.vert}40` }}>
               ✓ Toutes les fiches ont été mises à jour avec les prix actuels !
             </div>
           )}
         </div>
 
         {/* Import Excel */}
-        <div style={{
-          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '28px',
-          border: `0.5px solid ${c.bordure}`, marginBottom: '20px'
-        }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '28px', border: `0.5px solid ${c.bordure}`, marginBottom: '20px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
             Import Excel des ingrédients
           </div>
 
-          <div style={{
-            background: c.fond, borderRadius: '8px', padding: '14px 16px',
-            fontSize: '13px', color: c.texteMuted, marginBottom: '20px', border: `0.5px solid ${c.bordure}`
-          }}>
+          <div style={{ background: c.fond, borderRadius: '8px', padding: '14px 16px', fontSize: '13px', color: c.texteMuted, marginBottom: '20px', border: `0.5px solid ${c.bordure}` }}>
             <strong style={{ color: c.texte }}>Colonne A</strong> — Nom de l'article<br />
             <strong style={{ color: c.texte }}>Colonne B</strong> — Prix HT (avec . ou ,)<br />
             <strong style={{ color: c.texte }}>Colonne C</strong> — Unité d'utilisation<br />
-            <div style={{ marginTop: '8px', color: c.vert, fontSize: '12px' }}>
-              ✓ Les prix existants seront mis à jour automatiquement
-            </div>
+            <div style={{ marginTop: '8px', color: c.vert, fontSize: '12px' }}>✓ Les prix existants seront mis à jour automatiquement</div>
           </div>
 
           <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFichier}
-            style={{
-              width: '100%', padding: '12px', border: `0.5px solid ${c.accent}`,
-              borderRadius: '8px', fontSize: '13px', background: c.accentClair,
-              cursor: 'pointer', color: c.texte, marginBottom: '16px'
-            }}
+            style={{ width: '100%', padding: '12px', border: `0.5px solid ${c.accent}`, borderRadius: '8px', fontSize: '13px', background: c.accentClair, cursor: 'pointer', color: c.texte, marginBottom: '16px' }}
           />
 
           {apercu.length > 0 && (
@@ -193,11 +184,7 @@ export default function ImportPage() {
                   <thead>
                     <tr style={{ background: c.fond }}>
                       {['Nom', 'Prix HT', 'Unité'].map(h => (
-                        <th key={h} style={{
-                          padding: '8px 12px', textAlign: 'left', fontSize: '11px',
-                          color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase',
-                          border: `0.5px solid ${c.bordure}`
-                        }}>{h}</th>
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', border: `0.5px solid ${c.bordure}` }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -256,16 +243,10 @@ export default function ImportPage() {
 
             {resultat.misAJour > 0 && !resultat.recalculDone && (
               <div style={{ background: '#FAEEDA', borderRadius: '8px', padding: '14px', marginBottom: '12px', border: '0.5px solid #FAC775' }}>
-                <div style={{ fontSize: '13px', color: '#633806', fontWeight: '500', marginBottom: '8px' }}>
-                  ⚠️ {resultat.misAJour} prix ont été mis à jour
-                </div>
-                <div style={{ fontSize: '12px', color: '#633806', marginBottom: '10px' }}>
-                  Voulez-vous recalculer le coût de toutes les fiches avec les nouveaux prix ?
-                </div>
+                <div style={{ fontSize: '13px', color: '#633806', fontWeight: '500', marginBottom: '8px' }}>⚠️ {resultat.misAJour} prix ont été mis à jour</div>
                 <button onClick={handleRecalcul} disabled={recalcul} style={{
                   width: '100%', padding: '12px', background: recalcul ? c.texteMuted : c.vert,
-                  color: 'white', border: 'none', borderRadius: '8px',
-                  fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
+                  color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: recalcul ? 'not-allowed' : 'pointer'
                 }}>
                   {recalcul ? 'Recalcul en cours...' : '🔄 Recalculer toutes les fiches maintenant'}
                 </button>

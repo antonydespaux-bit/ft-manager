@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
+import { log } from '../../../lib/useLog'
 import * as XLSX from 'xlsx'
 
 export default function BarImportPage() {
@@ -92,6 +93,14 @@ export default function BarImportPage() {
       setEtape(`Traitement ${done} / ${total} ingrédients...`)
       await new Promise(r => setTimeout(r, 10))
     }
+
+    await log({
+      action: 'IMPORT',
+      entite: 'ingredients_bar',
+      entite_nom: `${importes} nouveaux, ${misAJour} mis à jour`,
+      section: 'bar',
+      details: `${total} ingrédients bar traités`
+    })
 
     setLoading(false)
     setResultat({ importes, misAJour, erreurs, total })
@@ -244,6 +253,12 @@ export default function BarImportPage() {
                 }}>
                   {recalcul ? 'Recalcul en cours...' : '🔄 Recalculer toutes les fiches bar'}
                 </button>
+              </div>
+            )}
+
+            {resultat.recalculDone && (
+              <div style={{ background: '#E8F2EF', borderRadius: '8px', padding: '12px', marginBottom: '12px', border: '0.5px solid #4A7B6F40', fontSize: '13px', color: '#4A7B6F', fontWeight: '500' }}>
+                ✓ Toutes les fiches bar ont été recalculées !
               </div>
             )}
 

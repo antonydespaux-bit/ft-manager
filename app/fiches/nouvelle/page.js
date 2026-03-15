@@ -6,6 +6,7 @@ import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useAutosave } from '../../../lib/useAutosave'
+import { log } from '../../../lib/useLog'
 import IngredientSearch from '../../../components/IngredientSearch'
 
 const ALLERGENES = [
@@ -47,16 +48,8 @@ export default function NouvelleFiche() {
   const isSousFiche = categorie === 'Sous-fiche'
   const isMobile = useIsMobile()
 
-  const autosaveData = {
-    nom, categorie, nbPortions, unitePortions,
-    prixTTC, description, saison, allergenes, ingredients
-  }
-
-  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(
-    'nouvelle-fiche-draft',
-    autosaveData,
-    60000
-  )
+  const autosaveData = { nom, categorie, nbPortions, unitePortions, prixTTC, description, saison, allergenes, ingredients }
+  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave('nouvelle-fiche-draft', autosaveData, 60000)
 
   useEffect(() => {
     checkUser()
@@ -75,8 +68,7 @@ export default function NouvelleFiche() {
   }
 
   const loadIngredients = async () => {
-    const { data } = await supabase
-      .from('ingredients').select('*').order('nom').limit(5000)
+    const { data } = await supabase.from('ingredients').select('*').order('nom').limit(5000)
     setListeIngredients(data || [])
   }
 
@@ -95,14 +87,8 @@ export default function NouvelleFiche() {
     setDraftRestored(true)
   }
 
-  const ignorerBrouillon = () => {
-    clearDraft()
-  }
-
   const toggleAllergene = (id) => {
-    setAllergenes(prev =>
-      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
-    )
+    setAllergenes(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id])
   }
 
   const handlePhoto = (e) => {
@@ -125,10 +111,7 @@ export default function NouvelleFiche() {
     nouveaux[index][champ] = valeur
     if (champ === 'ingredient_id') {
       const ing = listeIngredients.find(i => i.id === valeur)
-      if (ing) {
-        nouveaux[index].nom = ing.nom
-        nouveaux[index].unite = ing.unite || 'kg'
-      }
+      if (ing) { nouveaux[index].nom = ing.nom; nouveaux[index].unite = ing.unite || 'kg' }
     }
     setIngredients(nouveaux)
   }
@@ -136,9 +119,7 @@ export default function NouvelleFiche() {
   const calculerCout = () => {
     return ingredients.reduce((total, ing) => {
       const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
-      if (ingData?.prix_kg && ing.quantite) {
-        return total + (ingData.prix_kg * parseFloat(ing.quantite))
-      }
+      if (ingData?.prix_kg && ing.quantite) return total + (ingData.prix_kg * parseFloat(ing.quantite))
       return total
     }, 0)
   }
@@ -152,9 +133,7 @@ export default function NouvelleFiche() {
   const foodCost = () => {
     const cout = calculerCout()
     if (!prixTTC || !cout || !nbPortions) return null
-    const coutParPortion = cout / parseFloat(nbPortions)
-    const prixHT = parseFloat(prixTTC) / 1.10
-    return (coutParPortion / prixHT * 100).toFixed(1)
+    return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / 1.10) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
@@ -184,17 +163,12 @@ export default function NouvelleFiche() {
       }])
       .select().single()
 
-    if (errFiche) {
-      setError('Erreur : ' + errFiche.message)
-      setLoading(false)
-      return
-    }
+    if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
 
     if (photo) {
       const ext = photo.name.split('.').pop()
       const path = `${fiche.id}.${ext}`
-      const { error: errPhoto } = await supabase.storage
-        .from('fiches-photos').upload(path, photo, { upsert: true })
+      const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
         await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
@@ -203,12 +177,7 @@ export default function NouvelleFiche() {
 
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)
-      .map(i => ({
-        fiche_id: fiche.id,
-        ingredient_id: i.ingredient_id,
-        quantite: parseFloat(i.quantite),
-        unite: i.unite
-      }))
+      .map(i => ({ fiche_id: fiche.id, ingredient_id: i.ingredient_id, quantite: parseFloat(i.quantite), unite: i.unite }))
 
     if (ingredientsAInserer.length > 0) {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
@@ -216,13 +185,19 @@ export default function NouvelleFiche() {
 
     if (isSousFiche && coutPortion) {
       await supabase.from('ingredients').insert([{
-        nom: fiche.nom,
-        prix_kg: parseFloat(coutPortion),
-        unite: unitePortions,
-        est_sous_fiche: true,
-        fiche_id: fiche.id
+        nom: fiche.nom, prix_kg: parseFloat(coutPortion),
+        unite: unitePortions, est_sous_fiche: true, fiche_id: fiche.id
       }])
     }
+
+    await log({
+      action: 'CREATION',
+      entite: 'fiche',
+      entite_id: fiche.id,
+      entite_nom: nom,
+      section: 'cuisine',
+      details: `Catégorie: ${categorie}, Saison: ${saison}`
+    })
 
     clearDraft()
     router.push(isSousFiche ? '/sous-fiches' : '/fiches')
@@ -249,24 +224,13 @@ export default function NouvelleFiche() {
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
           }}>← Retour</button>
-          {!isMobile && (
-            <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>
-              {isSousFiche ? 'Nouvelle sous-fiche' : 'Nouvelle fiche technique'}
-            </span>
-          )}
+          {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{isSousFiche ? 'Nouvelle sous-fiche' : 'Nouvelle fiche technique'}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {lastSaved && (
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
-              {!isMobile && `Sauvegardé à ${lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
-              {isMobile && '✓'}
-            </span>
-          )}
+          {lastSaved && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>{!isMobile && `Sauvegardé à ${lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}{isMobile && '✓'}</span>}
           <button onClick={handleSubmit} disabled={loading} style={{
-            background: loading ? c.texteMuted : c.accent,
-            color: c.principal, border: 'none', borderRadius: '8px',
-            padding: '8px 16px', fontSize: '13px', fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer'
+            background: loading ? c.texteMuted : c.accent, color: c.principal, border: 'none',
+            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer'
           }}>
             {loading ? '...' : 'Enregistrer'}
           </button>
@@ -275,56 +239,29 @@ export default function NouvelleFiche() {
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* Bandeau brouillon */}
         {hasDraft && !draftRestored && (
-          <div style={{
-            background: '#FAEEDA', border: '0.5px solid #FAC775',
-            borderRadius: '10px', padding: '14px 16px', marginBottom: '16px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            flexWrap: 'wrap', gap: '10px'
-          }}>
+          <div style={{ background: '#FAEEDA', border: '0.5px solid #FAC775', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '500', color: '#633806' }}>
-                📋 Un brouillon a été trouvé
-              </div>
-              <div style={{ fontSize: '12px', color: '#854F0B', marginTop: '2px' }}>
-                Voulez-vous restaurer votre travail précédent ?
-              </div>
+              <div style={{ fontSize: '13px', fontWeight: '500', color: '#633806' }}>📋 Un brouillon a été trouvé</div>
+              <div style={{ fontSize: '12px', color: '#854F0B', marginTop: '2px' }}>Voulez-vous restaurer votre travail précédent ?</div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={restaurerBrouillon} style={{
-                padding: '8px 14px', background: '#854F0B', color: 'white',
-                border: 'none', borderRadius: '8px', fontSize: '12px',
-                cursor: 'pointer', fontWeight: '500'
-              }}>Restaurer</button>
-              <button onClick={ignorerBrouillon} style={{
-                padding: '8px 14px', background: 'transparent', color: '#854F0B',
-                border: '0.5px solid #FAC775', borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
-              }}>Ignorer</button>
+              <button onClick={restaurerBrouillon} style={{ padding: '8px 14px', background: '#854F0B', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>Restaurer</button>
+              <button onClick={() => clearDraft()} style={{ padding: '8px 14px', background: 'transparent', color: '#854F0B', border: '0.5px solid #FAC775', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>Ignorer</button>
             </div>
           </div>
         )}
 
         {draftRestored && (
-          <div style={{
-            background: '#E8F2EF', border: `0.5px solid #4A7B6F40`,
-            borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
-            fontSize: '13px', color: '#4A7B6F'
-          }}>
+          <div style={{ background: '#E8F2EF', border: `0.5px solid #4A7B6F40`, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#4A7B6F' }}>
             ✓ Brouillon restauré avec succès !
           </div>
         )}
 
-        {error && (
-          <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>
-        )}
+        {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
         {isSousFiche && (
-          <div style={{
-            background: c.violetClair, color: '#3C3489', borderRadius: '8px',
-            padding: '10px 14px', fontSize: '13px', marginBottom: '16px',
-            display: 'flex', alignItems: 'center', gap: '8px', border: '0.5px solid #AFA9EC'
-          }}>
+          <div style={{ background: c.violetClair, color: '#3C3489', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: '0.5px solid #AFA9EC' }}>
             <span style={{ background: c.violet, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>SF</span>
             Cette fiche sera disponible comme ingrédient dans les fiches principales
           </div>
@@ -337,9 +274,7 @@ export default function NouvelleFiche() {
             {photoPreview ? (
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <img src={photoPreview} alt="Aperçu" style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }} />
-                <button onClick={() => { setPhoto(null); setPhotoPreview(null) }}
-                  style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}
-                >×</button>
+                <button onClick={() => { setPhoto(null); setPhotoPreview(null) }} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
               </div>
             ) : (
               <div style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', borderRadius: '8px', border: `1px dashed ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
@@ -383,12 +318,9 @@ export default function NouvelleFiche() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                  {isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}
-                </label>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>{isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
-                    placeholder="Ex : 10"
+                  <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)} placeholder="Ex : 10"
                     style={{ flex: 1, padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                   />
                   {isSousFiche && (
@@ -401,22 +333,16 @@ export default function NouvelleFiche() {
               {!isSousFiche && (
                 <div>
                   <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix TTC (€)</label>
-                  <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)}
-                    placeholder="Ex : 18.50" step="0.01"
+                  <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} placeholder="Ex : 18.50" step="0.01"
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                   />
-                  {prixIndic && (
-                    <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>
-                      Indicatif ({seuilVert}%) : <strong>{prixIndic} €</strong>
-                    </div>
-                  )}
+                  {prixIndic && <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>Indicatif ({seuilVert}%) : <strong>{prixIndic} €</strong></div>}
                 </div>
               )}
             </div>
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)}
-                placeholder="Notes de présentation, dressage..." rows={3}
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes de présentation, dressage..." rows={3}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte, background: c.blanc }}
               />
             </div>
@@ -426,7 +352,6 @@ export default function NouvelleFiche() {
         {/* Ingrédients */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Ingrédients</div>
-
           {isMobile ? (
             <>
               {ingredients.map((ing, index) => (
@@ -439,9 +364,7 @@ export default function NouvelleFiche() {
                     <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <input type="number" value={ing.quantite} step="0.01"
-                      onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
-                      placeholder="Quantité"
+                    <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="Quantité"
                       style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                     />
                     <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
@@ -462,27 +385,21 @@ export default function NouvelleFiche() {
               {ingredients.map((ing, index) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
                   <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
-                  <input type="number" value={ing.quantite} step="0.01"
-                    onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
-                    placeholder="0"
+                  <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="0"
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />
                   <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}>
                     {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                   </select>
-                  <button onClick={() => supprimerIngredient(index)}
-                    style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
+                  <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
                 </div>
               ))}
             </>
           )}
-
-          <button onClick={ajouterIngredient} style={{
-            background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`,
-            borderRadius: '8px', padding: '10px 16px', fontSize: '13px',
-            cursor: 'pointer', marginTop: '8px', width: isMobile ? '100%' : 'auto'
-          }}>+ Ajouter un ingrédient</button>
+          <button onClick={ajouterIngredient} style={{ background: c.vertClair, color: c.vert, border: `0.5px solid ${c.vert}40`, borderRadius: '8px', padding: '10px 16px', fontSize: '13px', cursor: 'pointer', marginTop: '8px', width: isMobile ? '100%' : 'auto' }}>
+            + Ajouter un ingrédient
+          </button>
         </div>
 
         {/* Allergènes */}
@@ -505,11 +422,7 @@ export default function NouvelleFiche() {
         </div>
 
         {/* Récapitulatif */}
-        <div style={{
-          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
-          border: `0.5px solid ${c.bordure}`,
-          display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px'
-        }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>

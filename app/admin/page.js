@@ -23,9 +23,7 @@ export default function AdminPage() {
   const { role, loading: roleLoading } = useRole()
 
   useEffect(() => {
-    if (!roleLoading && role !== 'admin') {
-      router.push('/dashboard')
-    }
+    if (!roleLoading && role !== 'admin') router.push('/dashboard')
   }, [role, roleLoading])
 
   useEffect(() => {
@@ -34,9 +32,7 @@ export default function AdminPage() {
 
   const loadProfils = async () => {
     const { data } = await supabase
-      .from('profils')
-      .select('*')
-      .order('created_at')
+      .from('profils').select('*').order('created_at')
     setProfils(data || [])
     setLoading(false)
   }
@@ -63,8 +59,7 @@ export default function AdminPage() {
     }
 
     await supabase.from('profils').update({
-      role: newRole,
-      nom: newNom
+      role: newRole, nom: newNom
     }).eq('id', data.user.id)
 
     setNewEmail('')
@@ -107,11 +102,18 @@ export default function AdminPage() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
-        <button onClick={() => router.push('/dashboard')} style={{
-          background: 'transparent', color: 'rgba(255,255,255,0.7)',
-          border: '0.5px solid rgba(255,255,255,0.2)',
-          borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
-        }}>← {!isMobile && 'Retour'}</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => router.push('/admin/logs')} style={{
+            background: c.accent, color: c.principal, border: 'none',
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px',
+            fontWeight: '600', cursor: 'pointer'
+          }}>📊 {!isMobile && 'Activité'}</button>
+          <button onClick={() => router.push('/dashboard')} style={{
+            background: 'transparent', color: 'rgba(255,255,255,0.7)',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+          }}>← {!isMobile && 'Retour'}</button>
+        </div>
       </div>
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
@@ -177,7 +179,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Info rôle */}
             <div style={{ background: c.fond, borderRadius: '8px', padding: '12px', fontSize: '12px', color: c.texteMuted, border: `0.5px solid ${c.bordure}` }}>
               {newRole === 'cuisine' && '👨‍🍳 Accès complet à la section Cuisine — peut créer, modifier et supprimer des fiches'}
               {newRole === 'bar' && '🍸 Accès complet à la section Bar — peut créer, modifier et supprimer des fiches bar'}
@@ -219,12 +220,8 @@ export default function AdminPage() {
                   flexWrap: 'wrap', gap: '10px'
                 }}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>
-                      {profil.nom || '—'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>
-                      {profil.email}
-                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{profil.nom || '—'}</div>
+                    <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>{profil.email}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{
