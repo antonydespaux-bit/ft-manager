@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 
 export default function FichesPage() {
   const [fiches, setFiches] = useState([])
@@ -13,8 +14,8 @@ export default function FichesPage() {
   const [saison, setSaison] = useState('toutes')
   const [menuOuvert, setMenuOuvert] = useState(false)
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -51,48 +52,41 @@ export default function FichesPage() {
 
   const categories = ['toutes', ...new Set(fiches.map(f => f.categorie).filter(Boolean))]
 
- const navItems = [
-  { label: 'Dashboard', path: '/dashboard' },
-  { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
-  { label: 'Menus', path: '/menus' },
-  { label: 'Récap', path: '/recap' },
-  { label: 'Sous-fiches', path: '/sous-fiches' },
-  { label: 'Ingrédients', path: '/ingredients' },
-  { label: 'Archives', path: '/archives' },
-  { label: 'Paramètres', path: '/parametres' },
-  { label: 'Déconnexion', path: null, action: handleLogout },
-]
+  const navItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
+    { label: 'Menus', path: '/menus' },
+    { label: 'Récap', path: '/recap' },
+    { label: 'Sous-fiches', path: '/sous-fiches' },
+    { label: 'Ingrédients', path: '/ingredients' },
+    { label: 'Archives', path: '/archives' },
+    { label: 'Paramètres', path: '/parametres' },
+    { label: 'Déconnexion', path: null, action: handleLogout },
+  ]
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      {/* Barre navigation */}
       <div style={{
         background: c.principal,
         borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '56px',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={30} couleur="white" onClick={() => router.push('/dashboard')} />
 
         {isMobile ? (
-          <button
-            onClick={() => setMenuOuvert(!menuOuvert)}
-            style={{
-              background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)',
-              borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
-              color: 'white', fontSize: '18px'
-            }}
-          >☰</button>
+          <button onClick={() => setMenuOuvert(!menuOuvert)} style={{
+            background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)',
+            borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
+            color: 'white', fontSize: '18px'
+          }}>☰</button>
         ) : (
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {navItems.map((item, i) => (
-              <button
-                key={i}
+              <button key={i}
                 onClick={() => item.action ? item.action() : router.push(item.path)}
                 style={{
                   background: item.accent ? c.accent : 'transparent',
@@ -107,7 +101,6 @@ export default function FichesPage() {
         )}
       </div>
 
-      {/* Menu mobile déroulant */}
       {isMobile && menuOuvert && (
         <div style={{
           background: c.principal, padding: '8px 16px 16px',
@@ -115,8 +108,7 @@ export default function FichesPage() {
           position: 'sticky', top: '56px', zIndex: 99
         }}>
           {navItems.map((item, i) => (
-            <button
-              key={i}
+            <button key={i}
               onClick={() => {
                 setMenuOuvert(false)
                 item.action ? item.action() : router.push(item.path)
@@ -137,12 +129,9 @@ export default function FichesPage() {
 
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* Stats */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(3, 1fr)',
-          gap: isMobile ? '8px' : '12px',
-          marginBottom: isMobile ? '16px' : '24px'
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: isMobile ? '8px' : '12px', marginBottom: isMobile ? '16px' : '24px'
         }}>
           {[
             { label: 'Fiches', value: fiches.length },
@@ -150,9 +139,8 @@ export default function FichesPage() {
             { label: 'Desserts', value: fiches.filter(f => f.categorie === 'Desserts').length },
           ].map((stat, i) => (
             <div key={i} style={{
-              background: 'white', borderRadius: '10px',
-              padding: isMobile ? '12px' : '16px',
-              border: `0.5px solid ${c.bordure}`
+              background: c.blanc, borderRadius: '10px',
+              padding: isMobile ? '12px' : '16px', border: `0.5px solid ${c.bordure}`
             }}>
               <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {stat.label}
@@ -164,50 +152,32 @@ export default function FichesPage() {
           ))}
         </div>
 
-        {/* Filtres */}
         <div style={{
           display: 'flex', gap: '8px', marginBottom: '16px',
           flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap'
         }}>
-          <input
-            type="text"
-            placeholder="Rechercher une fiche..."
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
+          <input type="text" placeholder="Rechercher une fiche..."
+            value={recherche} onChange={e => setRecherche(e.target.value)}
             style={{
               flex: '1', minWidth: '200px', padding: '10px 14px',
               borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
-              fontSize: '14px', background: 'white', outline: 'none', color: c.texte
+              fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte
             }}
           />
-          <select
-            value={categorie}
-            onChange={(e) => setCategorie(e.target.value)}
-            style={{
-              padding: '10px 14px', borderRadius: '8px',
-              border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-              background: 'white', outline: 'none', cursor: 'pointer', color: c.texte
-            }}
-          >
+          <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{
+            padding: '10px 14px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
+            fontSize: '14px', background: c.blanc, outline: 'none', cursor: 'pointer', color: c.texte
+          }}>
             {categories.map(cat => (
-              <option key={cat} value={cat}>
-                {cat === 'toutes' ? 'Toutes les catégories' : cat}
-              </option>
+              <option key={cat} value={cat}>{cat === 'toutes' ? 'Toutes les catégories' : cat}</option>
             ))}
           </select>
-          <select
-            value={saison}
-            onChange={(e) => setSaison(e.target.value)}
-            style={{
-              padding: '10px 14px', borderRadius: '8px',
-              border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-              background: 'white', outline: 'none', cursor: 'pointer', color: c.texte
-            }}
-          >
+          <select value={saison} onChange={e => setSaison(e.target.value)} style={{
+            padding: '10px 14px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
+            fontSize: '14px', background: c.blanc, outline: 'none', cursor: 'pointer', color: c.texte
+          }}>
             <option value="toutes">Toutes les saisons</option>
-            {theme.saisons.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            {theme.saisons.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
 
@@ -217,7 +187,7 @@ export default function FichesPage() {
           </div>
         ) : fichesFiltrees.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', background: 'white',
+            textAlign: 'center', padding: '60px', background: c.blanc,
             borderRadius: '12px', border: `0.5px solid ${c.bordure}`
           }}>
             <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>
@@ -228,9 +198,7 @@ export default function FichesPage() {
                 background: c.accent, color: c.principal, border: 'none',
                 borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
                 cursor: 'pointer', fontWeight: '600'
-              }}>
-                Créer la première fiche
-              </button>
+              }}>Créer la première fiche</button>
             )}
           </div>
         ) : (
@@ -240,11 +208,9 @@ export default function FichesPage() {
             gap: isMobile ? '10px' : '14px'
           }}>
             {fichesFiltrees.map(fiche => (
-              <div
-                key={fiche.id}
-                onClick={() => router.push(`/fiches/${fiche.id}`)}
+              <div key={fiche.id} onClick={() => router.push(`/fiches/${fiche.id}`)}
                 style={{
-                  background: 'white', borderRadius: '12px',
+                  background: c.blanc, borderRadius: '12px',
                   border: `0.5px solid ${c.bordure}`, cursor: 'pointer',
                   overflow: 'hidden', display: 'flex',
                   flexDirection: isMobile ? 'row' : 'column'
@@ -259,9 +225,7 @@ export default function FichesPage() {
                 }}
               >
                 {fiche.photo_url && (
-                  <img
-                    src={fiche.photo_url}
-                    alt={fiche.nom}
+                  <img src={fiche.photo_url} alt={fiche.nom}
                     style={{
                       width: isMobile ? '100px' : '100%',
                       height: isMobile ? '100px' : '160px',
@@ -280,9 +244,7 @@ export default function FichesPage() {
                         borderRadius: '20px', padding: '2px 8px',
                         fontSize: '10px', fontWeight: '500',
                         flexShrink: 0, marginLeft: '6px'
-                      }}>
-                        {fiche.categorie}
-                      </span>
+                      }}>{fiche.categorie}</span>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: c.texteMuted, flexWrap: 'wrap' }}>

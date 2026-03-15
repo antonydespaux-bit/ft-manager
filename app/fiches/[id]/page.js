@@ -4,6 +4,7 @@ import { supabase, getParametres } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
+import { useTheme } from '../../../lib/useTheme'
 
 const ALLERGENES = [
   { id: 'arachides', label: 'Arachides', emoji: '🥜' },
@@ -25,8 +26,8 @@ export default function FicheDetail() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const params_route = useParams()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -121,15 +122,13 @@ export default function FicheDetail() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+          <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
           <button onClick={() => router.push('/fiches')} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px',
             fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
-          }}>← Retour</button>
-          {!isMobile && (
-            <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>
-          )}
+          }}>← {!isMobile && 'Retour'}</button>
+          {!isMobile && <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>}
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={() => window.print()} style={{
@@ -140,15 +139,13 @@ export default function FicheDetail() {
           <button onClick={() => router.push(`/fiches/${params_route.id}/modifier`)} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
             border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 12px',
-            fontSize: '13px', cursor: 'pointer'
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
           }}>{isMobile ? '✏️' : 'Modifier'}</button>
           {!isMobile && (
             <button onClick={handleDelete} style={{
               background: 'transparent', color: '#F09595',
               border: '0.5px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px', padding: '8px 12px',
-              fontSize: '13px', cursor: 'pointer'
+              borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
             }}>Supprimer</button>
           )}
         </div>
@@ -158,15 +155,14 @@ export default function FicheDetail() {
 
         {/* En-tête */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '24px',
+          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '12px'
         }}>
           {fiche.photo_url && (
             <img src={fiche.photo_url} alt={fiche.nom}
               style={{
                 width: '100%', height: isMobile ? '200px' : '250px',
-                objectFit: 'cover', borderRadius: '8px',
-                marginBottom: '16px'
+                objectFit: 'cover', borderRadius: '8px', marginBottom: '16px'
               }}
             />
           )}
@@ -180,8 +176,7 @@ export default function FicheDetail() {
                 {fiche.categorie && (
                   <span style={{
                     background: c.accentClair, color: c.principal,
-                    borderRadius: '20px', padding: '3px 12px',
-                    fontSize: '12px', fontWeight: '500'
+                    borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500'
                   }}>{fiche.categorie}</span>
                 )}
                 {fiche.saison && (
@@ -251,7 +246,7 @@ export default function FicheDetail() {
 
         {/* Ingrédients */}
         <div style={{
-          background: 'white', borderRadius: '12px',
+          background: c.blanc, borderRadius: '12px',
           border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden'
         }}>
           <div style={{
@@ -280,12 +275,8 @@ export default function FicheDetail() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      {coutLigne && (
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{coutLigne.toFixed(2)} €</div>
-                      )}
-                      {ing.ingredients?.prix_kg && (
-                        <div style={{ fontSize: '11px', color: c.texteMuted }}>{Number(ing.ingredients.prix_kg).toFixed(2)} €/kg</div>
-                      )}
+                      {coutLigne && <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{coutLigne.toFixed(2)} €</div>}
+                      {ing.ingredients?.prix_kg && <div style={{ fontSize: '11px', color: c.texteMuted }}>{Number(ing.ingredients.prix_kg).toFixed(2)} €/kg</div>}
                     </div>
                   </div>
                 )
@@ -329,11 +320,9 @@ export default function FicheDetail() {
 
         {/* Récapitulatif financier */}
         <div style={{
-          background: 'white', borderRadius: '12px', padding: isMobile ? '16px' : '20px',
+          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
           border: `0.5px solid ${c.bordure}`,
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: '10px'
+          display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px'
         }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
@@ -375,7 +364,7 @@ export default function FicheDetail() {
           )}
         </div>
 
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', color: '#bbb' }}>
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', color: c.texteMuted }}>
           {theme.hotel.nom} — {fiche.nom} — {new Date().toLocaleDateString('fr-FR')}
         </div>
       </div>

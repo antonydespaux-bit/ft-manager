@@ -4,13 +4,14 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
+import { useTheme } from '../../lib/useTheme'
 
 export default function MenusPage() {
   const [menus, setMenus] = useState([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const c = theme.couleurs
   const isMobile = useIsMobile()
+  const { c } = useTheme()
 
   useEffect(() => {
     checkUser()
@@ -25,14 +26,7 @@ export default function MenusPage() {
   const loadMenus = async () => {
     const { data } = await supabase
       .from('menus')
-      .select(`
-        *,
-        menu_fiches (
-          id,
-          service,
-          fiches (id, nom, categorie, cout_portion)
-        )
-      `)
+      .select(`*, menu_fiches(id, service, fiches(id, nom, categorie, cout_portion))`)
       .eq('archive', false)
       .order('created_at', { ascending: false })
     setMenus(data || [])
@@ -41,9 +35,7 @@ export default function MenusPage() {
 
   const calculerCoutMenu = (menu) => {
     if (!menu.menu_fiches) return 0
-    return menu.menu_fiches.reduce((total, mf) => {
-      return total + (mf.fiches?.cout_portion || 0)
-    }, 0)
+    return menu.menu_fiches.reduce((total, mf) => total + (mf.fiches?.cout_portion || 0), 0)
   }
 
   const foodCostMenu = (menu) => {
@@ -63,14 +55,12 @@ export default function MenusPage() {
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
       <div style={{
-        background: c.principal,
-        borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 16px',
-        display: 'flex', alignItems: 'center',
+        background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
+        padding: '0 16px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/fiches')} />
+        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => router.push('/fiches')} style={{
             background: 'transparent', color: 'rgba(255,255,255,0.7)',
@@ -91,12 +81,10 @@ export default function MenusPage() {
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
         ) : menus.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', background: 'white',
+            textAlign: 'center', padding: '60px', background: c.blanc,
             borderRadius: '12px', border: `0.5px solid ${c.bordure}`
           }}>
-            <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>
-              Aucun menu pour le moment
-            </div>
+            <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>Aucun menu pour le moment</div>
             <button onClick={() => router.push('/menus/nouveau')} style={{
               background: c.accent, color: c.principal, border: 'none',
               borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
@@ -114,7 +102,7 @@ export default function MenusPage() {
               const fc = foodCostMenu(menu)
               return (
                 <div key={menu.id} style={{
-                  background: 'white', borderRadius: '12px', padding: '18px',
+                  background: c.blanc, borderRadius: '12px', padding: '18px',
                   border: `0.5px solid ${c.bordure}`
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -143,12 +131,10 @@ export default function MenusPage() {
                     {['Entrée', 'Plat', 'Dessert'].map(service => {
                       const fiche = menu.menu_fiches?.find(mf => mf.service === service)
                       return (
-                        <div key={service} style={{
-                          display: 'flex', alignItems: 'center', marginBottom: '6px', gap: '8px'
-                        }}>
+                        <div key={service} style={{ display: 'flex', alignItems: 'center', marginBottom: '6px', gap: '8px' }}>
                           <span style={{ fontSize: '11px', color: c.texteMuted, width: '55px', fontWeight: '500' }}>{service}</span>
                           <span style={{ fontSize: '13px', color: c.texte, flex: 1 }}>
-                            {fiche ? fiche.fiches?.nom : <span style={{ color: '#ccc', fontStyle: 'italic' }}>Non défini</span>}
+                            {fiche ? fiche.fiches?.nom : <span style={{ color: c.bordure, fontStyle: 'italic' }}>Non défini</span>}
                           </span>
                         </div>
                       )
@@ -179,7 +165,7 @@ export default function MenusPage() {
                     }}>Voir / Modifier</button>
                     <button onClick={() => handleDelete(menu.id)} style={{
                       padding: '8px 12px', background: 'transparent', color: '#A32D2D',
-                      border: `0.5px solid #ddd`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
+                      border: `0.5px solid ${c.bordure}`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
                     }}>×</button>
                   </div>
                 </div>
