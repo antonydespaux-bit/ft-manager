@@ -7,22 +7,11 @@ import { useIsMobile } from '../../../../../lib/useIsMobile'
 import { useTheme } from '../../../../../lib/useTheme'
 import { useRole } from '../../../../../lib/useRole'
 import { useAutosave } from '../../../../../lib/useAutosave'
+import { log } from '../../../../../lib/useLog'
+import { ALLERGENES } from '../../../../../lib/allergenes'
 import IngredientSearch from '../../../../../components/IngredientSearch'
 
 const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails', 'Sous-fiche']
-
-const ALLERGENES = [
-  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
-  { id: 'soja', label: 'Soja', emoji: '🫘' },
-  { id: 'lait', label: 'Lait', emoji: '🥛' },
-  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
-  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
-  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
-  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
-  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
-  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
-  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
-]
 
 export default function ModifierBarFiche() {
   const [nom, setNom] = useState('')
@@ -210,6 +199,12 @@ export default function ModifierBarFiche() {
       await supabase.from('fiche_bar_ingredients').insert(ingredientsAInserer)
     }
 
+    await log({
+      action: 'MODIFICATION', entite: 'fiche_bar', entite_id: params_route.id,
+      entite_nom: nom, section: 'bar',
+      details: `Catégorie: ${categorie}, Saison: ${saison}`
+    })
+
     clearDraft()
     router.push(`/bar/fiches/${params_route.id}`)
   }
@@ -346,7 +341,6 @@ export default function ModifierBarFiche() {
         {/* Ingrédients */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Ingrédients</div>
-
           {isMobile ? (
             <>
               {ingredients.map((ing, index) => (
@@ -359,9 +353,7 @@ export default function ModifierBarFiche() {
                     <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <input type="number" value={ing.quantite} step="0.01"
-                      onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
-                      placeholder="Quantité"
+                    <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="Quantité"
                       style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                     />
                     <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
@@ -382,8 +374,7 @@ export default function ModifierBarFiche() {
               {ingredients.map((ing, index) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
                   <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
-                  <input type="number" value={ing.quantite} step="0.01"
-                    onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
+                  <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />
                   <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
@@ -396,7 +387,6 @@ export default function ModifierBarFiche() {
               ))}
             </>
           )}
-
           <button onClick={ajouterIngredient} style={{
             background: '#EEEDFE', color: '#3C3489', border: '0.5px solid #AFA9EC',
             borderRadius: '8px', padding: '10px 16px', fontSize: '13px',
@@ -407,7 +397,7 @@ export default function ModifierBarFiche() {
         {/* Allergènes */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Allergènes</div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
             {ALLERGENES.map(a => (
               <div key={a.id} onClick={() => toggleAllergene(a.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`, background: allergenes.includes(a.id) ? '#FCEBEB' : c.blanc }}>
@@ -416,6 +406,11 @@ export default function ModifierBarFiche() {
               </div>
             ))}
           </div>
+          {allergenes.length > 0 && (
+            <div style={{ marginTop: '12px', padding: '10px 14px', background: '#FCEBEB', borderRadius: '8px', fontSize: '12px', color: '#A32D2D', border: '0.5px solid #F09595' }}>
+              {allergenes.length} allergène{allergenes.length > 1 ? 's' : ''} : {allergenes.map(id => ALLERGENES.find(a => a.id === id)?.label).join(', ')}
+            </div>
+          )}
         </div>
 
         {/* Récapitulatif */}

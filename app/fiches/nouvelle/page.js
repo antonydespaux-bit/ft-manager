@@ -7,20 +7,8 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useAutosave } from '../../../lib/useAutosave'
 import { log } from '../../../lib/useLog'
+import { ALLERGENES } from '../../../lib/allergenes'
 import IngredientSearch from '../../../components/IngredientSearch'
-
-const ALLERGENES = [
-  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
-  { id: 'soja', label: 'Soja', emoji: '🫘' },
-  { id: 'lait', label: 'Lait', emoji: '🥛' },
-  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
-  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
-  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
-  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
-  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
-  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
-  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
-]
 
 export default function NouvelleFiche() {
   const [nom, setNom] = useState('')
@@ -191,11 +179,8 @@ export default function NouvelleFiche() {
     }
 
     await log({
-      action: 'CREATION',
-      entite: 'fiche',
-      entite_id: fiche.id,
-      entite_nom: nom,
-      section: 'cuisine',
+      action: 'CREATION', entite: 'fiche', entite_id: fiche.id,
+      entite_nom: nom, section: 'cuisine',
       details: `Catégorie: ${categorie}, Saison: ${saison}`
     })
 
@@ -405,7 +390,7 @@ export default function NouvelleFiche() {
         {/* Allergènes */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Allergènes</div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
             {ALLERGENES.map(a => (
               <div key={a.id} onClick={() => toggleAllergene(a.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', border: `0.5px solid ${allergenes.includes(a.id) ? '#E24B4A' : c.bordure}`, background: allergenes.includes(a.id) ? '#FCEBEB' : c.blanc }}>

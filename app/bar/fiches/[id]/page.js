@@ -6,21 +6,10 @@ import { theme, Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
 import { useTheme } from '../../../../lib/useTheme'
 import { useRole } from '../../../../lib/useRole'
+import { log } from '../../../../lib/useLog'
+import { ALLERGENES } from '../../../../lib/allergenes'
 
 const LOGO_URL = 'https://uvmslpdcywephdneciwd.supabase.co/storage/v1/object/public/fiches-photos/logo-la-fantaisie.png'
-
-const ALLERGENES = [
-  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
-  { id: 'soja', label: 'Soja', emoji: '🫘' },
-  { id: 'lait', label: 'Lait', emoji: '🥛' },
-  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
-  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
-  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
-  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
-  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
-  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
-  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
-]
 
 export default function BarFicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -73,9 +62,7 @@ export default function BarFicheDetail() {
   const foodCost = () => {
     const cout = calculerCout()
     if (!fiche?.prix_ttc || !cout || !fiche?.nb_portions) return null
-    const coutParPortion = cout / fiche.nb_portions
-    const prixHT = fiche.prix_ttc / 1.10
-    return (coutParPortion / prixHT * 100).toFixed(1)
+    return (cout / fiche.nb_portions / (fiche.prix_ttc / 1.10) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
@@ -89,6 +76,13 @@ export default function BarFicheDetail() {
 
   const handleDelete = async () => {
     if (!confirm('Supprimer définitivement cette fiche ?')) return
+
+    await log({
+      action: 'SUPPRESSION', entite: 'fiche_bar', entite_id: params_route.id,
+      entite_nom: fiche.nom, section: 'bar',
+      details: `Catégorie: ${fiche.categorie}, Saison: ${fiche.saison}`
+    })
+
     if (fiche.photo_url) {
       const path = fiche.photo_url.split('/').pop()
       await supabase.storage.from('fiches-photos').remove([path])
@@ -189,6 +183,11 @@ export default function BarFicheDetail() {
               </div>
             </div>
           )}
+          {isMobile && peutModifier && (
+            <button onClick={handleDelete} style={{ marginTop: '12px', width: '100%', padding: '10px', background: 'transparent', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+              Supprimer cette fiche
+            </button>
+          )}
         </div>
 
         {/* Ingrédients */}
@@ -239,11 +238,7 @@ export default function BarFicheDetail() {
         </div>
 
         {/* Récapitulatif financier */}
-        <div style={{
-          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
-          border: `0.5px solid ${c.bordure}`,
-          display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px'
-        }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{cout ? `${cout.toFixed(2)} €` : '—'}</div>

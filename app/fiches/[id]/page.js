@@ -6,21 +6,9 @@ import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { log } from '../../../lib/useLog'
+import { ALLERGENES } from '../../../lib/allergenes'
 
 const LOGO_URL = 'https://uvmslpdcywephdneciwd.supabase.co/storage/v1/object/public/fiches-photos/logo-la-fantaisie.png'
-
-const ALLERGENES = [
-  { id: 'arachides', label: 'Arachides', emoji: '🥜' },
-  { id: 'soja', label: 'Soja', emoji: '🫘' },
-  { id: 'lait', label: 'Lait', emoji: '🥛' },
-  { id: 'fruits_a_coque', label: 'Fruits à coque', emoji: '🌰' },
-  { id: 'celeri', label: 'Céleri', emoji: '🥬' },
-  { id: 'moutarde', label: 'Moutarde', emoji: '🌿' },
-  { id: 'sesame', label: 'Graines de sésame', emoji: '🌾' },
-  { id: 'sulfites', label: 'Anhydride sulfureux', emoji: '🍷' },
-  { id: 'lupin', label: 'Lupin', emoji: '🌼' },
-  { id: 'mollusques', label: 'Mollusques', emoji: '🦪' },
-]
 
 export default function FicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -88,11 +76,8 @@ export default function FicheDetail() {
     if (!confirm('Supprimer définitivement cette fiche ?')) return
 
     await log({
-      action: 'SUPPRESSION',
-      entite: 'fiche',
-      entite_id: params_route.id,
-      entite_nom: fiche.nom,
-      section: 'cuisine',
+      action: 'SUPPRESSION', entite: 'fiche', entite_id: params_route.id,
+      entite_nom: fiche.nom, section: 'cuisine',
       details: `Catégorie: ${fiche.categorie}, Saison: ${fiche.saison}`
     })
 
@@ -154,7 +139,6 @@ export default function FicheDetail() {
         </div>
       </div>
 
-      {/* Vue normale écran */}
       <div className="no-print" style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
 
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
