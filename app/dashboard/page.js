@@ -111,6 +111,7 @@ export default function DashboardPage() {
     { label: 'Récap', path: '/recap' },
     { label: 'Sous-fiches', path: '/sous-fiches' },
     ...(peutModifier ? [{ label: 'Ingrédients', path: '/ingredients' }] : []),
+    { label: '⭐ Avis', path: '/avis' },
     { label: 'Archives', path: '/archives' },
     ...(role === 'admin' ? [{ label: 'Paramètres', path: '/parametres' }] : []),
     ...(role === 'admin' ? [{ label: '👥 Utilisateurs', path: '/admin' }] : []),
