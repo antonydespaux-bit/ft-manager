@@ -118,19 +118,27 @@ export default function NouvelleBarFiche() {
     return (cout / parseFloat(nbPortions)).toFixed(4)
   }
 
-  const foodCost = () => {
-    const cout = calculerCout()
-    if (!prixTTC || !cout || !nbPortions) return null
-    return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / 1.10) * 100).toFixed(1)
-  }
+const foodCost = () => {
+  const cout = calculerCout()
+  if (!prixTTC || !cout || !nbPortions) return null
+  const tva = 1 + TVA_BAR() / 100
+  return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / tva) * 100).toFixed(1)
+}
 
-  const prixIndicatif = () => {
-    const coutPortion = calculerCoutPortion()
-    if (!coutPortion) return null
-    const seuil = parseFloat(params['seuil_vert_boissons'] || 22) / 100
-    const tva = 1 + parseFloat(params['tva_restauration'] || 10) / 100
-    return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
-  }
+
+  const TVA_BAR = () => {
+  const categoriesAlcool = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
+  return categoriesAlcool.includes(categorie) ? 20 : 10
+}
+
+const prixIndicatif = () => {
+  const coutPortion = calculerCoutPortion()
+  if (!coutPortion) return null
+  const seuil = parseFloat(params['seuil_vert_boissons'] || 22) / 100
+  const tva = 1 + TVA_BAR() / 100
+  return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
+}
+
 
   const handleSubmit = async () => {
     if (!nom) { setError('Le nom est obligatoire'); return }
@@ -293,7 +301,7 @@ export default function NouvelleBarFiche() {
                 <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} placeholder="Ex : 12.00" step="0.01"
                   style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                 />
-                {prixIndic && <div style={{ fontSize: '11px', color: '#3B6D11', marginTop: '4px' }}>Indicatif ({seuilVert}%) : <strong>{prixIndic} €</strong></div>}
+                {prixIndic && <div style={{ fontSize: '11px', color: '#3B6D11', marginTop: '4px' }}>Indicatif ({seuilVert}%) TVA {TVA_BAR()}% : <strong>{prixIndic} €</strong></div>}
               </div>
             </div>
             <div>

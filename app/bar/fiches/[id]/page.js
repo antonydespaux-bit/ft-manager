@@ -59,11 +59,18 @@ export default function BarFicheDetail() {
     }, 0)
   }
 
-  const foodCost = () => {
-    const cout = calculerCout()
-    if (!fiche?.prix_ttc || !cout || !fiche?.nb_portions) return null
-    return (cout / fiche.nb_portions / (fiche.prix_ttc / 1.10) * 100).toFixed(1)
-  }
+const TVA_BAR = () => {
+  const categoriesAlcool = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
+  return categoriesAlcool.includes(fiche?.categorie) ? 20 : 10
+}
+
+const foodCost = () => {
+  const cout = calculerCout()
+  if (!fiche?.prix_ttc || !cout || !fiche?.nb_portions) return null
+  const tva = 1 + TVA_BAR() / 100
+  return (cout / fiche.nb_portions / (fiche.prix_ttc / tva) * 100).toFixed(1)
+}
+
 
   const prixIndicatif = () => {
     const cout = calculerCout()
