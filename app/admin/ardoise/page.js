@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { c } from '@/lib/theme' // Import corrigé vers /lib
+import { c } from '@/lib/theme' 
 import { useRouter } from 'next/navigation'
 
 export default function ArdoisePage() {
@@ -76,7 +76,6 @@ export default function ArdoisePage() {
     setSearch(val)
     if (val.length < 2) return setResults([])
     
-    // Utilisation des colonnes réelles de ta table : prix_kg et unite
     const { data } = await supabase
       .from('ingredients')
       .select('id, nom, prix_kg, unite')
@@ -91,8 +90,8 @@ export default function ArdoisePage() {
     setPanier([...panier, { 
       id: ing.id, 
       nom: ing.nom, 
-      prix_u: parseFloat(ing.prix_kg) || 0, // Mapping vers prix_kg
-      unite: ing.unite || 'unité',        // Mapping vers unite
+      prix_u: parseFloat(ing.prix_kg) || 0,
+      unite: ing.unite || 'unité',
       quantite: 0 
     }])
     setSearch(''); setResults([])
@@ -100,20 +99,22 @@ export default function ArdoisePage() {
 
   const supprimerIngredient = (id) => setPanier(panier.filter(i => i.id !== id))
 
-  // --- CALCULS DE MARGE SÉCURISÉS (Anti-NaN) ---
+  // --- CALCULS DE COÛT MATIÈRE (Food Cost) ---
   const coutIngredients = panier.reduce((acc, ing) => {
     const qte = parseFloat(ing.quantite) || 0
     const pu = parseFloat(ing.prix_u) || 0
     return acc + (pu * qte)
   }, 0)
 
+  // Récupération des forfaits (Boisson/Pain/Beurre/etc)
   const coutFixe = getSetting('cout_fixe_boisson') + getSetting('cout_fixe_dessert')
   const coutTotalMatiere = coutIngredients + coutFixe
   
   const prixVenteTTC = getSetting('prix_formule_midi')
-  const prixVenteHT = prixVenteTTC / 1.1 
-  const margeBrute = prixVenteHT - coutTotalMatiere
-  const ratioMarge = prixVenteHT > 0 ? (margeBrute / prixVenteHT) * 100 : 0
+  const prixVenteHT = prixVenteTTC / 1.1 // On enlève la TVA 10%
+  
+  // Ratio Coût Matière : (Coût / Prix Vente HT) * 100
+  const ratioFoodCost = prixVenteHT > 0 ? (coutTotalMatiere / prixVenteHT) * 100 : 0
 
   const validerArdoise = async () => {
     if (!nomPlat) return alert("Nom du plat obligatoire")
@@ -131,27 +132,30 @@ export default function ArdoisePage() {
     }])
 
     if (!error) {
-      alert("✅ Plat enregistré !")
+      alert("✅ Plat enregistré avec succès !")
       setPanier([]); setNomPlat('');
       fetchHistorique(activeSiteId)
     }
   }
 
-  if (loading) return <p style={{ padding: '20px' }}>Vérification des accès et chargement...</p>
+  if (loading) return <p style={{ padding: '20px' }}>Chargement du module cuisine...</p>
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h1 style={{ color: c.primary, marginBottom: '25px' }}>🍳 Programmation Ardoise</h1>
+    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#fcfcfc', minHeight: '100vh' }}>
+      <h1 style={{ color: c.primary, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        🍳 Programmation Ardoise
+      </h1>
 
-      {/* --- ONGLETS SITES --- */}
+      {/* --- SÉLECTEUR DE RESTAURANT --- */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
         {sites.map(site => (
           <button key={site.id} 
             onClick={() => {setActiveSiteId(site.id); setPanier([]); fetchHistorique(site.id);}}
             style={{
-              padding: '12px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              padding: '12px 24px', borderRadius: '10px', border: 'none', cursor: 'pointer',
               backgroundColor: activeSiteId === site.id ? c.primary : '#eee',
-              color: activeSiteId === site.id ? 'white' : '#666', fontWeight: 'bold', transition: '0.3s'
+              color: activeSiteId === site.id ? 'white' : '#666', fontWeight: 'bold', transition: '0.3s',
+              boxShadow: activeSiteId === site.id ? '0 4px 10px rgba(0,0,0,0.1)' : 'none'
             }}>
             {site.nom}
           </button>
@@ -160,30 +164,30 @@ export default function ArdoisePage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '30px' }}>
         
-        {/* --- COLONNE GAUCHE --- */}
+        {/* --- CONSTRUCTION DU PLAT --- */}
         <div>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
             <select value={typePlat} onChange={(e) => setTypePlat(e.target.value)} 
-              style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${c.border}`, background: 'white' }}>
-              <option value="entree">Entrée du jour</option>
-              <option value="plat">Plat du jour</option>
-              <option value="dessert">Dessert du jour</option>
+              style={{ padding: '12px', borderRadius: '8px', border: `1px solid ${c.border}`, background: 'white', fontWeight: 'bold' }}>
+              <option value="entree">ENTRÉE DU JOUR</option>
+              <option value="plat">PLAT DU JOUR</option>
+              <option value="dessert">DESSERT DU JOUR</option>
             </select>
-            <input type="text" placeholder="Nom du plat (ex: Tataki de Thon)" value={nomPlat} onChange={(e) => setNomPlat(e.target.value)}
-              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: `1px solid ${c.border}` }} />
+            <input type="text" placeholder="Nom du plat (ex: Pavé de cabillaud à l'oseille)" value={nomPlat} onChange={(e) => setNomPlat(e.target.value)}
+              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: `1px solid ${c.border}`, fontSize: '1.1rem' }} />
           </div>
 
           <div style={{ position: 'relative' }}>
-            <input type="text" placeholder="🔍 Chercher un ingrédient..." value={search} onChange={(e) => handleSearch(e.target.value)}
-              style={{ width: '100%', padding: '15px', borderRadius: '8px', border: `2px solid ${c.primary}33`, fontSize: '1rem' }} />
+            <input type="text" placeholder="🔍 Rechercher un ingrédient dans la base..." value={search} onChange={(e) => handleSearch(e.target.value)}
+              style={{ width: '100%', padding: '15px', borderRadius: '8px', border: `2px solid ${c.primary}22`, fontSize: '1rem' }} />
             
             {results.length > 0 && (
               <div style={{ position: 'absolute', width: '100%', background: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 100, borderRadius: '8px', marginTop: '5px' }}>
                 {results.map(r => (
                   <div key={r.id} onClick={() => ajouterIngredient(r)} 
-                    style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
+                    style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', hover: {background: '#f8f8f8'} }}>
                     <span>{r.nom}</span>
-                    <span style={{ color: '#888' }}>{parseFloat(r.prix_kg).toFixed(2)}€ / {r.unite}</span>
+                    <span style={{ color: c.accent, fontWeight: 'bold' }}>{parseFloat(r.prix_kg).toFixed(2)}€ / {r.unite}</span>
                   </div>
                 ))}
               </div>
@@ -192,71 +196,79 @@ export default function ArdoisePage() {
 
           <div style={{ marginTop: '25px' }}>
             {panier.map((ing, index) => (
-              <div key={ing.id} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', background: 'white', borderRadius: '10px', marginBottom: '10px', border: '1px solid #eee' }}>
-                <span style={{ flex: 1, fontWeight: '500' }}>{ing.nom}</span>
+              <div key={ing.id} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', background: 'white', borderRadius: '12px', marginBottom: '10px', border: '1px solid #eee', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+                <span style={{ flex: 1, fontWeight: '600', color: c.primary }}>{ing.nom}</span>
                 <input type="number" placeholder="Qté" value={ing.quantite || ''} 
                   onChange={(e) => {
                     const newPanier = [...panier]; 
                     newPanier[index].quantite = e.target.value; 
                     setPanier(newPanier);
                   }} 
-                  style={{ width: '90px', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} 
+                  style={{ width: '90px', padding: '10px', borderRadius: '8px', border: `1px solid #ddd`, textAlign: 'center' }} 
                 />
-                <span style={{ width: '40px', color: '#666' }}>{ing.unite}</span>
-                <span style={{ width: '80px', textAlign: 'right', fontWeight: 'bold' }}>{( (parseFloat(ing.prix_u) || 0) * (parseFloat(ing.quantite) || 0) ).toFixed(2)}€</span>
-                <button onClick={() => supprimerIngredient(ing.id)} style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer' }}>✕</button>
+                <span style={{ width: '40px', color: '#888', fontSize: '0.9rem' }}>{ing.unite}</span>
+                <span style={{ width: '80px', textAlign: 'right', fontWeight: 'bold', color: c.primary }}>{( (parseFloat(ing.prix_u) || 0) * (parseFloat(ing.quantite) || 0) ).toFixed(2)}€</span>
+                <button onClick={() => supprimerIngredient(ing.id)} style={{ border: 'none', background: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* --- COLONNE DROITE --- */}
-        <div style={{ background: '#fff', padding: '25px', borderRadius: '15px', border: `1px solid ${c.border}`, height: 'fit-content', position: 'sticky', top: '20px' }}>
-          <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Calcul de Marge</h3>
+        {/* --- RÉCAPITULATIF FINANCIER --- */}
+        <div style={{ background: '#fff', padding: '25px', borderRadius: '20px', border: `1px solid ${c.border}`, height: 'fit-content', position: 'sticky', top: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '15px', color: c.primary }}>Analyse du coût</h3>
           
-          <div style={{ margin: '15px 0', fontSize: '0.95rem', color: '#444' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>PV HT</span>
-              <span>{prixVenteHT.toFixed(2)} €</span>
+          <div style={{ margin: '20px 0', fontSize: '0.95rem', color: '#555' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span>Prix de Vente HT</span>
+              <span style={{ fontWeight: '600' }}>{prixVenteHT.toFixed(2)} €</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>Coût Matière</span>
-              <span>{coutTotalMatiere.toFixed(2)} €</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span>Total Matières</span>
+              <span style={{ fontWeight: '600' }}>{coutTotalMatiere.toFixed(2)} €</span>
             </div>
           </div>
 
-          <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '12px', textAlign: 'center', margin: '20px 0' }}>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '5px' }}>Ratio de Marge</div>
-            <div style={{ fontSize: '2.8rem', fontWeight: '900', color: ratioMarge > 70 ? '#27ae60' : '#e67e22' }}>
-                {ratioMarge.toFixed(1)}%
+          <div style={{ background: ratioFoodCost > 35 ? '#fff5f5' : '#f0fdf4', padding: '25px', borderRadius: '15px', textAlign: 'center', margin: '25px 0', border: ratioFoodCost > 35 ? '1px solid #feb2b2' : '1px solid #bbf7d0' }}>
+            <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'bold', marginBottom: '5px', textTransform: 'uppercase' }}>Coût Matière %</div>
+            <div style={{ 
+              fontSize: '3.2rem', 
+              fontWeight: '900', 
+              color: ratioFoodCost > 35 ? '#e53e3e' : '#22c55e' 
+            }}>
+                {ratioFoodCost.toFixed(1)}%
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '8px' }}>
+              {ratioFoodCost > 35 ? '⚠️ Trop élevé ! Revoir la recette' : '✅ Excellent ratio'}
             </div>
           </div>
 
           <button onClick={validerArdoise}
-            style={{ width: '100%', padding: '18px', borderRadius: '10px', border: 'none', backgroundColor: c.primary, color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+            style={{ width: '100%', padding: '20px', borderRadius: '12px', border: 'none', backgroundColor: c.primary, color: 'white', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
             💾 Valider l'Ardoise
           </button>
         </div>
       </div>
 
-      {/* --- HISTORIQUE --- */}
-      <div style={{ marginTop: '60px', borderTop: '2px solid #eee', paddingTop: '40px' }}>
-        <h2 style={{ color: c.primary, marginBottom: '25px' }}>Derniers plats enregistrés</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-          {historique.map(item => (
-            <div key={item.id} style={{ background: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #eee' }}>
-              <div style={{ fontSize: '0.75rem', color: c.primary, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>
-                {item.type_plat} • {new Date(item.created_at).toLocaleDateString('fr-FR')}
+      {/* --- HISTORIQUE DES 5 DERNIERS --- */}
+      <div style={{ marginTop: '70px', borderTop: `2px solid #eee`, paddingTop: '40px' }}>
+        <h2 style={{ color: c.primary, marginBottom: '25px', fontSize: '1.5rem' }}>Derniers plats enregistrés</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
+          {historique.map(item => {
+            const fc = ((item.cout_total_matiere / item.prix_vente_ht) * 100).toFixed(1)
+            return (
+              <div key={item.id} style={{ background: '#fff', padding: '20px', borderRadius: '15px', border: '1px solid #eee', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                <div style={{ fontSize: '0.7rem', color: c.accent, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '10px' }}>
+                  {item.type_plat} • {new Date(item.created_at).toLocaleDateString('fr-FR')}
+                </div>
+                <div style={{ fontWeight: 'bold', marginBottom: '15px', height: '40px', color: c.primary, overflow: 'hidden' }}>{item.nom_plat}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f9f9f9', paddingTop: '12px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#999' }}>Food Cost :</span>
+                  <span style={{ fontWeight: 'bold', color: parseFloat(fc) > 35 ? '#e53e3e' : '#22c55e' }}>{fc}%</span>
+                </div>
               </div>
-              <div style={{ fontWeight: 'bold', marginBottom: '15px' }}>{item.nom_plat}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f5f5f5', paddingTop: '10px' }}>
-                <span style={{ fontSize: '0.85rem' }}>Marge :</span>
-                <span style={{ fontWeight: 'bold' }}>
-                  {(((item.prix_vente_ht - item.cout_total_matiere) / item.prix_vente_ht) * 100).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
