@@ -15,7 +15,7 @@ export default function ArdoisePage() {
   const [loading, setLoading] = useState(true)
 
   // États métier
-  const [modeVente, setModeVente] = useState('plat_seul') // 'entree_seule', 'plat_seul', 'formule'
+  const [modeVente, setModeVente] = useState('plat_seul') 
   const [coutBoissonChaude, setCoutBoissonChaude] = useState(0)
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
@@ -23,23 +23,22 @@ export default function ArdoisePage() {
   const [nomPlat, setNomPlat] = useState('')
   const [historique, setHistorique] = useState([])
 
+  // Système de réserve pour assembler la formule
+  const [reserve, setReserve] = useState({ entree: null, plat: null, dessert: null })
+
   useEffect(() => { checkAuthAndInit() }, [])
 
   const checkAuthAndInit = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profils').select('role').eq('id', user?.id).single()
     if (!profile || !['admin', 'directeur', 'cuisine'].includes(profile.role)) { router.push('/'); return; }
-
     const { data: sitesData } = await supabase.from('sites').select('*').order('nom')
     const { data: settingsData } = await supabase.from('site_settings').select('*')
-    
     setSites(sitesData); setAllSettings(settingsData)
-    
     if (sitesData.length > 0) {
-      const startId = sitesData[0].id
-      setActiveSiteId(startId)
-      setModeVente(startId === ID_RESTO ? 'formule' : 'plat_seul')
-      fetchHistorique(startId)
+      setActiveSiteId(sitesData[0].id)
+      setModeVente(sitesData[0].id === ID_RESTO ? 'formule_ep' : 'plat_seul')
+      fetchHistorique(sitesData[0].id)
     }
     setLoading(false)
   }
@@ -49,26 +48,15 @@ export default function ArdoisePage() {
     setHistorique(data || [])
   }
 
-  const getSetting = (cle) => {
-    const val = allSettings.find(s => s.site_id === activeSiteId && s.cle === cle)?.valeur
-    return parseFloat(val) || 0
-  }
+  const getSetting = (cle) => parseFloat(allSettings.find(s => s.site_id === activeSiteId && s.cle === cle)?.valeur) || 0
 
-  // --- LOGIQUE DE PRIX TTC ---
   const getPrixVenteTTC = () => {
     if (activeSiteId === ID_CAFE) {
       if (modeVente === 'entree_seule') return 11
-      if (modeVente === 'formule') return 21
-      return 19 // Plat seul
+      if (modeVente.includes('formule')) return 21
+      return 19
     }
-    return 29 // Restaurant (Formule unique)
-  }
-
-  const handleSearch = async (val) => {
-    setSearch(val)
-    if (val.length < 2) return setResults([])
-    const { data } = await supabase.from('ingredients').select('id, nom, prix_kg, unite').ilike('nom', `%${val}%`).limit(5)
-    setResults(data || [])
+    return 29 // Restaurant (EP ou PD)
   }
 
   const ajouterIngredient = (ing) => {
@@ -77,72 +65,84 @@ export default function ArdoisePage() {
     setSearch(''); setResults([])
   }
 
+  // --- LOGIQUE DE RÉSERVE ---
+  const mettreEnReserve = () => {
+    if (panier.length === 0) return
+    const type = modeVente.includes('entree') ? 'entree' : modeVente.includes('dessert') ? 'dessert' : 'plat'
+    setReserve({ ...reserve, [type]: { nom: nomPlat, ingredients: [...panier] } })
+    alert(`${type.toUpperCase()} mis en réserve pour la formule !`)
+  }
+
+  const importerDepuisReserve = (type) => {
+    const item = reserve[type]
+    if (!item) return
+    const nouveauxIng = item.ingredients.filter(ing => !panier.find(p => p.id === ing.id))
+    setPanier([...panier, ...nouveauxIng])
+    if (!nomPlat) setNomPlat(`Formule avec ${item.nom}`)
+  }
+
   // --- CALCULS ---
   const coutIngredients = panier.reduce((acc, ing) => acc + (parseFloat(ing.prix_u) * (parseFloat(ing.quantite) || 0)), 0)
-  
-  // Coût fixe (Pain/Beurre) + Boisson chaude (Resto)
   const fraisFixesBase = getSetting('cout_fixe_boisson') + getSetting('cout_fixe_dessert')
   const totalCoutMatiere = panier.length > 0 ? (coutIngredients + fraisFixesBase + parseFloat(coutBoissonChaude || 0)) : 0
-  
   const prixVenteHT = getPrixVenteTTC() / 1.1
   const foodCost = prixVenteHT > 0 ? (totalCoutMatiere / prixVenteHT) * 100 : 0
 
-  const validerArdoise = async () => {
-    if (!nomPlat || panier.length === 0) return alert("Nom et ingrédients requis")
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('journal_ardoise').insert([{
-      site_id: activeSiteId,
-      nom_plat: nomPlat,
-      cout_total_matiere: totalCoutMatiere,
-      prix_vente_ht: prixVenteHT,
-      composition: panier,
-      created_by: user.id
-    }])
-    if (!error) { alert("Plat enregistré !"); setPanier([]); setNomPlat(''); fetchHistorique(activeSiteId); }
-  }
-
-  if (loading) return <p style={{ padding: '20px' }}>Chargement...</p>
+  if (loading) return <p>Chargement...</p>
 
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       
-      {/* 1. SÉLECTION DU SITE */}
+      {/* SITES */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         {sites.map(s => (
-          <button key={s.id} onClick={() => {setActiveSiteId(s.id); setPanier([]); setModeVente(s.id === ID_RESTO ? 'formule' : 'plat_seul'); setCoutBoissonChaude(0); fetchHistorique(s.id);}}
+          <button key={s.id} onClick={() => {setActiveSiteId(s.id); setPanier([]); setModeVente(s.id === ID_RESTO ? 'formule_ep' : 'plat_seul'); fetchHistorique(s.id);}}
             style={{ padding: '12px 24px', borderRadius: '10px', border: 'none', cursor: 'pointer', backgroundColor: activeSiteId === s.id ? c.primary : '#eee', color: activeSiteId === s.id ? 'white' : '#666', fontWeight: 'bold' }}>
             {s.nom}
           </button>
         ))}
       </div>
 
-      {/* 2. MODE DE CALCUL (DYNAMIQUE) */}
-      <div style={{ marginBottom: '30px', background: '#f8f9fa', padding: '20px', borderRadius: '15px', border: '1px solid #eee' }}>
-        <div style={{ fontWeight: '800', fontSize: '0.75rem', color: '#888', marginBottom: '10px', textTransform: 'uppercase' }}>Que calculez-vous ?</div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+      {/* MODES DE VENTE */}
+      <div style={{ marginBottom: '30px', background: '#f8f9fa', padding: '15px', borderRadius: '12px', border: '1px solid #eee' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {activeSiteId === ID_CAFE ? (
             <>
-              <button onClick={() => setModeVente('entree_seule')} style={{ flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: modeVente === 'entree_seule' ? c.primary : 'white', color: modeVente === 'entree_seule' ? 'white' : '#555', fontWeight: 'bold' }}>ENTRÉE SEULE (11€)</button>
-              <button onClick={() => setModeVente('plat_seul')} style={{ flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: modeVente === 'plat_seul' ? c.primary : 'white', color: modeVente === 'plat_seul' ? 'white' : '#555', fontWeight: 'bold' }}>PLAT SEUL (19€)</button>
-              <button onClick={() => setModeVente('formule')} style={{ flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: modeVente === 'formule' ? c.primary : 'white', color: modeVente === 'formule' ? 'white' : '#555', fontWeight: 'bold' }}>FORMULE E+P (21€)</button>
+              {['entree_seule', 'plat_seul', 'formule_ep'].map(m => (
+                <button key={m} onClick={() => setModeVente(m)} style={{ padding: '10px 15px', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: modeVente === m ? c.primary : 'white', color: modeVente === m ? 'white' : '#555', fontWeight: 'bold' }}>
+                  {m === 'formule_ep' ? 'FORMULE E+P (21€)' : m.replace('_', ' ').toUpperCase()}
+                </button>
+              ))}
             </>
           ) : (
-            <div style={{ fontWeight: 'bold', color: c.primary }}>RESTAURANT - FORMULE MIDI (29€)</div>
+            <>
+              {['formule_ep', 'formule_pd'].map(m => (
+                <button key={m} onClick={() => setModeVente(m)} style={{ padding: '10px 15px', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: modeVente === m ? c.primary : 'white', color: modeVente === m ? 'white' : '#555', fontWeight: 'bold' }}>
+                  {m === 'formule_ep' ? 'E+P + BOISSON (29€)' : 'P+D + BOISSON (29€)'}
+                </button>
+              ))}
+            </>
           )}
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '30px' }}>
         
-        {/* COLONNE GAUCHE : COMPOSITION */}
         <div>
-          <input type="text" 
-            placeholder={modeVente === 'formule' ? "Nom de la formule (ex: Formule du 18/03)" : "Nom du plat..."} 
-            value={nomPlat} onChange={(e) => setNomPlat(e.target.value)}
-            style={{ width: '100%', padding: '15px', borderRadius: '10px', border: `1px solid ${c.border}`, marginBottom: '20px', fontSize: '1.1rem' }} />
+          {/* BOUTONS D'IMPORT RAPIDE (Si mode Formule) */}
+          {modeVente.includes('formule') && (
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              {reserve.entree && <button onClick={() => importerDepuisReserve('entree')} style={{ background: '#e1f5fe', border: '1px solid #03a9f4', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}>+ Ajouter l'Entrée ({reserve.entree.nom})</button>}
+              {reserve.plat && <button onClick={() => importerDepuisReserve('plat')} style={{ background: '#e1f5fe', border: '1px solid #03a9f4', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}>+ Ajouter le Plat ({reserve.plat.nom})</button>}
+              {reserve.dessert && <button onClick={() => importerDepuisReserve('dessert')} style={{ background: '#e1f5fe', border: '1px solid #03a9f4', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}>+ Ajouter le Dessert ({reserve.dessert.nom})</button>}
+            </div>
+          )}
+
+          <input type="text" placeholder="Nom du plat / de la formule..." value={nomPlat} onChange={(e) => setNomPlat(e.target.value)}
+            style={{ width: '100%', padding: '15px', borderRadius: '10px', border: `1px solid ${c.border}`, marginBottom: '20px' }} />
 
           <div style={{ position: 'relative', marginBottom: '25px' }}>
-            <input type="text" placeholder="🔍 Ajouter un ingrédient (Entrée + Plat si formule)..." value={search} onChange={(e) => handleSearch(e.target.value)}
+            <input type="text" placeholder="🔍 Chercher ingrédient..." value={search} onChange={(e) => {setSearch(e.target.value); if(e.target.value.length > 1) supabase.from('ingredients').select('id, nom, prix_kg, unite').ilike('nom', `%${e.target.value}%`).limit(5).then(({data}) => setResults(data || []))}}
               style={{ width: '100%', padding: '15px', borderRadius: '10px', border: `1px solid #ddd` }} />
             {results.length > 0 && (
               <div style={{ position: 'absolute', width: '100%', background: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100 }}>
@@ -151,59 +151,40 @@ export default function ArdoisePage() {
             )}
           </div>
 
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #eee', overflow: 'hidden' }}>
-            {panier.length === 0 && <p style={{ padding: '20px', color: '#999', textAlign: 'center' }}>Aucun ingrédient ajouté</p>}
-            {panier.map((ing, idx) => (
-              <div key={ing.id} style={{ display: 'flex', gap: '15px', padding: '15px', borderBottom: '1px solid #f9f9f9', alignItems: 'center' }}>
-                <span style={{ flex: 1, fontWeight: 'bold' }}>{ing.nom}</span>
-                <input type="number" value={ing.quantite || ''} onChange={(e) => {const n = [...panier]; n[idx].quantite = e.target.value; setPanier(n)}} style={{ width: '80px', padding: '8px', border: '1px solid #ddd', borderRadius: '6px' }} placeholder="Qté" />
-                <span style={{ width: '30px', fontSize: '0.8rem', color: '#999' }}>{ing.unite}</span>
-                <span style={{ width: '70px', textAlign: 'right', fontWeight: 'bold' }}>{(parseFloat(ing.prix_u) * (parseFloat(ing.quantite) || 0)).toFixed(2)}€</span>
-                <button onClick={() => setPanier(panier.filter(i => i.id !== ing.id))} style={{ color: '#ff4444', border: 'none', background: 'none', cursor: 'pointer' }}>✕</button>
-              </div>
-            ))}
-          </div>
+          {panier.map((ing, idx) => (
+            <div key={ing.id} style={{ display: 'flex', gap: '15px', padding: '15px', background: 'white', marginBottom: '8px', borderRadius: '10px', border: '1px solid #eee', alignItems: 'center' }}>
+              <span style={{ flex: 1, fontWeight: 'bold' }}>{ing.nom}</span>
+              <input type="number" value={ing.quantite || ''} onChange={(e) => {const n = [...panier]; n[idx].quantite = e.target.value; setPanier(n)}} style={{ width: '80px', padding: '8px' }} />
+              <button onClick={() => setPanier(panier.filter(i => i.id !== ing.id))} style={{ color: 'red', border: 'none', background: 'none' }}>✕</button>
+            </div>
+          ))}
 
-          {activeSiteId === ID_RESTO && (
-            <div style={{ marginTop: '20px', padding: '20px', background: '#fffbeb', borderRadius: '12px', border: '1px solid #fef3c7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* AJOUTER À LA RÉSERVE (Uniquement pour composants seuls) */}
+          {!modeVente.includes('formule') && panier.length > 0 && (
+            <button onClick={mettreEnReserve} style={{ marginTop: '10px', background: 'none', border: `1px dashed ${c.primary}`, color: c.primary, padding: '10px', borderRadius: '8px', cursor: 'pointer', width: '100%' }}>
+              📦 Garder ce {modeVente.replace('_seule', '')} en mémoire pour la formule
+            </button>
+          )}
+
+          {modeVente.includes('formule') && (
+            <div style={{ marginTop: '20px', padding: '15px', background: '#fffbeb', borderRadius: '12px', border: '1px solid #fef3c7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>☕ Coût Boisson Chaude :</span>
-              <input type="number" value={coutBoissonChaude} onChange={(e) => setCoutBoissonChaude(e.target.value)} style={{ width: '100px', padding: '10px' }} />
+              <input type="number" value={coutBoissonChaude} onChange={(e) => setCoutBoissonChaude(e.target.value)} style={{ width: '100px', padding: '8px' }} />
             </div>
           )}
         </div>
 
-        {/* COLONNE DROITE : ANALYSE */}
+        {/* ANALYSE */}
         <div style={{ background: 'white', padding: '30px', borderRadius: '20px', border: `1px solid ${c.border}`, height: 'fit-content', position: 'sticky', top: '20px' }}>
-          <h3 style={{ marginTop: 0, color: c.primary, borderBottom: '1px solid #eee', paddingBottom: '15px' }}>Food Cost {modeVente === 'formule' ? 'Formule' : 'Plat'}</h3>
-          
-          <div style={{ margin: '20px 0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}><span>PV HT :</span><span style={{ fontWeight: '800' }}>{prixVenteHT.toFixed(2)} €</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Coût Matière :</span><span style={{ fontWeight: '800' }}>{totalCoutMatiere.toFixed(2)} €</span></div>
+          <h3 style={{ marginTop: 0, color: c.primary }}>{modeVente.toUpperCase()}</h3>
+          <div style={{ margin: '15px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>PV HT :</span><strong>{prixVenteHT.toFixed(2)} €</strong></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Coût :</span><strong>{totalCoutMatiere.toFixed(2)} €</strong></div>
           </div>
-
-          <div style={{ padding: '25px', borderRadius: '15px', textAlign: 'center', background: foodCost > 33 ? '#fff5f5' : '#f0fdf4', border: `1px solid ${foodCost > 33 ? '#feb2b2' : '#bbf7d0'}`, margin: '25px 0' }}>
-            <div style={{ fontSize: '0.8rem', color: '#666', fontWeight: 'bold', marginBottom: '5px' }}>RATIO RÉEL</div>
-            <div style={{ fontSize: '3.5rem', fontWeight: '950', color: foodCost > 33 ? '#e53e3e' : '#22c55e' }}>{foodCost.toFixed(1)}%</div>
+          <div style={{ padding: '20px', borderRadius: '15px', textAlign: 'center', background: foodCost > 33 ? '#fff5f5' : '#f0fdf4', border: `1px solid ${foodCost > 33 ? '#feb2b2' : '#bbf7d0'}` }}>
+            <div style={{ fontSize: '0.8rem', color: '#666' }}>FOOD COST</div>
+            <div style={{ fontSize: '3rem', fontWeight: '950', color: foodCost > 33 ? '#e53e3e' : '#22c55e' }}>{foodCost.toFixed(1)}%</div>
           </div>
-          
-          <button onClick={validerArdoise} style={{ width: '100%', padding: '20px', background: c.primary, color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-            💾 ENREGISTRER L'ANALYSE
-          </button>
-        </div>
-      </div>
-
-      {/* HISTORIQUE */}
-      <div style={{ marginTop: '50px', borderTop: '2px solid #eee', paddingTop: '30px' }}>
-        <h2 style={{ fontSize: '1.2rem', color: c.primary }}>Dernières analyses</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '15px', marginTop: '15px' }}>
-          {historique.map(item => (
-            <div key={item.id} style={{ background: 'white', padding: '15px', borderRadius: '12px', border: '1px solid #eee' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{item.nom_plat}</div>
-              <div style={{ color: ((item.cout_total_matiere / item.prix_vente_ht) * 100) > 33 ? '#e53e3e' : '#22c55e', fontWeight: 'bold' }}>
-                {((item.cout_total_matiere / item.prix_vente_ht) * 100).toFixed(1)}%
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
