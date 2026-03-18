@@ -12,6 +12,7 @@ import { ALLERGENES } from '../../../../../lib/allergenes'
 import IngredientSearch from '../../../../../components/IngredientSearch'
 
 const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails', 'Eaux', 'Caféterie', 'Sous-fiche']
+const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
 export default function ModifierBarFiche() {
   const [nom, setNom] = useState('')
@@ -147,27 +148,23 @@ export default function ModifierBarFiche() {
     }, 0)
   }
 
- const foodCost = () => {
-  const cout = calculerCout()
-  if (!prixTTC || !cout || !nbPortions) return null
-  const tva = 1 + TVA_BAR() / 100
-  return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / tva) * 100).toFixed(1)
-}
+  const TVA_BAR = () => CATEGORIES_ALCOOL.includes(categorie) ? 20 : 10
 
+  const foodCost = () => {
+    const cout = calculerCout()
+    if (!prixTTC || !cout || !nbPortions) return null
+    const tva = 1 + TVA_BAR() / 100
+    return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / tva) * 100).toFixed(1)
+  }
 
- const TVA_BAR = () => {
-  const categoriesAlcool = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
-  return categoriesAlcool.includes(categorie) ? 20 : 10
-}
-
-const prixIndicatif = () => {
-  const coutPortion = calculerCoutPortion()
-  if (!coutPortion) return null
-  const seuil = parseFloat(params['seuil_vert_boissons'] || 22) / 100
-  const tva = 1 + TVA_BAR() / 100
-  return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
-}
-
+  const prixIndicatif = () => {
+    const cout = calculerCout()
+    if (!cout || !nbPortions) return null
+    const coutPortion = cout / parseFloat(nbPortions)
+    const seuil = parseFloat(params['seuil_vert_boissons'] || 22) / 100
+    const tva = 1 + TVA_BAR() / 100
+    return (coutPortion / seuil * tva).toFixed(2)
+  }
 
   const handleSubmit = async () => {
     if (!nom) { setError('Le nom est obligatoire'); return }
@@ -272,6 +269,11 @@ const prixIndicatif = () => {
 
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
+        {/* TVA info */}
+        <div style={{ background: CATEGORIES_ALCOOL.includes(categorie) ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${CATEGORIES_ALCOOL.includes(categorie) ? '#F09595' : '#4A7B6F40'}`, color: CATEGORIES_ALCOOL.includes(categorie) ? '#A32D2D' : '#3B6D11' }}>
+          {CATEGORIES_ALCOOL.includes(categorie) ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
+        </div>
+
         {/* Photo */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Photo</div>
@@ -368,18 +370,27 @@ const prixIndicatif = () => {
                       {['cl', 'ml', 'L', 'g', 'kg', 'u', 'trait', 'pièce', 'botte'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
+                  {(() => {
+                    const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+                    const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
+                    return cout ? (
+                      <div style={{ marginTop: '6px', padding: '6px 10px', background: c.fond, borderRadius: '6px', fontSize: '12px', color: c.texte, fontWeight: '500', textAlign: 'right', border: `0.5px solid ${c.bordure}` }}>
+                        Coût : <strong>{cout} €</strong>
+                      </div>
+                    ) : null
+                  })()}
                 </div>
               ))}
             </>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
-                {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
+                {['Ingrédient', 'Quantité', 'Unité', 'Coût', ''].map((h, i) => (
                   <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
                 ))}
               </div>
               {ingredients.map((ing, index) => (
-                <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
+                <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
                   <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
@@ -388,6 +399,17 @@ const prixIndicatif = () => {
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}>
                     {['cl', 'ml', 'L', 'g', 'kg', 'u', 'trait', 'pièce', 'botte'].map(u => <option key={u}>{u}</option>)}
                   </select>
+                  <div style={{ padding: '8px 6px', borderRadius: '8px', background: c.fond, border: `0.5px solid ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+                    {(() => {
+                      const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+                      const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
+                      return (
+                        <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>
+                          {cout ? `${cout} €` : '—'}
+                        </span>
+                      )
+                    })()}
+                  </div>
                   <button onClick={() => supprimerIngredient(index)}
                     style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
                 </div>
@@ -421,11 +443,7 @@ const prixIndicatif = () => {
         </div>
 
         {/* Récapitulatif */}
-        <div style={{
-          background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px',
-          border: `0.5px solid ${c.bordure}`,
-          display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px'
-        }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
@@ -434,7 +452,7 @@ const prixIndicatif = () => {
             <div style={{ background: '#EAF3DE', borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
               <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: '#3B6D11' }}>{prixIndic} €</div>
-              <div style={{ fontSize: '10px', color: '#3B6D11', opacity: 0.8, marginTop: '2px' }}>Basé sur {seuilVert}%</div>
+              <div style={{ fontSize: '10px', color: '#3B6D11', opacity: 0.8, marginTop: '2px' }}>TVA {TVA_BAR()}% — seuil {seuilVert}%</div>
             </div>
           )}
           {fc && (

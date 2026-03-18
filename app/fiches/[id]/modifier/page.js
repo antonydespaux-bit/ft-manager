@@ -1,52 +1,49 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase, getParametres } from '../../../../lib/supabase'
-import { useRouter, useParams } from 'next/navigation'
-import { theme, Logo } from '../../../../lib/theme.jsx'
-import { useIsMobile } from '../../../../lib/useIsMobile'
-import { useTheme } from '../../../../lib/useTheme'
-import { useAutosave } from '../../../../lib/useAutosave'
-import { log } from '../../../../lib/useLog'
-import { ALLERGENES } from '../../../../lib/allergenes'
-import IngredientSearch from '../../../../components/IngredientSearch'
+import { supabase, getParametres } from '../../../lib/supabase'
+import { useRouter } from 'next/navigation'
+import { theme, Logo } from '../../../lib/theme.jsx'
+import { useIsMobile } from '../../../lib/useIsMobile'
+import { useTheme } from '../../../lib/useTheme'
+import { useAutosave } from '../../../lib/useAutosave'
+import { log } from '../../../lib/useLog'
+import { ALLERGENES } from '../../../lib/allergenes'
+import IngredientSearch from '../../../components/IngredientSearch'
 
-export default function ModifierFiche() {
+const isIngredientPossible = (cat) => cat === 'Sous-fiche' || cat === 'Accompagnements'
+
+export default function NouvelleFiche() {
   const [nom, setNom] = useState('')
   const [categorie, setCategorie] = useState('Plats')
   const [nbPortions, setNbPortions] = useState('')
-  const [unitePortions, setUnitePortions] = useState('portions') // Ajouté pour cohérence
+  const [unitePortions, setUnitePortions] = useState('portions')
   const [prixTTC, setPrixTTC] = useState('')
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
   const [photo, setPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
-  const [photoExistante, setPhotoExistante] = useState(null)
-  const [ingredients, setIngredients] = useState([])
+  const [ingredients, setIngredients] = useState([
+    { ingredient_id: '', nom: '', quantite: '', unite: 'kg' }
+  ])
   const [listeIngredients, setListeIngredients] = useState([])
   const [params, setParams] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
   const router = useRouter()
-  const params_route = useParams()
   const { c } = useTheme()
+  const saisons = theme.saisons
   const categories = [...theme.categories, 'Sous-fiche']
-  
-  // LOGIQUE HYBRIDE
   const isSousFiche = categorie === 'Sous-fiche'
-  const isAccompagnement = categorie === 'Accompagnements'
-  const isIngredientPossible = isSousFiche || isAccompagnement
-
   const isMobile = useIsMobile()
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, description, saison, allergenes, ingredients }
-  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(`modifier-fiche-${params_route.id}`, autosaveData, 60000)
+  const autosaveData = { nom, categorie, nbPortions, unitePortions, prixTTC, description, saison, allergenes, ingredients }
+  const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave('nouvelle-fiche-draft', autosaveData, 60000)
 
   useEffect(() => {
     checkUser()
-    loadData()
+    loadIngredients()
     loadParams()
   }, [])
 
@@ -60,34 +57,9 @@ export default function ModifierFiche() {
     setParams(p)
   }
 
-  const loadData = async () => {
-    const { data: ficheData } = await supabase.from('fiches').select('*').eq('id', params_route.id).single()
-    if (!ficheData) { router.push('/fiches'); return }
-
-    setNom(ficheData.nom)
-    setCategorie(ficheData.categorie || 'Plats')
-    setNbPortions(ficheData.nb_portions || '')
-    setPrixTTC(ficheData.prix_ttc || '')
-    setDescription(ficheData.description || '')
-    setSaison(ficheData.saison || 'Printemps 2026')
-    setAllergenes(ficheData.allergenes || [])
-    if (ficheData.photo_url) { setPhotoExistante(ficheData.photo_url); setPhotoPreview(ficheData.photo_url) }
-
-    const { data: ingsData } = await supabase
-      .from('fiche_ingredients')
-      .select(`quantite, unite, ingredients (id, nom, prix_kg, unite)`)
-      .eq('fiche_id', params_route.id)
-
-    setIngredients((ingsData || []).map(i => ({
-      ingredient_id: i.ingredients?.id || '',
-      nom: i.ingredients?.nom || '',
-      quantite: i.quantite,
-      unite: i.unite
-    })))
-
-    const { data: liste } = await supabase.from('ingredients').select('*').order('nom').limit(5000)
-    setListeIngredients(liste || [])
-    setLoading(false)
+  const loadIngredients = async () => {
+    const { data } = await supabase.from('ingredients').select('*').order('nom').limit(5000)
+    setListeIngredients(data || [])
   }
 
   const restaurerBrouillon = () => {
@@ -96,11 +68,12 @@ export default function ModifierFiche() {
     setNom(draft.nom || '')
     setCategorie(draft.categorie || 'Plats')
     setNbPortions(draft.nbPortions || '')
+    setUnitePortions(draft.unitePortions || 'portions')
     setPrixTTC(draft.prixTTC || '')
     setDescription(draft.description || '')
     setSaison(draft.saison || 'Printemps 2026')
     setAllergenes(draft.allergenes || [])
-    setIngredients(draft.ingredients || [])
+    setIngredients(draft.ingredients || [{ ingredient_id: '', nom: '', quantite: '', unite: 'kg' }])
     setDraftRestored(true)
   }
 
@@ -113,15 +86,6 @@ export default function ModifierFiche() {
     if (!file) return
     setPhoto(file)
     setPhotoPreview(URL.createObjectURL(file))
-  }
-
-  const supprimerPhoto = async () => {
-    if (photoExistante) {
-      const path = photoExistante.split('/').pop()
-      await supabase.storage.from('fiches-photos').remove([path])
-      await supabase.from('fiches').update({ photo_url: null }).eq('id', params_route.id)
-    }
-    setPhoto(null); setPhotoPreview(null); setPhotoExistante(null)
   }
 
   const ajouterIngredient = () => {
@@ -150,6 +114,12 @@ export default function ModifierFiche() {
     }, 0)
   }
 
+  const calculerCoutPortion = () => {
+    const cout = calculerCout()
+    if (!cout || !nbPortions) return null
+    return (cout / parseFloat(nbPortions)).toFixed(4)
+  }
+
   const foodCost = () => {
     const cout = calculerCout()
     if (!prixTTC || !cout || !nbPortions) return null
@@ -157,99 +127,77 @@ export default function ModifierFiche() {
   }
 
   const prixIndicatif = () => {
-    const cout = calculerCout()
-    if (!cout || !nbPortions) return null
-    const coutPortion = cout / parseFloat(nbPortions)
+    const coutPortion = calculerCoutPortion()
+    if (!coutPortion) return null
     const seuil = parseFloat(params['seuil_vert_cuisine'] || 28) / 100
     const tva = 1 + parseFloat(params['tva_restauration'] || 10) / 100
-    return (coutPortion / seuil * tva).toFixed(2)
+    return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
   }
 
   const handleSubmit = async () => {
-    if (!nom) { setError('Le nom est obligatoire'); return }
-    setSaving(true)
+    if (!nom) { setError('Le nom de la fiche est obligatoire'); return }
+    if (!nbPortions) { setError('Le nombre de portions est obligatoire'); return }
+    setLoading(true)
     setError('')
 
-    const cout = calculerCout()
-    const coutPortion = nbPortions ? (cout / parseFloat(nbPortions)) : null
-    let photoUrl = photoExistante
+    const coutPortion = calculerCoutPortion()
+
+    const { data: fiche, error: errFiche } = await supabase
+      .from('fiches')
+      .insert([{
+        nom, categorie,
+        nb_portions: parseInt(nbPortions),
+        prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
+        description, saison, allergenes,
+        cout_portion: coutPortion ? parseFloat(coutPortion) : null
+      }])
+      .select().single()
+
+    if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
 
     if (photo) {
       const ext = photo.name.split('.').pop()
-      const path = `${params_route.id}.${ext}`
+      const path = `${fiche.id}.${ext}`
       const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        photoUrl = urlData.publicUrl
+        await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
       }
     }
 
-    // 1. Mise à jour de la fiche
-    await supabase.from('fiches').update({
-      nom, categorie,
-      nb_portions: nbPortions ? parseInt(nbPortions) : null,
-      prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null), // Sécurité prix pour sous-fiches
-      description, saison, allergenes, photo_url: photoUrl,
-      cout_portion: coutPortion, updated_at: new Date().toISOString()
-    }).eq('id', params_route.id)
-
-    // 2. Mise à jour des ingrédients de la fiche
-    await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id)
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)
-      .map(i => ({ fiche_id: params_route.id, ingredient_id: i.ingredient_id, quantite: parseFloat(i.quantite), unite: i.unite }))
+      .map(i => ({ fiche_id: fiche.id, ingredient_id: i.ingredient_id, quantite: parseFloat(i.quantite), unite: i.unite }))
 
     if (ingredientsAInserer.length > 0) {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
 
-    // 3. LOGIQUE HYBRIDE : Mise à jour ou Création de l'ingrédient réutilisable
-    if (isIngredientPossible && coutPortion) {
-      const { data: ingExistant } = await supabase
-        .from('ingredients')
-        .select('id')
-        .eq('fiche_id', params_route.id)
-        .single()
-
-      if (ingExistant) {
-        // Mise à jour si déjà présent
-        await supabase.from('ingredients').update({
-          nom: nom,
-          prix_kg: parseFloat(coutPortion),
-          unite: isSousFiche ? unitePortions : 'portions'
-        }).eq('id', ingExistant.id)
-      } else {
-        // Création si c'est un nouvel accompagnement devenu ingrédient
-        await supabase.from('ingredients').insert([{
-          nom: nom,
-          prix_kg: parseFloat(coutPortion),
-          unite: isSousFiche ? unitePortions : 'portions',
-          est_sous_fiche: true,
-          fiche_id: params_route.id
-        }])
-      }
+    // Ajouter dans les ingrédients si sous-fiche ou accompagnement
+    if (isIngredientPossible(categorie) && coutPortion) {
+      await supabase.from('ingredients').insert([{
+        nom: fiche.nom,
+        prix_kg: parseFloat(coutPortion),
+        unite: isSousFiche ? unitePortions : 'portions',
+        est_sous_fiche: true,
+        fiche_id: fiche.id
+      }])
     }
 
     await log({
-      action: 'MODIFICATION', entite: 'fiche', entite_id: params_route.id,
+      action: 'CREATION', entite: 'fiche', entite_id: fiche.id,
       entite_nom: nom, section: 'cuisine',
       details: `Catégorie: ${categorie}, Saison: ${saison}`
     })
 
     clearDraft()
-    router.push(`/fiches/${params_route.id}`)
+    router.push(isSousFiche ? '/sous-fiches' : '/fiches')
   }
 
   const fc = foodCost()
+  const coutPortion = calculerCoutPortion()
   const prixIndic = prixIndicatif()
   const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
-  const seuilOrange = parseFloat(params['seuil_orange_cuisine'] || 35)
-
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
-      <div style={{ fontSize: '14px', color: c.texteMuted }}>Chargement...</div>
-    </div>
-  )
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
@@ -262,19 +210,20 @@ export default function ModifierFiche() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
-          <button onClick={() => router.push(`/fiches/${params_route.id}`)} style={{
+          {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>}
+          <button onClick={() => router.push(isSousFiche ? '/sous-fiches' : '/fiches')} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
           }}>← Retour</button>
-          {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Modifier — {nom}</span>}
+          {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{isSousFiche ? 'Nouvelle sous-fiche' : 'Nouvelle fiche technique'}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {lastSaved && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>{!isMobile && `Sauvegardé à ${lastSaved.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}{isMobile && '✓'}</span>}
-          <button onClick={handleSubmit} disabled={saving} style={{
-            background: saving ? c.texteMuted : c.accent, color: c.principal, border: 'none',
-            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer'
+          <button onClick={handleSubmit} disabled={loading} style={{
+            background: loading ? c.texteMuted : c.accent, color: c.principal, border: 'none',
+            borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer'
           }}>
-            {saving ? '...' : 'Enregistrer'}
+            {loading ? '...' : 'Enregistrer'}
           </button>
         </div>
       </div>
@@ -285,7 +234,7 @@ export default function ModifierFiche() {
           <div style={{ background: '#FAEEDA', border: '0.5px solid #FAC775', borderRadius: '10px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <div style={{ fontSize: '13px', fontWeight: '500', color: '#633806' }}>📋 Un brouillon a été trouvé</div>
-              <div style={{ fontSize: '12px', color: '#854F0B', marginTop: '2px' }}>Voulez-vous restaurer vos modifications précédentes ?</div>
+              <div style={{ fontSize: '12px', color: '#854F0B', marginTop: '2px' }}>Voulez-vous restaurer votre travail précédent ?</div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={restaurerBrouillon} style={{ padding: '8px 14px', background: '#854F0B', color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>Restaurer</button>
@@ -294,19 +243,25 @@ export default function ModifierFiche() {
           </div>
         )}
 
+        {draftRestored && (
+          <div style={{ background: '#E8F2EF', border: `0.5px solid #4A7B6F40`, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#4A7B6F' }}>
+            ✓ Brouillon restauré avec succès !
+          </div>
+        )}
+
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
-        {isIngredientPossible && (
-          <div style={{ 
-            background: isSousFiche ? c.violetClair : c.vertClair, 
-            color: isSousFiche ? '#3C3489' : c.vert, 
-            borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', 
-            border: `0.5px solid ${isSousFiche ? '#AFA9EC' : c.vert + '40'}` 
-          }}>
-            <span style={{ background: isSousFiche ? c.violet : c.vert, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>
-              {isSousFiche ? 'SOUS-FICHE' : 'ACCOMPAGNEMENT'}
-            </span>
-            Cette fiche est synchronisée avec la liste des ingrédients.
+        {isSousFiche && (
+          <div style={{ background: c.violetClair, color: '#3C3489', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: '0.5px solid #AFA9EC' }}>
+            <span style={{ background: c.violet, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>SF</span>
+            Cette fiche sera disponible comme ingrédient dans les fiches principales
+          </div>
+        )}
+
+        {categorie === 'Accompagnements' && (
+          <div style={{ background: c.vertClair, color: c.vert, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: `0.5px solid ${c.vert}40` }}>
+            <span style={{ background: c.vert, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>AC</span>
+            Cette fiche sera disponible comme ingrédient et aura un prix de vente
           </div>
         )}
 
@@ -317,7 +272,7 @@ export default function ModifierFiche() {
             {photoPreview ? (
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <img src={photoPreview} alt="Aperçu" style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }} />
-                <button onClick={supprimerPhoto} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
+                <button onClick={() => { setPhoto(null); setPhotoPreview(null) }} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
               </div>
             ) : (
               <div style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', borderRadius: '8px', border: `1px dashed ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
@@ -326,7 +281,6 @@ export default function ModifierFiche() {
               </div>
             )}
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>{photoPreview ? 'Changer la photo' : 'Ajouter une photo'}</label>
               <input type="file" accept="image/*" onChange={handlePhoto}
                 style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${c.accent}`, borderRadius: '8px', fontSize: '13px', background: c.accentClair, cursor: 'pointer', color: c.texte }}
               />
@@ -336,12 +290,13 @@ export default function ModifierFiche() {
         </div>
 
         {/* Informations générales */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${isIngredientPossible ? (isSousFiche ? '#AFA9EC' : c.vert + '40') : c.bordure}`, marginBottom: '12px' }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${isSousFiche ? '#AFA9EC' : c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Informations générales</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nom *</label>
               <input type="text" value={nom} onChange={e => setNom(e.target.value)}
+                placeholder={isSousFiche ? 'Ex : Sauce béarnaise' : 'Ex : Blanquette de veau'}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
               />
             </div>
@@ -355,15 +310,15 @@ export default function ModifierFiche() {
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
                 <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {theme.saisons.map(s => <option key={s}>{s}</option>)}
+                  {saisons.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>{isSousFiche ? 'Quantité produite' : 'Nombre de portions'}</label>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>{isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
+                  <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)} placeholder="Ex : 10"
                     style={{ flex: 1, padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                   />
                   {isSousFiche && (
@@ -376,7 +331,7 @@ export default function ModifierFiche() {
               {!isSousFiche && (
                 <div>
                   <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Prix TTC (€)</label>
-                  <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} step="0.01"
+                  <input type="number" value={prixTTC} onChange={e => setPrixTTC(e.target.value)} placeholder="Ex : 18.50" step="0.01"
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
                   />
                   {prixIndic && <div style={{ fontSize: '11px', color: c.vert, marginTop: '4px' }}>Indicatif ({seuilVert}%) : <strong>{prixIndic} €</strong></div>}
@@ -385,7 +340,7 @@ export default function ModifierFiche() {
             </div>
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes de présentation, dressage..." rows={3}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte, background: c.blanc }}
               />
             </div>
@@ -415,26 +370,46 @@ export default function ModifierFiche() {
                       {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
+                  {(() => {
+                    const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+                    const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
+                    return cout ? (
+                      <div style={{ marginTop: '6px', padding: '6px 10px', background: c.fond, borderRadius: '6px', fontSize: '12px', color: c.texte, fontWeight: '500', textAlign: 'right', border: `0.5px solid ${c.bordure}` }}>
+                        Coût : <strong>{cout} €</strong>
+                      </div>
+                    ) : null
+                  })()}
                 </div>
               ))}
             </>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
-                {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
+                {['Ingrédient', 'Quantité', 'Unité', 'Coût', ''].map((h, i) => (
                   <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
                 ))}
               </div>
               {ingredients.map((ing, index) => (
-                <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
+                <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
                   <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
-                  <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
+                  <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="0"
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />
                   <select value={ing.unite} onChange={e => modifierIngredient(index, 'unite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}>
                     {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                   </select>
+                  <div style={{ padding: '8px 6px', borderRadius: '8px', background: c.fond, border: `0.5px solid ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+                    {(() => {
+                      const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+                      const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
+                      return (
+                        <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>
+                          {cout ? `${cout} €` : '—'}
+                        </span>
+                      )
+                    })()}
+                  </div>
                   <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
                 </div>
               ))}
@@ -465,22 +440,27 @@ export default function ModifierFiche() {
         </div>
 
         {/* Récapitulatif */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
-            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
+            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
           </div>
+          {coutPortion && !isSousFiche && (
+            <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
+              <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût / portion</div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{parseFloat(coutPortion).toFixed(2)} €</div>
+            </div>
+          )}
           {prixIndic && !isSousFiche && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
-              <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
-              <div style={{ fontSize: '10px', color: c.vert, opacity: 0.8, marginTop: '2px' }}>Basé sur {seuilVert}%</div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.vert }}>{prixIndic} €</div>
             </div>
           )}
           {fc && !isSousFiche && (
-            <div style={{ background: fc < seuilVert ? '#EAF3DE' : fc < seuilOrange ? '#FAEEDA' : '#FCEBEB', borderRadius: '8px', padding: '12px' }}>
-              <div style={{ fontSize: '10px', fontWeight: '500', textTransform: 'uppercase', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>Food cost</div>
-              <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D' }}>{fc} %</div>
+            <div style={{ background: fc < seuilVert ? '#EAF3DE' : fc < parseFloat(params['seuil_orange_cuisine'] || 35) ? '#FAEEDA' : '#FCEBEB', borderRadius: '8px', padding: '12px' }}>
+              <div style={{ fontSize: '10px', fontWeight: '500', textTransform: 'uppercase', color: fc < seuilVert ? '#3B6D11' : fc < parseFloat(params['seuil_orange_cuisine'] || 35) ? '#854F0B' : '#A32D2D' }}>Food cost</div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: fc < seuilVert ? '#3B6D11' : fc < parseFloat(params['seuil_orange_cuisine'] || 35) ? '#854F0B' : '#A32D2D' }}>{fc} %</div>
             </div>
           )}
         </div>

@@ -10,6 +10,8 @@ import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
 import IngredientSearch from '../../../components/IngredientSearch'
 
+const isIngredientPossible = (cat) => cat === 'Sous-fiche' || cat === 'Accompagnements'
+
 export default function NouvelleFiche() {
   const [nom, setNom] = useState('')
   const [categorie, setCategorie] = useState('Plats')
@@ -33,12 +35,7 @@ export default function NouvelleFiche() {
   const { c } = useTheme()
   const saisons = theme.saisons
   const categories = [...theme.categories, 'Sous-fiche']
-  
-  // LOGIQUE HYBRIDE : Définition des types de fiches
   const isSousFiche = categorie === 'Sous-fiche'
-  const isAccompagnement = categorie === 'Accompagnements'
-  const isIngredientPossible = isSousFiche || isAccompagnement
-
   const isMobile = useIsMobile()
 
   const autosaveData = { nom, categorie, nbPortions, unitePortions, prixTTC, description, saison, allergenes, ingredients }
@@ -176,13 +173,13 @@ export default function NouvelleFiche() {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
 
-    // LOGIQUE HYBRIDE : Insertion automatique dans la table ingrédients
-    if (isIngredientPossible && coutPortion) {
+    // Ajouter dans les ingrédients si sous-fiche ou accompagnement
+    if (isIngredientPossible(categorie) && coutPortion) {
       await supabase.from('ingredients').insert([{
-        nom: fiche.nom, 
+        nom: fiche.nom,
         prix_kg: parseFloat(coutPortion),
-        unite: isSousFiche ? unitePortions : 'portions', // Accompagnements = toujours en portions
-        est_sous_fiche: true, 
+        unite: isSousFiche ? unitePortions : 'portions',
+        est_sous_fiche: true,
         fiche_id: fiche.id
       }])
     }
@@ -254,17 +251,17 @@ export default function NouvelleFiche() {
 
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
-        {isIngredientPossible && (
-          <div style={{ 
-            background: isSousFiche ? c.violetClair : c.vertClair, 
-            color: isSousFiche ? '#3C3489' : c.vert, 
-            borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', 
-            border: `0.5px solid ${isSousFiche ? '#AFA9EC' : c.vert + '40'}` 
-          }}>
-            <span style={{ background: isSousFiche ? c.violet : c.vert, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>
-              {isSousFiche ? 'SOUS-FICHE' : 'ACCOMPAGNEMENT'}
-            </span>
-            Cette fiche sera disponible comme ingrédient dans les autres fiches.
+        {isSousFiche && (
+          <div style={{ background: c.violetClair, color: '#3C3489', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: '0.5px solid #AFA9EC' }}>
+            <span style={{ background: c.violet, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>SF</span>
+            Cette fiche sera disponible comme ingrédient dans les fiches principales
+          </div>
+        )}
+
+        {categorie === 'Accompagnements' && (
+          <div style={{ background: c.vertClair, color: c.vert, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: `0.5px solid ${c.vert}40` }}>
+            <span style={{ background: c.vert, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>AC</span>
+            Cette fiche sera disponible comme ingrédient et aura un prix de vente
           </div>
         )}
 
@@ -293,7 +290,7 @@ export default function NouvelleFiche() {
         </div>
 
         {/* Informations générales */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${isIngredientPossible ? (isSousFiche ? '#AFA9EC' : c.vert + '40') : c.bordure}`, marginBottom: '12px' }}>
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${isSousFiche ? '#AFA9EC' : c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Informations générales</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
@@ -373,18 +370,27 @@ export default function NouvelleFiche() {
                       {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
+                  {(() => {
+                    const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+                    const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
+                    return cout ? (
+                      <div style={{ marginTop: '6px', padding: '6px 10px', background: c.fond, borderRadius: '6px', fontSize: '12px', color: c.texte, fontWeight: '500', textAlign: 'right', border: `0.5px solid ${c.bordure}` }}>
+                        Coût : <strong>{cout} €</strong>
+                      </div>
+                    ) : null
+                  })()}
                 </div>
               ))}
             </>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
-                {['Ingrédient', 'Quantité', 'Unité', ''].map((h, i) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
+                {['Ingrédient', 'Quantité', 'Unité', 'Coût', ''].map((h, i) => (
                   <div key={i} style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>{h}</div>
                 ))}
               </div>
               {ingredients.map((ing, index) => (
-                <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto', gap: '8px', marginBottom: '8px' }}>
+                <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
                   <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
                   <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="0"
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
@@ -393,6 +399,17 @@ export default function NouvelleFiche() {
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, width: '100%', minWidth: 0 }}>
                     {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                   </select>
+                  <div style={{ padding: '8px 6px', borderRadius: '8px', background: c.fond, border: `0.5px solid ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+                    {(() => {
+                      const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
+                      const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
+                      return (
+                        <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>
+                          {cout ? `${cout} €` : '—'}
+                        </span>
+                      )
+                    })()}
+                  </div>
                   <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
                 </div>
               ))}
