@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase' // Ton client supabase
-import { c } from '@/theme' // Tes styles
+import { c } from '../../../lib/theme'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState([])

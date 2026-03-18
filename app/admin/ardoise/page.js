@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { c } from '@/theme'
+import { c } from '../../../lib/theme'
 import { useRouter } from 'next/navigation'
 
 export default function ArdoisePage() {
@@ -231,9 +231,8 @@ export default function ArdoisePage() {
           </button>
         </div>
       </div>
-
-      {/* --- SECTION HISTORIQUE --- */}
-      <div style={{ marginTop: '60px', borderTop: `2px solid #eee', paddingTop: '40px' }}>
+{/* --- SECTION HISTORIQUE --- */}
+      <div style={{ marginTop: '60px', borderTop: '2px solid #eee', paddingTop: '40px' }}>
         <h2 style={{ color: c.primary, marginBottom: '25px' }}>Derniers plats enregistrés</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
           {historique.map(item => (
@@ -255,4 +254,3 @@ export default function ArdoisePage() {
     </div>
   )
 }
-  
