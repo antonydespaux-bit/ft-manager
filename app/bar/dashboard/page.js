@@ -96,7 +96,7 @@ export default function BarDashboardPage() {
   const navItems = [
     ...(peutModifier ? [{ label: '+ Nouvelle fiche', path: '/bar/fiches/nouvelle', accent: true }] : []),
     { label: 'Fiches Bar', path: '/bar/fiches' },
-    { label: 'Fiches', path: '/bar/fiches' },
+    { label: 'Sous-fiches', path: '/bar/sous-fiches' },
     { label: 'Récap', path: '/bar/recap' },
     { label: 'Ingrédients', path: '/bar/ingredients' },
     { label: 'Import', path: '/bar/import' },
