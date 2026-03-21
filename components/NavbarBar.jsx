@@ -6,7 +6,7 @@ import { useTheme } from '../lib/useTheme'
 import { useRole } from '../lib/useRole'
 import { useIsMobile } from '../lib/useIsMobile'
 
-export default function NavbarCuisine() {
+export default function NavbarBar() {
   const router = useRouter()
   const pathname = usePathname()
   const { c, nomEtablissement, logoUrl } = useTheme()
@@ -16,8 +16,9 @@ export default function NavbarCuisine() {
   const [groupeOuvert, setGroupeOuvert] = useState(null)
 
   const NAV = c.principal || '#18181B'
-  const ACCENT = c.accent || '#6366F1'
-  const ACCENT_LIGHT = c.accentClair || '#EEF2FF'
+  const ACCENT_BAR = c.violet || '#7C3AED'
+  const ACCENT_BAR_LIGHT = c.violetClair || '#EDE9FE'
+
   const peutModifier = role === 'admin' || role === 'bar'
 
   const handleLogout = async () => {
