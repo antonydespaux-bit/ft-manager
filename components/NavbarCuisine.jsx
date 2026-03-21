@@ -13,8 +13,8 @@ const ACCENT_LIGHT = '#EEF2FF'
 export default function NavbarCuisine() {
   const router = useRouter()
   const pathname = usePathname()
-  const { c } = useTheme()
-  const { role, nom: nomUser } = useRole()
+  const { c, nomEtablissement, logoUrl } = useTheme()
+  const { role } = useRole()
   const isMobile = useIsMobile()
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [groupeOuvert, setGroupeOuvert] = useState(null)
@@ -34,7 +34,6 @@ export default function NavbarCuisine() {
     })
   }
 
-  // Groupes de navigation Option 3
   const groupes = [
     {
       label: 'Fiches',
@@ -68,34 +67,25 @@ export default function NavbarCuisine() {
   ]
 
   const dropdownStyle = {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    marginTop: '8px',
-    background: '#FFFFFF',
-    border: '0.5px solid #E4E4E7',
-    borderRadius: '10px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-    minWidth: '180px',
-    zIndex: 200,
-    overflow: 'hidden',
-    padding: '4px',
+    position: 'absolute', top: '100%', left: 0, marginTop: '8px',
+    background: '#FFFFFF', border: '0.5px solid #E4E4E7',
+    borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    minWidth: '180px', zIndex: 200, overflow: 'hidden', padding: '4px',
   }
 
   return (
     <>
       <div className="no-print" style={{
-        background: NAV,
-        borderBottom: '0.5px solid rgba(255,255,255,0.06)',
-        padding: '0 20px',
-        display: 'flex', alignItems: 'center',
+        background: NAV, borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+        padding: '0 20px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100
       }}
         onClick={() => groupeOuvert && setGroupeOuvert(null)}
       >
-        {/* Logo + Dashboard */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+
+          {/* Logo / Nom établissement */}
           <button
             onClick={(e) => { e.stopPropagation(); router.push('/dashboard') }}
             style={{
@@ -104,42 +94,40 @@ export default function NavbarCuisine() {
               display: 'flex', alignItems: 'center', gap: '8px'
             }}
           >
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '6px',
-              background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <span style={{ fontSize: '14px' }}>🍽️</span>
-            </div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={nomEtablissement}
+                style={{ height: '28px', width: 'auto', objectFit: 'contain', borderRadius: '4px' }}
+              />
+            ) : (
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '6px',
+                background: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <span style={{ fontSize: '14px' }}>🍽️</span>
+              </div>
+            )}
             {!isMobile && (
               <span style={{ fontSize: '14px', fontWeight: '600', color: 'white', letterSpacing: '0.3px' }}>
-                FT Manager
+                {nomEtablissement}
               </span>
             )}
           </button>
 
-          {/* Séparateur */}
           {!isMobile && <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />}
 
-          {/* Dashboard pill */}
+          {/* Dashboard */}
           {!isMobile && (
             <button
               onClick={(e) => { e.stopPropagation(); router.push('/dashboard') }}
               style={{
-                background: isActive('/dashboard') ? 'rgba(99,102,241,0.15)' : 'transparent',
-                border: 'none',
+                background: 'transparent', border: 'none',
                 borderBottom: isActive('/dashboard') ? `2px solid ${ACCENT}` : '2px solid transparent',
-                borderRadius: '0',
-                padding: '0 12px',
-                height: '56px',
-                fontSize: '13px',
-                fontWeight: isActive('/dashboard') ? '500' : '400',
+                borderRadius: '0', padding: '0 12px', height: '56px',
+                fontSize: '13px', fontWeight: isActive('/dashboard') ? '500' : '400',
                 color: isActive('/dashboard') ? 'white' : 'rgba(255,255,255,0.55)',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
+                cursor: 'pointer', transition: 'all 0.15s',
               }}
-            >
-              Dashboard
-            </button>
+            >Dashboard</button>
           )}
 
           {/* Groupes dropdown */}
@@ -149,50 +137,37 @@ export default function NavbarCuisine() {
             return (
               <div key={groupe.label} style={{ position: 'relative' }}>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setGroupeOuvert(ouvert ? null : groupe.label)
-                  }}
+                  onClick={(e) => { e.stopPropagation(); setGroupeOuvert(ouvert ? null : groupe.label) }}
                   style={{
                     background: ouvert ? 'rgba(255,255,255,0.06)' : 'transparent',
                     border: 'none',
                     borderBottom: active ? `2px solid ${ACCENT}` : '2px solid transparent',
-                    borderRadius: '0',
-                    padding: '0 12px',
-                    height: '56px',
-                    fontSize: '13px',
-                    fontWeight: active ? '500' : '400',
+                    borderRadius: '0', padding: '0 12px', height: '56px',
+                    fontSize: '13px', fontWeight: active ? '500' : '400',
                     color: active ? 'white' : 'rgba(255,255,255,0.55)',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '5px',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px',
                     transition: 'all 0.15s',
                   }}
                 >
                   {groupe.label}
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d={ouvert ? "M2 7L5 4L8 7" : "M2 4L5 7L8 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d={ouvert ? "M2 7L5 4L8 7" : "M2 4L5 7L8 4"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                 </button>
-
                 {ouvert && (
                   <div style={dropdownStyle} onClick={e => e.stopPropagation()}>
                     {groupe.items.map((item) => (
-                      <button
-                        key={item.path}
+                      <button key={item.path}
                         onClick={() => { setGroupeOuvert(null); router.push(item.path) }}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
-                          padding: '9px 12px', border: 'none',
-                          borderRadius: '6px',
+                          padding: '9px 12px', border: 'none', borderRadius: '6px',
                           background: isActive(item.path) ? ACCENT_LIGHT : 'transparent',
                           color: isActive(item.path) ? ACCENT : '#18181B',
-                          fontSize: '13px',
-                          fontWeight: isActive(item.path) ? '500' : '400',
+                          fontSize: '13px', fontWeight: isActive(item.path) ? '500' : '400',
                           cursor: 'pointer',
                         }}
-                      >
-                        {item.label}
-                      </button>
+                      >{item.label}</button>
                     ))}
                   </div>
                 )}
@@ -200,7 +175,7 @@ export default function NavbarCuisine() {
             )
           })}
 
-          {/* Lien Bar pour admin/directeur */}
+          {/* Lien Bar */}
           {!isMobile && (role === 'admin' || role === 'directeur') && (
             <button
               onClick={(e) => { e.stopPropagation(); router.push('/bar/dashboard') }}
@@ -209,17 +184,14 @@ export default function NavbarCuisine() {
                 borderBottom: '2px solid transparent',
                 borderRadius: '0', padding: '0 12px', height: '56px',
                 fontSize: '13px', fontWeight: '400',
-                color: 'rgba(255,255,255,0.55)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px',
-                transition: 'all 0.15s',
+                color: 'rgba(255,255,255,0.55)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '5px',
               }}
-            >
-              🍸 Bar
-            </button>
+            >🍸 Bar</button>
           )}
         </div>
 
-        {/* Droite : CTA + user + hamburger */}
+        {/* Droite */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {!isMobile && peutModifier && (
             <button
@@ -230,26 +202,15 @@ export default function NavbarCuisine() {
                 fontSize: '13px', fontWeight: '500', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '5px',
               }}
-            >
-              <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
-              Nouvelle fiche
-            </button>
+            ><span style={{ fontSize: '16px', lineHeight: 1 }}>+</span> Nouvelle fiche</button>
           )}
-
           {!isMobile && (
-            <button
-              onClick={handleLogout}
-              style={{
-                background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px', padding: '7px 12px',
-                fontSize: '13px', cursor: 'pointer',
-              }}
-            >
-              Déconnexion
-            </button>
+            <button onClick={handleLogout} style={{
+              background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.55)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer',
+            }}>Déconnexion</button>
           )}
-
           {isMobile && (
             <button onClick={() => setMenuOuvert(!menuOuvert)} style={{
               background: menuOuvert ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -269,8 +230,7 @@ export default function NavbarCuisine() {
           position: 'sticky', top: '56px', zIndex: 99
         }}>
           {peutModifier && (
-            <button
-              onClick={() => { setMenuOuvert(false); router.push('/fiches/nouvelle') }}
+            <button onClick={() => { setMenuOuvert(false); router.push('/fiches/nouvelle') }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 background: ACCENT, color: 'white', border: 'none',
@@ -279,9 +239,7 @@ export default function NavbarCuisine() {
               }}
             >+ Nouvelle fiche</button>
           )}
-
-          <button
-            onClick={() => { setMenuOuvert(false); router.push('/dashboard') }}
+          <button onClick={() => { setMenuOuvert(false); router.push('/dashboard') }}
             style={{
               display: 'block', width: '100%', textAlign: 'left',
               background: isActive('/dashboard') ? 'rgba(99,102,241,0.15)' : 'transparent',
@@ -290,11 +248,8 @@ export default function NavbarCuisine() {
               fontSize: '14px', cursor: 'pointer', marginBottom: '4px'
             }}
           >Dashboard</button>
-
-          {/* Tous les items groupés à plat sur mobile */}
           {groupes.flatMap(g => g.items).map((item) => (
-            <button
-              key={item.path}
+            <button key={item.path}
               onClick={() => { setMenuOuvert(false); router.push(item.path) }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
@@ -305,10 +260,8 @@ export default function NavbarCuisine() {
               }}
             >{item.label}</button>
           ))}
-
           {(role === 'admin' || role === 'directeur') && (
-            <button
-              onClick={() => { setMenuOuvert(false); router.push('/bar/dashboard') }}
+            <button onClick={() => { setMenuOuvert(false); router.push('/bar/dashboard') }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 background: 'transparent', color: 'rgba(255,255,255,0.6)',
@@ -317,11 +270,8 @@ export default function NavbarCuisine() {
               }}
             >🍸 Bar</button>
           )}
-
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />
-
-          <button
-            onClick={handleLogout}
+          <button onClick={handleLogout}
             style={{
               display: 'block', width: '100%', textAlign: 'left',
               background: 'transparent', color: 'rgba(255,255,255,0.4)',
