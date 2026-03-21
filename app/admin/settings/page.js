@@ -19,7 +19,7 @@ export default function SettingsPage() {
     // 1. On récupère le profil de l'user pour avoir son site_id
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('profils')
       .select('site_id, sites(nom)')
       .eq('id', user.id)
       .single()
