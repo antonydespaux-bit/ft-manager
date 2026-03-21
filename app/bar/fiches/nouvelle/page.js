@@ -212,7 +212,7 @@ export default function NouvelleBarFiche() {
     })
 
     clearDraft()
-    router.push('/bar/fiches')
+    router.push(isSousFiche ? '/bar/sous-fiches' : '/bar/fiches')
   }
 
   const fc = foodCost()
