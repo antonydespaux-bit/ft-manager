@@ -18,6 +18,7 @@ export default function NouvelleBarFiche() {
   const [categorie, setCategorie] = useState('Cocktails')
   const [nbPortions, setNbPortions] = useState('')
   const [prixTTC, setPrixTTC] = useState('')
+  const [perte, setPerte] = useState(0)
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
@@ -49,7 +50,7 @@ export default function NouvelleBarFiche() {
     }))
   ]
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, description, saison, allergenes, ingredients }
+  const autosaveData = { nom, categorie, nbPortions, prixTTC, perte, description, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave('nouvelle-fiche-bar-draft', autosaveData, 60000)
 
   useEffect(() => {
@@ -82,6 +83,7 @@ export default function NouvelleBarFiche() {
     setCategorie(draft.categorie || 'Cocktails')
     setNbPortions(draft.nbPortions || '')
     setPrixTTC(draft.prixTTC || '')
+    setPerte(draft.perte || 0)
     setDescription(draft.description || '')
     setSaison(draft.saison || 'Printemps 2026')
     setAllergenes(draft.allergenes || [])
@@ -130,8 +132,14 @@ export default function NouvelleBarFiche() {
     }, 0)
   }
 
-  const calculerCoutPortion = () => {
+  const calculerCoutAvecPerte = () => {
     const cout = calculerCout()
+    if (!cout || !perte || parseFloat(perte) <= 0) return cout
+    return cout / (1 - parseFloat(perte) / 100)
+  }
+
+  const calculerCoutPortion = () => {
+    const cout = calculerCoutAvecPerte()
     if (!cout || !nbPortions) return null
     return (cout / parseFloat(nbPortions)).toFixed(4)
   }
@@ -139,7 +147,7 @@ export default function NouvelleBarFiche() {
   const TVA_BAR = () => CATEGORIES_ALCOOL.includes(categorie) ? 20 : 10
 
   const foodCost = () => {
-    const cout = calculerCout()
+    const cout = calculerCoutAvecPerte()
     if (!prixTTC || !cout || !nbPortions) return null
     const tva = 1 + TVA_BAR() / 100
     return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / tva) * 100).toFixed(1)
@@ -174,6 +182,7 @@ export default function NouvelleBarFiche() {
         description, saison, allergenes,
         cout_portion: coutPortion ? parseFloat(coutPortion) : null,
         unite_production: uniteProduction,
+        perte: perte ? parseFloat(perte) : 0,
         client_id: clientId
       }])
       .select().single()
@@ -208,7 +217,7 @@ export default function NouvelleBarFiche() {
     await log({
       action: 'CREATION', entite: 'fiche_bar', entite_id: fiche.id,
       entite_nom: nom, section: 'bar',
-      details: `Catégorie: ${categorie}, Saison: ${saison}`
+      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -220,6 +229,8 @@ export default function NouvelleBarFiche() {
   const prixIndic = prixIndicatif()
   const seuilVert = parseFloat(params['seuil_vert_boissons'] || 22)
   const seuilOrange = parseFloat(params['seuil_orange_boissons'] || 28)
+  const coutBrut = calculerCout()
+  const coutAvecPerte = calculerCoutAvecPerte()
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
@@ -232,8 +243,7 @@ export default function NouvelleBarFiche() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Logo height={28} couleur="white" onClick={() => router.push('/bar/dashboard')} />
-          <button onClick={() => router.push('/bar/dashboard')}
-           style={{
+          <button onClick={() => router.push('/bar/dashboard')} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
           }}>← Retour</button>
@@ -326,7 +336,7 @@ export default function NouvelleBarFiche() {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions *</label>
                 <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)} placeholder="Ex : 1"
@@ -343,6 +353,28 @@ export default function NouvelleBarFiche() {
                 </div>
               )}
             </div>
+
+            {/* % de perte */}
+            {!isSousFiche && (
+              <div>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                  % de perte — évaporation, décantation...
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="number" value={perte} onChange={e => setPerte(e.target.value)}
+                    placeholder="0" min="0" max="99" step="0.5"
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${parseFloat(perte) > 0 ? '#FAC775' : c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: parseFloat(perte) > 0 ? '#FFFBF0' : c.blanc }}
+                  />
+                  <span style={{ fontSize: '16px', color: c.texteMuted, flexShrink: 0, fontWeight: '500' }}>%</span>
+                </div>
+                {parseFloat(perte) > 0 && (
+                  <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '6px', padding: '6px 10px', background: '#FAEEDA', borderRadius: '6px', border: '0.5px solid #FAC775' }}>
+                    ⚠️ Avec {perte}% de perte : coût brut {coutBrut.toFixed(2)} € → coût réel <strong>{coutAvecPerte.toFixed(2)} €</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description / Recette</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)}
@@ -376,15 +408,6 @@ export default function NouvelleBarFiche() {
                       {['cl', 'ml', 'L', 'g', 'kg', 'u', 'trait', 'pièce'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
-                  {(() => {
-                    const sel = optionsRecherche.find(i => i.id === ing.ingredient_id)
-                    const cout = sel?.prix_kg && ing.quantite ? (sel.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
-                    return cout ? (
-                      <div style={{ marginTop: '6px', padding: '6px 10px', background: c.fond, borderRadius: '6px', fontSize: '12px', color: c.texte, fontWeight: '500', textAlign: 'right', border: `0.5px solid ${c.bordure}` }}>
-                        Coût : <strong>{cout} €</strong>
-                      </div>
-                    ) : null
-                  })()}
                 </div>
               ))}
             </>
@@ -448,10 +471,16 @@ export default function NouvelleBarFiche() {
         {/* Récapitulatif */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
-            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
-            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût brut</div>
+            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{coutBrut.toFixed(2)} €</div>
           </div>
-          {coutPortion && (
+          {parseFloat(perte) > 0 && (
+            <div style={{ background: '#FAEEDA', borderRadius: '8px', padding: '12px', border: '0.5px solid #FAC775' }}>
+              <div style={{ fontSize: '10px', color: '#854F0B', fontWeight: '500', textTransform: 'uppercase' }}>Perte {perte}% → Coût réel</div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: '#854F0B' }}>{coutAvecPerte.toFixed(2)} €</div>
+            </div>
+          )}
+          {coutPortion && !isSousFiche && (
             <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût / portion</div>
               <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{parseFloat(coutPortion).toFixed(2)} €</div>

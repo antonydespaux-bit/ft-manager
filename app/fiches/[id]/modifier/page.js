@@ -17,6 +17,7 @@ export default function ModifierFiche() {
   const [categorie, setCategorie] = useState('Plats')
   const [nbPortions, setNbPortions] = useState('')
   const [prixTTC, setPrixTTC] = useState('')
+  const [perte, setPerte] = useState(0)
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
@@ -37,7 +38,7 @@ export default function ModifierFiche() {
   const isMobile = useIsMobile()
   const isSousFiche = categorie === 'Sous-fiche'
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, description, saison, allergenes, ingredients }
+  const autosaveData = { nom, categorie, nbPortions, prixTTC, perte, description, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(`modifier-fiche-${params_route.id}`, autosaveData, 60000)
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function ModifierFiche() {
     setCategorie(ficheData.categorie || 'Plats')
     setNbPortions(ficheData.nb_portions || '')
     setPrixTTC(ficheData.prix_ttc || '')
+    setPerte(ficheData.perte || 0)
     setDescription(ficheData.description || '')
     setSaison(ficheData.saison || 'Printemps 2026')
     setAllergenes(ficheData.allergenes || [])
@@ -93,6 +95,7 @@ export default function ModifierFiche() {
     setCategorie(draft.categorie || 'Plats')
     setNbPortions(draft.nbPortions || '')
     setPrixTTC(draft.prixTTC || '')
+    setPerte(draft.perte || 0)
     setDescription(draft.description || '')
     setSaison(draft.saison || 'Printemps 2026')
     setAllergenes(draft.allergenes || [])
@@ -146,14 +149,20 @@ export default function ModifierFiche() {
     }, 0)
   }
 
-  const foodCost = () => {
+  const calculerCoutAvecPerte = () => {
     const cout = calculerCout()
+    if (!cout || !perte || parseFloat(perte) <= 0) return cout
+    return cout / (1 - parseFloat(perte) / 100)
+  }
+
+  const foodCost = () => {
+    const cout = calculerCoutAvecPerte()
     if (!prixTTC || !cout || !nbPortions) return null
     return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / 1.10) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
-    const cout = calculerCout()
+    const cout = calculerCoutAvecPerte()
     if (!cout || !nbPortions) return null
     const coutPortion = cout / parseFloat(nbPortions)
     const seuil = parseFloat(params['seuil_vert_cuisine'] || 28) / 100
@@ -169,7 +178,7 @@ export default function ModifierFiche() {
     const clientId = await getClientId()
     if (!clientId) { setError('Erreur : session expirée'); setSaving(false); return }
 
-    const cout = calculerCout()
+    const cout = calculerCoutAvecPerte()
     const coutPortion = nbPortions ? (cout / parseFloat(nbPortions)) : null
     let photoUrl = photoExistante
 
@@ -189,7 +198,9 @@ export default function ModifierFiche() {
       nb_portions: nbPortions ? parseInt(nbPortions) : null,
       prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
       description, saison, allergenes, photo_url: photoUrl,
-      cout_portion: coutPortion, updated_at: new Date().toISOString()
+      cout_portion: coutPortion,
+      perte: perte ? parseFloat(perte) : 0,
+      updated_at: new Date().toISOString()
     }).eq('id', params_route.id)
 
     await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id)
@@ -229,7 +240,7 @@ export default function ModifierFiche() {
     await log({
       action: 'MODIFICATION', entite: 'fiche', entite_id: params_route.id,
       entite_nom: nom, section: 'cuisine',
-      details: `Catégorie: ${categorie}, Saison: ${saison}`
+      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -240,6 +251,8 @@ export default function ModifierFiche() {
   const prixIndic = prixIndicatif()
   const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
   const seuilOrange = parseFloat(params['seuil_orange_cuisine'] || 35)
+  const coutBrut = calculerCout()
+  const coutAvecPerte = calculerCoutAvecPerte()
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
@@ -348,7 +361,7 @@ export default function ModifierFiche() {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
                 <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
@@ -365,6 +378,28 @@ export default function ModifierFiche() {
                 </div>
               )}
             </div>
+
+            {/* % de perte */}
+            {!isSousFiche && (
+              <div>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                  % de perte — parures, épluchage, désossage...
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="number" value={perte} onChange={e => setPerte(e.target.value)}
+                    placeholder="0" min="0" max="99" step="0.5"
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${parseFloat(perte) > 0 ? '#FAC775' : c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: parseFloat(perte) > 0 ? '#FFFBF0' : c.blanc }}
+                  />
+                  <span style={{ fontSize: '16px', color: c.texteMuted, flexShrink: 0, fontWeight: '500' }}>%</span>
+                </div>
+                {parseFloat(perte) > 0 && (
+                  <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '6px', padding: '6px 10px', background: '#FAEEDA', borderRadius: '6px', border: '0.5px solid #FAC775' }}>
+                    ⚠️ Avec {perte}% de perte : coût brut {coutBrut.toFixed(2)} € → coût réel <strong>{coutAvecPerte.toFixed(2)} €</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
@@ -469,9 +504,15 @@ export default function ModifierFiche() {
         {/* Récapitulatif */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
-            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
-            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût brut</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{coutBrut.toFixed(2)} €</div>
           </div>
+          {parseFloat(perte) > 0 && (
+            <div style={{ background: '#FAEEDA', borderRadius: '8px', padding: '12px', border: '0.5px solid #FAC775' }}>
+              <div style={{ fontSize: '10px', color: '#854F0B', fontWeight: '500', textTransform: 'uppercase' }}>Perte {perte}% → Coût réel</div>
+              <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: '#854F0B' }}>{coutAvecPerte.toFixed(2)} €</div>
+            </div>
+          )}
           {prixIndic && !isSousFiche && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>

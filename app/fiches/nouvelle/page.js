@@ -10,7 +10,6 @@ import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
 import IngredientSearch from '../../../components/IngredientSearch'
 
-
 const isIngredientPossible = (cat) => cat === 'Sous-fiche' || cat === 'Accompagnements'
 
 export default function NouvelleFiche() {
@@ -19,6 +18,7 @@ export default function NouvelleFiche() {
   const [nbPortions, setNbPortions] = useState('')
   const [unitePortions, setUnitePortions] = useState('portions')
   const [prixTTC, setPrixTTC] = useState('')
+  const [perte, setPerte] = useState(0)
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
@@ -39,7 +39,7 @@ export default function NouvelleFiche() {
   const isSousFiche = categorie === 'Sous-fiche'
   const isMobile = useIsMobile()
 
-  const autosaveData = { nom, categorie, nbPortions, unitePortions, prixTTC, description, saison, allergenes, ingredients }
+  const autosaveData = { nom, categorie, nbPortions, unitePortions, prixTTC, perte, description, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave('nouvelle-fiche-draft', autosaveData, 60000)
 
   useEffect(() => {
@@ -71,6 +71,7 @@ export default function NouvelleFiche() {
     setNbPortions(draft.nbPortions || '')
     setUnitePortions(draft.unitePortions || 'portions')
     setPrixTTC(draft.prixTTC || '')
+    setPerte(draft.perte || 0)
     setDescription(draft.description || '')
     setSaison(draft.saison || 'Printemps 2026')
     setAllergenes(draft.allergenes || [])
@@ -115,14 +116,20 @@ export default function NouvelleFiche() {
     }, 0)
   }
 
-  const calculerCoutPortion = () => {
+  const calculerCoutAvecPerte = () => {
     const cout = calculerCout()
+    if (!cout || !perte || parseFloat(perte) <= 0) return cout
+    return cout / (1 - parseFloat(perte) / 100)
+  }
+
+  const calculerCoutPortion = () => {
+    const cout = calculerCoutAvecPerte()
     if (!cout || !nbPortions) return null
     return (cout / parseFloat(nbPortions)).toFixed(4)
   }
 
   const foodCost = () => {
-    const cout = calculerCout()
+    const cout = calculerCoutAvecPerte()
     if (!prixTTC || !cout || !nbPortions) return null
     return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / 1.10) * 100).toFixed(1)
   }
@@ -135,81 +142,84 @@ export default function NouvelleFiche() {
     return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
   }
 
-const handleSubmit = async () => {
-  if (!nom) { setError('Le nom de la fiche est obligatoire'); return }
-  if (!nbPortions) { setError('Le nombre de portions est obligatoire'); return }
-  setLoading(true)
-  setError('')
+  const handleSubmit = async () => {
+    if (!nom) { setError('Le nom de la fiche est obligatoire'); return }
+    if (!nbPortions) { setError('Le nombre de portions est obligatoire'); return }
+    setLoading(true)
+    setError('')
 
-  const clientId = await getClientId()
-  if (!clientId) { setError('Erreur : session expirée'); setLoading(false); return }
+    const clientId = await getClientId()
+    if (!clientId) { setError('Erreur : session expirée'); setLoading(false); return }
 
-  const coutPortion = calculerCoutPortion()
+    const coutPortion = calculerCoutPortion()
 
-  const { data: fiche, error: errFiche } = await supabase
-    .from('fiches')
-    .insert([{
-      nom, categorie,
-      nb_portions: parseInt(nbPortions),
-      prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
-      description, saison, allergenes,
-      cout_portion: coutPortion ? parseFloat(coutPortion) : null,
-      client_id: clientId
-    }])
-    .select().single()
+    const { data: fiche, error: errFiche } = await supabase
+      .from('fiches')
+      .insert([{
+        nom, categorie,
+        nb_portions: parseInt(nbPortions),
+        prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
+        description, saison, allergenes,
+        cout_portion: coutPortion ? parseFloat(coutPortion) : null,
+        perte: perte ? parseFloat(perte) : 0,
+        client_id: clientId
+      }])
+      .select().single()
 
-  if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
+    if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
 
-  if (photo) {
-    const ext = photo.name.split('.').pop()
-    const path = `${clientId}/${fiche.id}.${ext}`
-    const { error: errPhoto } = await supabase.storage
-      .from('fiches-photos').upload(path, photo, { upsert: true })
-    if (!errPhoto) {
-      const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-      await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
+    if (photo) {
+      const ext = photo.name.split('.').pop()
+      const path = `${clientId}/${fiche.id}.${ext}`
+      const { error: errPhoto } = await supabase.storage
+        .from('fiches-photos').upload(path, photo, { upsert: true })
+      if (!errPhoto) {
+        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
+        await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
+      }
     }
+
+    const ingredientsAInserer = ingredients
+      .filter(i => i.ingredient_id && i.quantite)
+      .map(i => ({
+        fiche_id: fiche.id,
+        ingredient_id: i.ingredient_id,
+        quantite: parseFloat(i.quantite),
+        unite: i.unite,
+        client_id: clientId
+      }))
+
+    if (ingredientsAInserer.length > 0) {
+      await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
+    }
+
+    if (isIngredientPossible(categorie) && coutPortion) {
+      await supabase.from('ingredients').insert([{
+        nom: fiche.nom,
+        prix_kg: parseFloat(coutPortion),
+        unite: isSousFiche ? unitePortions : 'portions',
+        est_sous_fiche: true,
+        fiche_id: fiche.id,
+        client_id: clientId
+      }])
+    }
+
+    await log({
+      action: 'CREATION', entite: 'fiche', entite_id: fiche.id,
+      entite_nom: nom, section: 'cuisine',
+      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
+    })
+
+    clearDraft()
+    router.push(isSousFiche ? '/sous-fiches' : '/fiches')
   }
-
-  const ingredientsAInserer = ingredients
-    .filter(i => i.ingredient_id && i.quantite)
-    .map(i => ({
-      fiche_id: fiche.id,
-      ingredient_id: i.ingredient_id,
-      quantite: parseFloat(i.quantite),
-      unite: i.unite,
-      client_id: clientId
-    }))
-
-  if (ingredientsAInserer.length > 0) {
-    await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
-  }
-
-  if (isIngredientPossible(categorie) && coutPortion) {
-    await supabase.from('ingredients').insert([{
-      nom: fiche.nom,
-      prix_kg: parseFloat(coutPortion),
-      unite: isSousFiche ? unitePortions : 'portions',
-      est_sous_fiche: true,
-      fiche_id: fiche.id,
-      client_id: clientId
-    }])
-  }
-
-  await log({
-    action: 'CREATION', entite: 'fiche', entite_id: fiche.id,
-    entite_nom: nom, section: 'cuisine',
-    details: `Catégorie: ${categorie}, Saison: ${saison}`
-  })
-
-  clearDraft()
-  router.push(isSousFiche ? '/sous-fiches' : '/dashboard')
-}
 
   const fc = foodCost()
   const coutPortion = calculerCoutPortion()
   const prixIndic = prixIndicatif()
   const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
+  const coutBrut = calculerCout()
+  const coutAvecPerte = calculerCoutAvecPerte()
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
@@ -223,8 +233,7 @@ const handleSubmit = async () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>}
-          <button onClick={() => router.push('/dashboard')}
-           style={{
+          <button onClick={() => router.push('/dashboard')} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
           }}>← Retour</button>
@@ -327,7 +336,7 @@ const handleSubmit = async () => {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>{isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -351,6 +360,28 @@ const handleSubmit = async () => {
                 </div>
               )}
             </div>
+
+            {/* % de perte */}
+            {!isSousFiche && (
+              <div>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                  % de perte — parures, épluchage, désossage...
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="number" value={perte} onChange={e => setPerte(e.target.value)}
+                    placeholder="0" min="0" max="99" step="0.5"
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${parseFloat(perte) > 0 ? '#FAC775' : c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: parseFloat(perte) > 0 ? '#FFFBF0' : c.blanc }}
+                  />
+                  <span style={{ fontSize: '16px', color: c.texteMuted, flexShrink: 0, fontWeight: '500' }}>%</span>
+                </div>
+                {parseFloat(perte) > 0 && (
+                  <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '6px', padding: '6px 10px', background: '#FAEEDA', borderRadius: '6px', border: '0.5px solid #FAC775' }}>
+                    ⚠️ Avec {perte}% de perte : coût brut {coutBrut.toFixed(2)} € → coût réel <strong>{coutAvecPerte.toFixed(2)} €</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes de présentation, dressage..." rows={3}
@@ -455,9 +486,15 @@ const handleSubmit = async () => {
         {/* Récapitulatif */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
-            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
-            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût brut</div>
+            <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{coutBrut.toFixed(2)} €</div>
           </div>
+          {parseFloat(perte) > 0 && (
+            <div style={{ background: '#FAEEDA', borderRadius: '8px', padding: '12px', border: '0.5px solid #FAC775' }}>
+              <div style={{ fontSize: '10px', color: '#854F0B', fontWeight: '500', textTransform: 'uppercase' }}>Perte {perte}% → Coût réel</div>
+              <div style={{ fontSize: '20px', fontWeight: '500', marginTop: '4px', color: '#854F0B' }}>{coutAvecPerte.toFixed(2)} €</div>
+            </div>
+          )}
           {coutPortion && !isSousFiche && (
             <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût / portion</div>

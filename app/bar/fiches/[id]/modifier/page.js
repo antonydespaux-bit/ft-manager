@@ -1,11 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase, getParametres } from '../../../../../lib/supabase'
+import { supabase, getParametres, getClientId } from '../../../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../../lib/useIsMobile'
 import { useTheme } from '../../../../../lib/useTheme'
-import { useRole } from '../../../../../lib/useRole'
 import { useAutosave } from '../../../../../lib/useAutosave'
 import { log } from '../../../../../lib/useLog'
 import { ALLERGENES } from '../../../../../lib/allergenes'
@@ -19,6 +18,7 @@ export default function ModifierBarFiche() {
   const [categorie, setCategorie] = useState('Cocktails')
   const [nbPortions, setNbPortions] = useState('')
   const [prixTTC, setPrixTTC] = useState('')
+  const [perte, setPerte] = useState(0)
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
@@ -35,10 +35,9 @@ export default function ModifierBarFiche() {
   const router = useRouter()
   const params_route = useParams()
   const { c } = useTheme()
-  const { role } = useRole()
   const isMobile = useIsMobile()
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, description, saison, allergenes, ingredients }
+  const autosaveData = { nom, categorie, nbPortions, prixTTC, perte, description, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(`modifier-fiche-bar-${params_route.id}`, autosaveData, 60000)
 
   useEffect(() => {
@@ -66,6 +65,7 @@ export default function ModifierBarFiche() {
     setCategorie(ficheData.categorie || 'Cocktails')
     setNbPortions(ficheData.nb_portions || '')
     setPrixTTC(ficheData.prix_ttc || '')
+    setPerte(ficheData.perte || 0)
     setDescription(ficheData.description || '')
     setSaison(ficheData.saison || 'Printemps 2026')
     setAllergenes(ficheData.allergenes || [])
@@ -95,6 +95,7 @@ export default function ModifierBarFiche() {
     setCategorie(draft.categorie || 'Cocktails')
     setNbPortions(draft.nbPortions || '')
     setPrixTTC(draft.prixTTC || '')
+    setPerte(draft.perte || 0)
     setDescription(draft.description || '')
     setSaison(draft.saison || 'Printemps 2026')
     setAllergenes(draft.allergenes || [])
@@ -148,17 +149,23 @@ export default function ModifierBarFiche() {
     }, 0)
   }
 
+  const calculerCoutAvecPerte = () => {
+    const cout = calculerCout()
+    if (!cout || !perte || parseFloat(perte) <= 0) return cout
+    return cout / (1 - parseFloat(perte) / 100)
+  }
+
   const TVA_BAR = () => CATEGORIES_ALCOOL.includes(categorie) ? 20 : 10
 
   const foodCost = () => {
-    const cout = calculerCout()
+    const cout = calculerCoutAvecPerte()
     if (!prixTTC || !cout || !nbPortions) return null
     const tva = 1 + TVA_BAR() / 100
     return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / tva) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
-    const cout = calculerCout()
+    const cout = calculerCoutAvecPerte()
     if (!cout || !nbPortions) return null
     const coutPortion = cout / parseFloat(nbPortions)
     const seuil = parseFloat(params['seuil_vert_boissons'] || 22) / 100
@@ -171,13 +178,16 @@ export default function ModifierBarFiche() {
     setSaving(true)
     setError('')
 
-    const cout = calculerCout()
+    const clientId = await getClientId()
+    if (!clientId) { setError('Erreur : session expirée'); setSaving(false); return }
+
+    const cout = calculerCoutAvecPerte()
     const coutPortion = nbPortions ? (cout / parseFloat(nbPortions)) : null
     let photoUrl = photoExistante
 
     if (photo) {
       const ext = photo.name.split('.').pop()
-      const path = `bar-${params_route.id}.${ext}`
+      const path = `${clientId}/bar-${params_route.id}.${ext}`
       const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
@@ -190,14 +200,22 @@ export default function ModifierBarFiche() {
       nb_portions: nbPortions ? parseInt(nbPortions) : null,
       prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
       description, saison, allergenes, photo_url: photoUrl,
-      cout_portion: coutPortion, updated_at: new Date().toISOString()
+      cout_portion: coutPortion,
+      perte: perte ? parseFloat(perte) : 0,
+      updated_at: new Date().toISOString()
     }).eq('id', params_route.id)
 
     await supabase.from('fiche_bar_ingredients').delete().eq('fiche_bar_id', params_route.id)
 
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)
-      .map(i => ({ fiche_bar_id: params_route.id, ingredient_id: i.ingredient_id, quantite: parseFloat(i.quantite), unite: i.unite }))
+      .map(i => ({
+        fiche_bar_id: params_route.id,
+        ingredient_id: i.ingredient_id,
+        quantite: parseFloat(i.quantite),
+        unite: i.unite,
+        client_id: clientId
+      }))
 
     if (ingredientsAInserer.length > 0) {
       await supabase.from('fiche_bar_ingredients').insert(ingredientsAInserer)
@@ -206,7 +224,7 @@ export default function ModifierBarFiche() {
     await log({
       action: 'MODIFICATION', entite: 'fiche_bar', entite_id: params_route.id,
       entite_nom: nom, section: 'bar',
-      details: `Catégorie: ${categorie}, Saison: ${saison}`
+      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -217,6 +235,8 @@ export default function ModifierBarFiche() {
   const prixIndic = prixIndicatif()
   const seuilVert = parseFloat(params['seuil_vert_boissons'] || 22)
   const seuilOrange = parseFloat(params['seuil_orange_boissons'] || 28)
+  const coutBrut = calculerCout()
+  const coutAvecPerte = calculerCoutAvecPerte()
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
@@ -323,7 +343,7 @@ export default function ModifierBarFiche() {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
                 <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
@@ -338,6 +358,26 @@ export default function ModifierBarFiche() {
                 {prixIndic && <div style={{ fontSize: '11px', color: '#3B6D11', marginTop: '4px' }}>Indicatif ({seuilVert}%) TVA {TVA_BAR()}% : <strong>{prixIndic} €</strong></div>}
               </div>
             </div>
+
+            {/* % de perte */}
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                % de perte — évaporation, décantation...
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="number" value={perte} onChange={e => setPerte(e.target.value)}
+                  placeholder="0" min="0" max="99" step="0.5"
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${parseFloat(perte) > 0 ? '#FAC775' : c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: parseFloat(perte) > 0 ? '#FFFBF0' : c.blanc }}
+                />
+                <span style={{ fontSize: '16px', color: c.texteMuted, flexShrink: 0, fontWeight: '500' }}>%</span>
+              </div>
+              {parseFloat(perte) > 0 && (
+                <div style={{ fontSize: '11px', color: '#854F0B', marginTop: '6px', padding: '6px 10px', background: '#FAEEDA', borderRadius: '6px', border: '0.5px solid #FAC775' }}>
+                  ⚠️ Avec {perte}% de perte : coût brut {coutBrut.toFixed(2)} € → coût réel <strong>{coutAvecPerte.toFixed(2)} €</strong>
+                </div>
+              )}
+            </div>
+
             <div>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Description / Recette</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
@@ -370,15 +410,6 @@ export default function ModifierBarFiche() {
                       {['cl', 'ml', 'L', 'g', 'kg', 'u', 'trait', 'pièce', 'botte'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
-                  {(() => {
-                    const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
-                    const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
-                    return cout ? (
-                      <div style={{ marginTop: '6px', padding: '6px 10px', background: c.fond, borderRadius: '6px', fontSize: '12px', color: c.texte, fontWeight: '500', textAlign: 'right', border: `0.5px solid ${c.bordure}` }}>
-                        Coût : <strong>{cout} €</strong>
-                      </div>
-                    ) : null
-                  })()}
                 </div>
               ))}
             </>
@@ -445,9 +476,15 @@ export default function ModifierBarFiche() {
         {/* Récapitulatif */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
-            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
-            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calculerCout().toFixed(2)} €</div>
+            <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût brut</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{coutBrut.toFixed(2)} €</div>
           </div>
+          {parseFloat(perte) > 0 && (
+            <div style={{ background: '#FAEEDA', borderRadius: '8px', padding: '12px', border: '0.5px solid #FAC775' }}>
+              <div style={{ fontSize: '10px', color: '#854F0B', fontWeight: '500', textTransform: 'uppercase' }}>Perte {perte}% → Coût réel</div>
+              <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: '#854F0B' }}>{coutAvecPerte.toFixed(2)} €</div>
+            </div>
+          )}
           {prixIndic && (
             <div style={{ background: '#EAF3DE', borderRadius: '8px', padding: '12px' }}>
               <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
