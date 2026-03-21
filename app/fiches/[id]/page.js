@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
+import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
 
@@ -19,6 +20,9 @@ export default function FicheDetail() {
   const params_route = useParams()
   const isMobile = useIsMobile()
   const { c } = useTheme()
+  const { role } = useRole()
+
+  const peutModifier = role === 'admin' || role === 'cuisine'
 
   useEffect(() => {
     checkUser()
@@ -53,7 +57,6 @@ export default function FicheDetail() {
   const calculerCout = () => {
     return ingredients.reduce((total, ing) => {
       if (ing.ingredients?.prix_kg && ing.quantite) {
-        // Gestion des conversions pour le calcul du coût total
         let coef = (ing.unite === 'g' || ing.unite === 'ml') ? 0.001 : (ing.unite === 'cl' ? 0.01 : 1)
         return total + (ing.ingredients.prix_kg * ing.quantite * coef)
       }
@@ -93,7 +96,6 @@ export default function FicheDetail() {
     router.push('/fiches')
   }
 
-  // Fonction pour obtenir l'unité d'affichage (portions, kg, L, u)
   const getUniteLabel = () => {
     if (!fiche?.unite_production || fiche.unite_production === 'portions') return 'Portions'
     return fiche.unite_production
@@ -135,12 +137,14 @@ export default function FicheDetail() {
             background: c.accent, color: c.principal, border: 'none',
             borderRadius: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
           }}>{isMobile ? '🖨️' : '🖨️ Imprimer'}</button>
-          <button onClick={() => router.push(`/fiches/${params_route.id}/modifier`)} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
-          }}>{isMobile ? '✏️' : 'Modifier'}</button>
-          {!isMobile && (
+          {peutModifier && (
+            <button onClick={() => router.push(`/fiches/${params_route.id}/modifier`)} style={{
+              background: 'transparent', color: 'rgba(255,255,255,0.7)',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+            }}>{isMobile ? '✏️' : 'Modifier'}</button>
+          )}
+          {peutModifier && !isMobile && (
             <button onClick={handleDelete} style={{
               background: 'transparent', color: '#F09595',
               border: '0.5px solid rgba(255,255,255,0.2)',
@@ -164,7 +168,6 @@ export default function FicheDetail() {
                 {fiche.saison && <span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>{fiche.saison}</span>}
               </div>
             </div>
-            {/* BADGE DYNAMIQUE ICI */}
             <div style={{ background: c.principal, color: c.accent, borderRadius: '10px', padding: '8px 14px', textAlign: 'center', flexShrink: 0, marginLeft: '12px', minWidth: '70px' }}>
               <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{uniteLabel}</div>
               <div style={{ fontSize: '20px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
@@ -189,7 +192,7 @@ export default function FicheDetail() {
               </div>
             </div>
           )}
-          {isMobile && (
+          {peutModifier && isMobile && (
             <button onClick={handleDelete} style={{ marginTop: '12px', width: '100%', padding: '10px', background: 'transparent', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
               Supprimer cette fiche
             </button>
@@ -281,7 +284,7 @@ export default function FicheDetail() {
 
       {/* Version impression */}
       <div className="print-only" style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', background: 'white', padding: '0', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #2C1810', paddingBottom: '166px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #2C1810', paddingBottom: '16px', marginBottom: '20px' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8B7355', marginBottom: '6px', fontFamily: 'sans-serif' }}>Fiche technique — {fiche.categorie || ''}</div>
             <h1 style={{ fontSize: '28px', fontWeight: '400', color: '#2C1810', marginBottom: '8px', letterSpacing: '1px' }}>{fiche.nom}</h1>
