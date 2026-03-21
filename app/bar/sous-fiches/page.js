@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
+import { useRole } from '../../../lib/useRole'
 import NavbarBar from '../../../components/NavbarBar'
 
 export default function BarSousFichesPage() {
@@ -14,6 +14,8 @@ export default function BarSousFichesPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { c } = useTheme()
+  const { role } = useRole()
+  const peutModifier = role === 'admin' || role === 'bar'
 
   useEffect(() => {
     checkUser()
@@ -89,11 +91,13 @@ export default function BarSousFichesPage() {
             borderRadius: '12px', border: `0.5px solid ${c.bordure}`
           }}>
             <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>Aucune sous-fiche bar pour le moment</div>
-            <button onClick={() => router.push('/bar/fiches/nouvelle')} style={{
-              background: '#C4956A', color: '#3C3489', border: 'none',
-              borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
-              cursor: 'pointer', fontWeight: '600'
-            }}>Créer la première sous-fiche bar</button>
+            {peutModifier && (
+              <button onClick={() => router.push('/bar/fiches/nouvelle')} style={{
+                background: '#C4956A', color: '#3C3489', border: 'none',
+                borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
+                cursor: 'pointer', fontWeight: '600'
+              }}>Créer la première sous-fiche bar</button>
+            )}
           </div>
         ) : (
           <div style={{
@@ -132,10 +136,12 @@ export default function BarSousFichesPage() {
                       flex: 1, padding: '8px', background: '#EEEDFE', color: '#3C3489',
                       border: '0.5px solid #AFA9EC', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500'
                     }}>Voir</button>
-                    <button onClick={() => router.push(`/bar/fiches/${fiche.id}/modifier`)} style={{
-                      flex: 1, padding: '8px', background: 'transparent', color: c.texteMuted,
-                      border: `0.5px solid ${c.bordure}`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
-                    }}>Modifier</button>
+                    {peutModifier && (
+                      <button onClick={() => router.push(`/bar/fiches/${fiche.id}/modifier`)} style={{
+                        flex: 1, padding: '8px', background: 'transparent', color: c.texteMuted,
+                        border: `0.5px solid ${c.bordure}`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
+                      }}>Modifier</button>
+                    )}
                   </div>
                 </div>
               )

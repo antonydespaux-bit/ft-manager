@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
+import { useRole } from '../../lib/useRole'
 import NavbarCuisine from '../../components/NavbarCuisine'
 
 export default function SousFichesPage() {
@@ -14,6 +14,8 @@ export default function SousFichesPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { c } = useTheme()
+  const { role } = useRole()
+  const peutModifier = role === 'admin' || role === 'cuisine'
 
   useEffect(() => {
     checkUser()
@@ -89,11 +91,13 @@ export default function SousFichesPage() {
             borderRadius: '12px', border: `0.5px solid ${c.bordure}`
           }}>
             <div style={{ fontSize: '14px', color: c.texteMuted, marginBottom: '16px' }}>Aucune sous-fiche pour le moment</div>
-            <button onClick={() => router.push('/fiches/nouvelle')} style={{
-              background: c.accent, color: c.principal, border: 'none',
-              borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
-              cursor: 'pointer', fontWeight: '600'
-            }}>Créer la première sous-fiche</button>
+            {peutModifier && (
+              <button onClick={() => router.push('/fiches/nouvelle')} style={{
+                background: c.accent, color: c.principal, border: 'none',
+                borderRadius: '8px', padding: '10px 20px', fontSize: '13px',
+                cursor: 'pointer', fontWeight: '600'
+              }}>Créer la première sous-fiche</button>
+            )}
           </div>
         ) : (
           <div style={{
@@ -102,10 +106,9 @@ export default function SousFichesPage() {
             gap: isMobile ? '10px' : '14px'
           }}>
             {fichesFiltrees.map(fiche => {
-              // LOGIQUE D'UNITE DYNAMIQUE
-              const uniteLabel = (fiche.unite_production && fiche.unite_production !== 'portions') 
-                ? fiche.unite_production 
-                : 'portion';
+              const uniteLabel = (fiche.unite_production && fiche.unite_production !== 'portions')
+                ? fiche.unite_production
+                : 'portion'
 
               return (
                 <div key={fiche.id} style={{
@@ -133,10 +136,12 @@ export default function SousFichesPage() {
                       flex: 1, padding: '8px', background: c.violetClair, color: '#3C3489',
                       border: `0.5px solid #AFA9EC`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500'
                     }}>Voir</button>
-                    <button onClick={() => router.push(`/fiches/${fiche.id}/modifier`)} style={{
-                      flex: 1, padding: '8px', background: 'transparent', color: c.texteMuted,
-                      border: `0.5px solid ${c.bordure}`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
-                    }}>Modifier</button>
+                    {peutModifier && (
+                      <button onClick={() => router.push(`/fiches/${fiche.id}/modifier`)} style={{
+                        flex: 1, padding: '8px', background: 'transparent', color: c.texteMuted,
+                        border: `0.5px solid ${c.bordure}`, borderRadius: '8px', fontSize: '12px', cursor: 'pointer'
+                      }}>Modifier</button>
+                    )}
                   </div>
                 </div>
               )
