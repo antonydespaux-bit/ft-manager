@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase, getParametres } from '../../../../lib/supabase'
+import { supabase, getParametres, getClientId } from '../../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
@@ -155,27 +155,31 @@ export default function NouvelleBarFiche() {
     return (parseFloat(coutPortion) / seuil * tva).toFixed(2)
   }
 
-  const handleSubmit = async () => {
-    if (!nom) { setError('Le nom est obligatoire'); return }
-    if (!nbPortions) { setError('Le nombre de portions est obligatoire'); return }
-    setLoading(true)
-    setError('')
+const handleSubmit = async () => {
+  if (!nom) { setError('Le nom est obligatoire'); return }
+  if (!nbPortions) { setError('Le nombre de portions est obligatoire'); return }
+  setLoading(true)
+  setError('')
 
+  const clientId = await getClientId()
+  if (!clientId) { setError('Erreur : session expirée'); setLoading(false); return }
+  
     const coutPortion = calculerCoutPortion()
     // Si c'est une sous-fiche, on définit l'unité de production sur 'L' ou 'kg'
     const uniteProduction = categorie === 'Sous-fiche' ? (ingredients[0]?.unite === 'g' || ingredients[0]?.unite === 'kg' ? 'kg' : 'L') : 'portion'
 
-    const { data: fiche, error: errFiche } = await supabase
-      .from('fiches_bar')
-      .insert([{
-        nom, categorie,
-        nb_portions: parseInt(nbPortions),
-        prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
-        description, saison, allergenes,
-        cout_portion: coutPortion ? parseFloat(coutPortion) : null,
-        unite_production: uniteProduction
-      }])
-      .select().single()
+const { data: fiche, error: errFiche } = await supabase
+  .from('fiches_bar')
+  .insert([{
+    nom, categorie,
+    nb_portions: parseInt(nbPortions),
+    prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
+    description, saison, allergenes,
+    cout_portion: coutPortion ? parseFloat(coutPortion) : null,
+    unite_production: uniteProduction,
+    client_id: clientId
+  }])
+  .select().single()
 
     if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
 
