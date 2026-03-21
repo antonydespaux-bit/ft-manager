@@ -5,11 +5,13 @@ import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
 import { useRole } from '../lib/useRole'
 import { useIsMobile } from '../lib/useIsMobile'
+import { useTenant } from '../lib/useTenant'
 
 export default function NavbarCuisine() {
   const router = useRouter()
   const pathname = usePathname()
   const { c, nomEtablissement, logoUrl } = useTheme()
+  const { tenant } = useTenant()
   const { role } = useRole()
   const isMobile = useIsMobile()
   const [menuOuvert, setMenuOuvert] = useState(false)
@@ -18,6 +20,10 @@ export default function NavbarCuisine() {
   const NAV = c.principal || '#18181B'
   const ACCENT = c.accent || '#6366F1'
   const ACCENT_LIGHT = c.accentClair || '#EEF2FF'
+
+  const modules = tenant?.modules_actifs || ['fiches', 'sous-fiches', 'menus', 'bar', 'avis', 'recap', 'ingredients', 'ardoise']
+  const hasModule = (id) => modules.includes(id)
+
   const peutModifier = role === 'admin' || role === 'cuisine'
 
   const handleLogout = async () => {
@@ -38,8 +44,8 @@ export default function NavbarCuisine() {
       label: 'Fiches',
       paths: ['/fiches', '/sous-fiches', '/archives'],
       items: [
-        { label: 'Toutes les fiches', path: '/fiches' },
-        { label: 'Sous-fiches', path: '/sous-fiches' },
+        ...(hasModule('fiches') ? [{ label: 'Toutes les fiches', path: '/fiches' }] : []),
+        ...(hasModule('sous-fiches') ? [{ label: 'Sous-fiches', path: '/sous-fiches' }] : []),
         { label: 'Archives', path: '/archives' },
       ]
     },
@@ -47,10 +53,10 @@ export default function NavbarCuisine() {
       label: 'Contenus',
       paths: ['/menus', '/recap', '/ingredients', '/import', '/avis'],
       items: [
-        { label: 'Menus', path: '/menus' },
-        { label: 'Récap food cost', path: '/recap' },
-        ...(peutModifier ? [{ label: 'Ingrédients', path: '/ingredients' }] : []),
-        { label: 'Avis clients', path: '/avis' },
+        ...(hasModule('menus') ? [{ label: 'Menus', path: '/menus' }] : []),
+        ...(hasModule('recap') ? [{ label: 'Récap food cost', path: '/recap' }] : []),
+        ...(hasModule('ingredients') && peutModifier ? [{ label: 'Ingrédients', path: '/ingredients' }] : []),
+        ...(hasModule('avis') ? [{ label: 'Avis clients', path: '/avis' }] : []),
       ]
     },
     ...(role === 'admin' ? [{
@@ -60,10 +66,10 @@ export default function NavbarCuisine() {
         { label: 'Paramètres', path: '/parametres' },
         { label: 'Utilisateurs', path: '/admin' },
         { label: 'Activité', path: '/admin/logs' },
-        { label: 'Ardoise', path: '/admin/ardoise' },
+        ...(hasModule('ardoise') ? [{ label: 'Ardoise', path: '/admin/ardoise' }] : []),
       ]
     }] : []),
-  ]
+  ].filter(groupe => groupe.items.length > 0)
 
   const dropdownStyle = {
     position: 'absolute', top: '100%', left: 0, marginTop: '8px',
@@ -174,8 +180,8 @@ export default function NavbarCuisine() {
             )
           })}
 
-          {/* Lien Bar */}
-          {!isMobile && (role === 'admin' || role === 'directeur') && (
+          {/* Lien Bar — conditionné par module */}
+          {!isMobile && hasModule('bar') && (role === 'admin' || role === 'directeur') && (
             <button
               onClick={(e) => { e.stopPropagation(); router.push('/bar/dashboard') }}
               style={{
@@ -241,7 +247,7 @@ export default function NavbarCuisine() {
           <button onClick={() => { setMenuOuvert(false); router.push('/dashboard') }}
             style={{
               display: 'block', width: '100%', textAlign: 'left',
-              background: isActive('/dashboard') ? 'rgba(99,102,241,0.15)' : 'transparent',
+              background: isActive('/dashboard') ? `rgba(99,102,241,0.15)` : 'transparent',
               color: isActive('/dashboard') ? 'white' : 'rgba(255,255,255,0.7)',
               border: 'none', borderRadius: '8px', padding: '12px 16px',
               fontSize: '14px', cursor: 'pointer', marginBottom: '4px'
@@ -252,14 +258,14 @@ export default function NavbarCuisine() {
               onClick={() => { setMenuOuvert(false); router.push(item.path) }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
-                background: isActive(item.path) ? 'rgba(99,102,241,0.15)' : 'transparent',
+                background: isActive(item.path) ? `rgba(99,102,241,0.15)` : 'transparent',
                 color: isActive(item.path) ? 'white' : 'rgba(255,255,255,0.6)',
                 border: 'none', borderRadius: '8px', padding: '11px 16px',
                 fontSize: '14px', cursor: 'pointer', marginBottom: '2px'
               }}
             >{item.label}</button>
           ))}
-          {(role === 'admin' || role === 'directeur') && (
+          {hasModule('bar') && (role === 'admin' || role === 'directeur') && (
             <button onClick={() => { setMenuOuvert(false); router.push('/bar/dashboard') }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',

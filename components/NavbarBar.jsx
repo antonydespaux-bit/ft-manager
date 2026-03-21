@@ -5,11 +5,13 @@ import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
 import { useRole } from '../lib/useRole'
 import { useIsMobile } from '../lib/useIsMobile'
+import { useTenant } from '../lib/useTenant'
 
 export default function NavbarBar() {
   const router = useRouter()
   const pathname = usePathname()
   const { c, nomEtablissement, logoUrl } = useTheme()
+  const { tenant } = useTenant()
   const { role } = useRole()
   const isMobile = useIsMobile()
   const [menuOuvert, setMenuOuvert] = useState(false)
@@ -18,6 +20,9 @@ export default function NavbarBar() {
   const NAV = c.principal || '#18181B'
   const ACCENT_BAR = c.violet || '#7C3AED'
   const ACCENT_BAR_LIGHT = c.violetClair || '#EDE9FE'
+
+  const modules = tenant?.modules_actifs || ['fiches', 'sous-fiches', 'recap', 'ingredients']
+  const hasModule = (id) => modules.includes(id)
 
   const peutModifier = role === 'admin' || role === 'bar'
 
@@ -39,8 +44,8 @@ export default function NavbarBar() {
       label: 'Fiches bar',
       paths: ['/bar/fiches', '/bar/sous-fiches', '/bar/archives'],
       items: [
-        { label: 'Toutes les fiches', path: '/bar/fiches' },
-        { label: 'Sous-fiches', path: '/bar/sous-fiches' },
+        ...(hasModule('fiches') ? [{ label: 'Toutes les fiches', path: '/bar/fiches' }] : []),
+        ...(hasModule('sous-fiches') ? [{ label: 'Sous-fiches', path: '/bar/sous-fiches' }] : []),
         { label: 'Archives', path: '/bar/archives' },
       ]
     },
@@ -48,11 +53,11 @@ export default function NavbarBar() {
       label: 'Contenus',
       paths: ['/bar/recap', '/bar/ingredients', '/bar/import'],
       items: [
-        { label: 'Récap food cost', path: '/bar/recap' },
-        ...(peutModifier ? [{ label: 'Ingrédients', path: '/bar/ingredients' }] : []),
+        ...(hasModule('recap') ? [{ label: 'Récap food cost', path: '/bar/recap' }] : []),
+        ...(hasModule('ingredients') && peutModifier ? [{ label: 'Ingrédients', path: '/bar/ingredients' }] : []),
       ]
     },
-  ]
+  ].filter(groupe => groupe.items.length > 0)
 
   const dropdownStyle = {
     position: 'absolute', top: '100%', left: 0, marginTop: '8px',
