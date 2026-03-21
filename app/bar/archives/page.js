@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
+import NavbarBar from '../../../components/NavbarBar'
 
 export default function BarArchivesPage() {
   const [fiches, setFiches] = useState([])
@@ -44,22 +45,7 @@ export default function BarArchivesPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div style={{
-        background: '#3C3489', borderBottom: '0.5px solid #7F77DD40',
-        padding: '0 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/bar/dashboard')} />
-          <span style={{ background: '#7F77DD', color: 'white', borderRadius: '6px', padding: '2px 10px', fontSize: '11px', fontWeight: '600', letterSpacing: '1px' }}>BAR</span>
-        </div>
-        <button onClick={() => router.push('/bar/dashboard')} style={{
-          background: 'transparent', color: 'rgba(255,255,255,0.7)',
-          border: '0.5px solid rgba(255,255,255,0.2)',
-          borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
-        }}>← {!isMobile && 'Retour'}</button>
-      </div>
+      <NavbarBar />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 

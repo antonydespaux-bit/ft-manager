@@ -7,6 +7,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import * as XLSX from 'xlsx'
+import NavbarBar from '../../../components/NavbarBar'
 
 const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails']
 
@@ -199,41 +200,7 @@ export default function BarRecapPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div style={{
-        background: '#3C3489', borderBottom: '0.5px solid #7F77DD40',
-        padding: '0 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/bar/dashboard')} />
-          <span style={{ background: '#7F77DD', color: 'white', borderRadius: '6px', padding: '2px 10px', fontSize: '11px', fontWeight: '600', letterSpacing: '1px' }}>BAR</span>
-        </div>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          {nbArchivesSelectionnes > 0 && peutModifier && (
-            <button onClick={sauvegarderArchives} disabled={saving} style={{
-              background: saving ? c.texteMuted : '#854F0B', color: 'white', border: 'none',
-              borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
-            }}>
-              {saving ? '...' : `Archiver ${nbArchivesSelectionnes}`}
-            </button>
-          )}
-          <button onClick={() => router.push('/bar/archives')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 10px', fontSize: '12px', cursor: 'pointer'
-          }}>{isMobile ? '📦' : 'Archives'}</button>
-          <button onClick={exportExcel} style={{
-            background: '#4A7B6F', color: 'white', border: 'none',
-            borderRadius: '8px', padding: '8px 10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer'
-          }}>{isMobile ? '📊' : 'Export Excel'}</button>
-          <button onClick={() => router.push('/bar/dashboard')} style={{
-            background: 'transparent', color: 'rgba(255,255,255,0.7)',
-            border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '8px 10px', fontSize: '12px', cursor: 'pointer'
-          }}>← {!isMobile && 'Retour'}</button>
-        </div>
-      </div>
+      <NavbarBar />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 

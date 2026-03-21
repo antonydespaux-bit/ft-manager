@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
+import NavbarCuisine from '../../components/NavbarCuisine'
 
 export default function ArchivesPage() {
   const [fiches, setFiches] = useState([])
@@ -53,19 +54,7 @@ export default function ArchivesPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div style={{
-        background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
-        <button onClick={() => router.push('/fiches')} style={{
-          background: 'transparent', color: 'rgba(255,255,255,0.7)',
-          border: '0.5px solid rgba(255,255,255,0.2)',
-          borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
-        }}>← {!isMobile && 'Retour'}</button>
-      </div>
+      <NavbarCuisine />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 

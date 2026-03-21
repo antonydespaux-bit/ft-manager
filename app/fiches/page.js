@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
+import NavbarCuisine from '../../components/NavbarCuisine'
 
 export default function FichesPage() {
   const [fiches, setFiches] = useState([])
@@ -12,7 +13,6 @@ export default function FichesPage() {
   const [recherche, setRecherche] = useState('')
   const [categorie, setCategorie] = useState('toutes')
   const [saison, setSaison] = useState('toutes')
-  const [menuOuvert, setMenuOuvert] = useState(false)
   const router = useRouter()
   const isMobile = useIsMobile()
   const { c } = useTheme()
@@ -38,10 +38,6 @@ export default function FichesPage() {
     setLoading(false)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
 
   const fichesFiltrees = fiches.filter(f => {
     const matchRecherche = f.nom.toLowerCase().includes(recherche.toLowerCase())
@@ -52,80 +48,11 @@ export default function FichesPage() {
 
   const categories = ['toutes', ...new Set(fiches.map(f => f.categorie).filter(Boolean))]
 
-  const navItems = [
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: '+ Nouvelle fiche', path: '/fiches/nouvelle', accent: true },
-    { label: 'Menus', path: '/menus' },
-    { label: 'Récap', path: '/recap' },
-    { label: 'Sous-fiches', path: '/sous-fiches' },
-    { label: 'Ingrédients', path: '/ingredients' },
-    { label: 'Archives', path: '/archives' },
-    { label: 'Paramètres', path: '/parametres' },
-    { label: 'Déconnexion', path: null, action: handleLogout },
-  ]
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div style={{
-        background: c.principal,
-        borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 24px',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <Logo height={30} couleur="white" onClick={() => router.push('/dashboard')} />
-
-        {isMobile ? (
-          <button onClick={() => setMenuOuvert(!menuOuvert)} style={{
-            background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)',
-            borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
-            color: 'white', fontSize: '18px'
-          }}>☰</button>
-        ) : (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {navItems.map((item, i) => (
-              <button key={i}
-                onClick={() => item.action ? item.action() : router.push(item.path)}
-                style={{
-                  background: item.accent ? c.accent : 'transparent',
-                  color: item.accent ? c.principal : 'rgba(255,255,255,0.7)',
-                  border: item.accent ? 'none' : '0.5px solid rgba(255,255,255,0.2)',
-                  borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
-                  fontWeight: item.accent ? '600' : '400', cursor: 'pointer'
-                }}
-              >{item.label}</button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {isMobile && menuOuvert && (
-        <div style={{
-          background: c.principal, padding: '8px 16px 16px',
-          borderBottom: `0.5px solid ${c.accent}40`,
-          position: 'sticky', top: '56px', zIndex: 99
-        }}>
-          {navItems.map((item, i) => (
-            <button key={i}
-              onClick={() => {
-                setMenuOuvert(false)
-                item.action ? item.action() : router.push(item.path)
-              }}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left',
-                background: item.accent ? c.accent : 'transparent',
-                color: item.accent ? c.principal : 'rgba(255,255,255,0.85)',
-                border: 'none', borderRadius: '8px',
-                padding: '12px 16px', fontSize: '14px',
-                fontWeight: item.accent ? '600' : '400',
-                cursor: 'pointer', marginBottom: '4px'
-              }}
-            >{item.label}</button>
-          ))}
-        </div>
-      )}
+      <NavbarCuisine />
 
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 

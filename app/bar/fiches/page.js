@@ -6,6 +6,7 @@ import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
+import NavbarBar from '../../../components/NavbarBar'
 
 // AJOUT de 'Sous-fiche' dans la liste des catégories pour le filtre
 const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails', 'Sous-fiche']
@@ -17,7 +18,6 @@ export default function BarFichesPage() {
   const [recherche, setRecherche] = useState('')
   const [categorie, setCategorie] = useState('toutes')
   const [saison, setSaison] = useState('toutes')
-  const [menuOuvert, setMenuOuvert] = useState(false)
   const router = useRouter()
   const isMobile = useIsMobile()
   const { c } = useTheme()
@@ -43,11 +43,6 @@ export default function BarFichesPage() {
     setLoading(false)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
   const fichesFiltrees = fiches.filter(f => {
     const matchRecherche = f.nom.toLowerCase().includes(recherche.toLowerCase())
     const matchCategorie = categorie === 'toutes' || f.categorie === categorie
@@ -57,37 +52,11 @@ export default function BarFichesPage() {
 
   const peutModifier = role === 'admin' || role === 'bar'
 
-  const navItems = [
-    ...(peutModifier ? [{ label: '+ Nouvelle fiche', path: '/bar/fiches/nouvelle', accent: true }] : []),
-    { label: 'Dashboard', path: '/bar/dashboard' },
-    { label: 'Ingrédients', path: '/bar/ingredients' },
-    { label: 'Récap', path: '/bar/recap' },
-    { label: 'Déconnexion', path: null, action: handleLogout },
-  ]
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
       {/* HEADER (Inchangé) */}
-      <div style={{
-        background: '#3C3489', borderBottom: '0.5px solid #7F77DD40',
-        padding: '0 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/bar/dashboard')} />
-          <span style={{ background: '#7F77DD', color: 'white', borderRadius: '6px', padding: '2px 10px', fontSize: '11px', fontWeight: '600', letterSpacing: '1px' }}>BAR</span>
-        </div>
-        {isMobile ? (
-          <button onClick={() => setMenuOuvert(!menuOuvert)} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)', borderRadius: '8px', padding: '8px 12px', color: 'white' }}>☰</button>
-        ) : (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {navItems.map((item, i) => (
-              <button key={i} onClick={() => item.action ? item.action() : router.push(item.path)} style={{ background: item.accent ? '#C4956A' : 'transparent', color: item.accent ? '#3C3489' : 'rgba(255,255,255,0.7)', border: item.accent ? 'none' : '0.5px solid rgba(255,255,255,0.2)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer' }}>{item.label}</button>
-            ))}
-          </div>
-        )}
-      </div>
+      <NavbarBar />
 
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
         

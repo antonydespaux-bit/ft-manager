@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
+import NavbarBar from '../../../components/NavbarBar'
 
 export default function BarSousFichesPage() {
   const [fiches, setFiches] = useState([])
@@ -46,32 +47,7 @@ export default function BarSousFichesPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <div style={{
-        background: '#3C3489', borderBottom: '0.5px solid #7F77DD40',
-        padding: '0 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/bar/dashboard')} />
-          <button onClick={() => router.push('/bar/fiches')} style={{
-            background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px', padding: '6px 10px',
-            fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
-          }}>← {!isMobile && 'Retour'}</button>
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ background: '#7F77DD', color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>SF</span>
-              <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Sous-fiches bar</span>
-            </div>
-          )}
-        </div>
-        <button onClick={() => router.push('/bar/fiches/nouvelle')} style={{
-          background: '#C4956A', color: '#3C3489', border: 'none',
-          borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
-          fontWeight: '600', cursor: 'pointer'
-        }}>+ {!isMobile && 'Nouvelle sous-fiche'}</button>
-      </div>
+      <NavbarBar />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { c } from '@/lib/theme' 
 import { useRouter } from 'next/navigation'
+import NavbarCuisine from '../../../components/NavbarCuisine'
 
 export default function ArdoisePage() {
   const router = useRouter()
@@ -164,9 +165,7 @@ export default function ArdoisePage() {
             <input type="text" placeholder="🔍 Chercher ingrédient..." value={search} onChange={(e) => {setSearch(e.target.value); if(e.target.value.length > 1) supabase.from('ingredients').select('id, nom, prix_kg, unite').ilike('nom', `%${e.target.value}%`).limit(5).then(({data}) => setResults(data || []))}}
               style={{ width: '100%', padding: '15px', borderRadius: '10px', border: `1px solid #ddd` }} />
             {results.length > 0 && (
-              <div style={{ position: 'absolute', width: '100%', background: 'white', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100 }}>
-                {results.map(r => <div key={r.id} onClick={() => ajouterIngredient(r)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #eee' }}>{r.nom} ({parseFloat(r.prix_kg).toFixed(2)}€)</div>)}
-              </div>
+              <NavbarCuisine />
             )}
           </div>
 

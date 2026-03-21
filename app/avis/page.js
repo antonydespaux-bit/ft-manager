@@ -6,13 +6,13 @@ import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
+import NavbarCuisine from '../../components/NavbarCuisine'
 
 export default function AvisPage() {
   const [avis, setAvis] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtreSentiment, setFiltreSentiment] = useState('tous')
   const [filtrePlateforme, setFiltrePlateforme] = useState('toutes')
-  const [menuOuvert, setMenuOuvert] = useState(false)
   const [generatingId, setGeneratingId] = useState(null)
   const [copied, setCopied] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -42,10 +42,6 @@ export default function AvisPage() {
     setLoading(false)
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
 
   const genererReponse = async (unAvis) => {
     setGeneratingId(unAvis.id)
@@ -127,13 +123,6 @@ export default function AvisPage() {
   const platformEmoji = { Google: '🔵', TripAdvisor: '🟠', Yelp: '🔴', TheFork: '🟢', Autre: '⚪' }
   const peutModifier = role === 'admin' || role === 'cuisine'
 
-  const navItems = [
-    ...(peutModifier ? [{ label: '+ Nouvel avis', path: '/avis/nouveau', accent: true }] : []),
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Fiches', path: '/fiches' },
-    ...(role === 'admin' ? [{ label: '🍸 Bar', path: '/bar/dashboard' }] : []),
-    { label: 'Déconnexion', path: null, action: handleLogout },
-  ]
 
   const AvisCard = ({ unAvis, compact = false }) => {
     const s = sentimentStyle(unAvis.sentiment)
@@ -191,39 +180,7 @@ export default function AvisPage() {
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
       {/* Navbar */}
-      <div style={{
-        background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
-        padding: '0 16px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', height: '56px',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
-        {isMobile ? (
-          <button onClick={() => setMenuOuvert(!menuOuvert)} style={{ background: 'transparent', border: '0.5px solid rgba(255,255,255,0.3)', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', color: 'white', fontSize: '18px' }}>☰</button>
-        ) : (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {navItems.map((item, i) => (
-              <button key={i} onClick={() => item.action ? item.action() : router.push(item.path)} style={{
-                background: item.accent ? c.accent : 'transparent',
-                color: item.accent ? c.principal : 'rgba(255,255,255,0.7)',
-                border: item.accent ? 'none' : '0.5px solid rgba(255,255,255,0.2)',
-                borderRadius: '8px', padding: '8px 14px', fontSize: '13px',
-                fontWeight: item.accent ? '600' : '400', cursor: 'pointer'
-              }}>{item.label}</button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {isMobile && menuOuvert && (
-        <div style={{ background: c.principal, padding: '8px 16px 16px', borderBottom: `0.5px solid ${c.accent}40`, position: 'sticky', top: '56px', zIndex: 99 }}>
-          {navItems.map((item, i) => (
-            <button key={i} onClick={() => { setMenuOuvert(false); item.action ? item.action() : router.push(item.path) }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', background: item.accent ? c.accent : 'transparent', color: item.accent ? c.principal : 'rgba(255,255,255,0.85)', border: 'none', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', fontWeight: item.accent ? '600' : '400', cursor: 'pointer', marginBottom: '4px' }}
-            >{item.label}</button>
-          ))}
-        </div>
-      )}
+      <NavbarCuisine />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 
