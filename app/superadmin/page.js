@@ -609,23 +609,23 @@ export default function SuperAdminPage() {
                   {MODULES_DISPONIBLES.map((mod) => {
                     const moduleActif = modulesActifs.includes(mod.id)
                     return (
-                      <div key={mod.id} onClick={() => toggleModule(mod.id)} style={{
-                        padding: '14px 12px', borderRadius: '10px', cursor: 'pointer',
-                        border: actif ? '1.5px solid #6366F1' : '0.5px solid #E4E4E7',
-                        background: actif ? '#EEF2FF' : 'white',
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        transition: 'all 0.15s'
-                      }}>
-                        <span style={{ fontSize: '20px' }}>{mod.emoji}</span>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: actif ? '500' : '400', color: actif ? '#4338CA' : '#18181B' }}>
-                            {mod.label}
-                          </div>
-                        </div>
-                        <div style={{ marginLeft: 'auto', width: '16px', height: '16px', borderRadius: '50%', background: actif ? '#6366F1' : '#E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {actif && <span style={{ fontSize: '10px', color: 'white' }}>✓</span>}
-                        </div>
+                     <div key={mod.id} onClick={() => toggleModule(mod.id)} style={{
+                    padding: '14px 12px', borderRadius: '10px', cursor: 'pointer',
+                    border: moduleActif ? '1.5px solid #6366F1' : '0.5px solid #E4E4E7',
+                    background: moduleActif ? '#EEF2FF' : 'white',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    transition: 'all 0.15s'
+                  }}>
+                    <span style={{ fontSize: '20px' }}>{mod.emoji}</span>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: moduleActif ? '500' : '400', color: moduleActif ? '#4338CA' : '#18181B' }}>
+                        {mod.label}
                       </div>
+                    </div>
+                    <div style={{ marginLeft: 'auto', width: '16px', height: '16px', borderRadius: '50%', background: moduleActif ? '#6366F1' : '#E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {moduleActif && <span style={{ fontSize: '10px', color: 'white' }}>✓</span>}
+                    </div>
+                  </div>
                     )
                   })}
                 </div>
