@@ -192,7 +192,7 @@ export default function NavbarBar() {
           {/* Lien Cuisine */}
           {!isMobile && (role === 'admin' || role === 'directeur') && (
             <button
-              onClick={(e) => { e.stopPropagation(); router.push(role === 'admin' ? '/choix' : '/dashboard') }}
+              onClick={(e) => { e.stopPropagation(); router.push('/dashboard') }}
               style={{
                 background: 'transparent', border: 'none',
                 borderBottom: '2px solid transparent',
@@ -295,7 +295,7 @@ export default function NavbarBar() {
 
           {(role === 'admin' || role === 'directeur') && (
             <button
-              onClick={() => { setMenuOuvert(false); router.push(role === 'admin' ? '/choix' : '/dashboard') }}
+              onClick={() => { setMenuOuvert(false); router.push('/dashboard') }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 background: 'transparent', color: 'rgba(255,255,255,0.6)',
