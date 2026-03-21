@@ -98,7 +98,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '8px' }}>
               <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Mot de passe
               </label>
@@ -112,6 +112,19 @@ export default function LoginPage() {
               />
             </div>
 
+            <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+              <button
+                type="button"
+                onClick={() => router.push('/reset-password')}
+                style={{
+                  background: 'transparent', border: 'none',
+                  fontSize: '12px', color: c.texteMuted,
+                  cursor: 'pointer', textDecoration: 'underline', padding: 0
+                }}>
+                Mot de passe oublié ?
+              </button>
+            </div>
+
             <button type="submit" disabled={loading} style={{
               width: '100%', padding: '14px',
               background: loading ? c.texteMuted : c.principal,
@@ -121,20 +134,6 @@ export default function LoginPage() {
             }}>
               {loading ? 'Connexion...' : 'Se connecter'}
             </button>
-            <button onClick={() => router.push('/reset-password')} style={{
-            width: '100%', marginTop: '12px', background: 'transparent',
-             color: theme.couleurs.texteMuted, border: 'none', fontSize: '13px',
-            cursor: 'pointer', textDecoration: 'underline'
-            }}>
-              Mot de passe oublié ?
-          </button>
-          <button onClick={() => router.push('/inscription')} style={{
-          width: '100%', marginTop: '8px', background: 'transparent',
-          color: c.texteMuted, border: 'none', fontSize: '13px',
-           cursor: 'pointer', textDecoration: 'underline'
-            }}>
-            Créer un compte
-          </button>
           </form>
         </div>
 
