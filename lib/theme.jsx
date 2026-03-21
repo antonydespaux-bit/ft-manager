@@ -83,3 +83,4 @@ export function IconBar({ size = 16, color = 'currentColor' }) {
     </svg>
   )
 }
+export const c = theme.couleurs
