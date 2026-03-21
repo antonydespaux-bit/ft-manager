@@ -6,9 +6,10 @@ import { useTheme } from '../lib/useTheme'
 import { useRole } from '../lib/useRole'
 import { useIsMobile } from '../lib/useIsMobile'
 
-const NAV = '#18181B'
-const ACCENT_BAR = '#7C3AED'
-const ACCENT_BAR_LIGHT = '#EDE9FE'
+const { c, nomEtablissement, logoUrl } = useTheme()
+const NAV = c.principal || '#18181B'
+const ACCENT_BAR = c.violet || '#7C3AED'
+const ACCENT_BAR_LIGHT = c.violetClair || '#EDE9FE'
 
 export default function NavbarBar() {
   const router = useRouter()

@@ -6,9 +6,12 @@ import { useTheme } from '../lib/useTheme'
 import { useRole } from '../lib/useRole'
 import { useIsMobile } from '../lib/useIsMobile'
 
-const NAV = '#18181B'
-const ACCENT = '#6366F1'
-const ACCENT_LIGHT = '#EEF2FF'
+const { c, nomEtablissement, logoUrl } = useTheme()
+
+// Puis utilisez c.principal au lieu de NAV, c.accent au lieu de ACCENT
+const NAV = c.principal || '#18181B'
+const ACCENT = c.accent || '#6366F1'
+const ACCENT_LIGHT = c.accentClair || '#EEF2FF'
 
 export default function NavbarCuisine() {
   const router = useRouter()
