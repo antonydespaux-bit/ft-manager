@@ -146,13 +146,20 @@ export default function BarFicheDetail() {
             background: '#C4956A', color: '#3C3489', border: 'none',
             borderRadius: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
           }}>{isMobile ? '🖨️' : '🖨️ Imprimer'}</button>
-          {peutModifier && (
-            <button onClick={() => router.push(`/bar/fiches/${params_route.id}/modifier`)} style={{
-              background: 'transparent', color: 'rgba(255,255,255,0.7)',
-              border: '0.5px solid rgba(255,255,255,0.2)',
-              borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
-            }}>{isMobile ? '✏️' : 'Modifier'}</button>
-          )}
+         {peutModifier && (
+  <button onClick={() => router.push(`/bar/fiches/${params_route.id}/modifier`)} style={{
+    background: 'transparent', color: 'rgba(255,255,255,0.7)',
+    border: '0.5px solid rgba(255,255,255,0.2)',
+    borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+  }}>{isMobile ? '✏️' : 'Modifier'}</button>
+)}
+{peutModifier && (
+  <button onClick={handleDelete} style={{
+    background: 'transparent', color: '#F09595',
+    border: '0.5px solid rgba(255,255,255,0.2)',
+    borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+  }}>{isMobile ? '🗑️' : 'Supprimer'}</button>
+)}
         </div>
       </div>
 
