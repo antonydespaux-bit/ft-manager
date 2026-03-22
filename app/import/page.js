@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { supabase, getClientId } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { log } from '../../lib/useLog'
@@ -18,6 +17,7 @@ export default function ImportPage() {
   const [donnees, setDonnees] = useState([])
   const [progression, setProgression] = useState(0)
   const [etape, setEtape] = useState('')
+  const [categoriesInconnues, setCategoriesInconnues] = useState([])
   const router = useRouter()
   const isMobile = useIsMobile()
   const { c } = useTheme()
@@ -29,11 +29,24 @@ export default function ImportPage() {
     return isNaN(num) ? null : num
   }
 
-  const handleFichier = (e) => {
+  const handleFichier = async (e) => {
     const fichier = e.target.files[0]
     if (!fichier) return
     setResultat(null)
     setProgression(0)
+    setCategoriesInconnues([])
+
+    // Charger les catégories existantes pour le matching
+    const clientId = await getClientId()
+    const { data: cats } = await supabase
+      .from('categories_ingredients')
+      .select('id, nom')
+      .eq('client_id', clientId)
+
+    const categoriesMap = {}
+    ;(cats || []).forEach(cat => {
+      categoriesMap[cat.nom.toLowerCase().trim()] = cat.id
+    })
 
     const reader = new FileReader()
     reader.onload = (evt) => {
@@ -43,16 +56,37 @@ export default function ImportPage() {
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 })
 
       const ingredients = []
+      const inconnues = new Set()
+
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i]
         if (!row[0]) continue
+
+        const nomCategorie = row[3]?.toString().trim() || ''
+        let categorie_id = null
+        let categorieNonTrouvee = false
+
+        if (nomCategorie) {
+          const match = categoriesMap[nomCategorie.toLowerCase()]
+          if (match) {
+            categorie_id = match
+          } else {
+            inconnues.add(nomCategorie)
+            categorieNonTrouvee = true
+          }
+        }
+
         ingredients.push({
           nom: row[0]?.toString().trim(),
           prix_kg: normaliserPrix(row[1]),
-          unite: row[2]?.toString().trim() || 'kg'
+          unite: row[2]?.toString().trim() || 'kg',
+          categorie_id,
+          categorieNom: nomCategorie,
+          categorieNonTrouvee
         })
       }
 
+      setCategoriesInconnues([...inconnues])
       setDonnees(ingredients)
       setApercu(ingredients.slice(0, 5))
       setFichierPret(true)
@@ -73,6 +107,7 @@ export default function ImportPage() {
     let importes = 0
     let misAJour = 0
     let erreurs = 0
+    let categoriesAssignees = 0
     const total = donnees.length
 
     for (let i = 0; i < donnees.length; i += batchSize) {
@@ -81,32 +116,47 @@ export default function ImportPage() {
         try {
           const { data: existing } = await supabase
             .from('ingredients')
-            .select('id, prix_kg')
+            .select('id, prix_kg, categorie_id')
             .eq('nom', ing.nom)
             .eq('client_id', clientId)
             .single()
 
+          const updateData = {
+            prix_kg: ing.prix_kg,
+            unite: ing.unite,
+          }
+          // On n'écrase la catégorie existante que si une catégorie est fournie dans le fichier
+          if (ing.categorie_id) updateData.categorie_id = ing.categorie_id
+
           if (existing) {
-            if (existing.prix_kg !== ing.prix_kg) {
+            const prixChange = existing.prix_kg !== ing.prix_kg
+            const catChange = ing.categorie_id && existing.categorie_id !== ing.categorie_id
+
+            if (prixChange || catChange) {
+              if (prixChange) {
+                updateData.prix_precedent = existing.prix_kg
+                updateData.prix_updated_at = new Date().toISOString()
+              }
               await supabase.from('ingredients')
-                .update({
-                  prix_kg: ing.prix_kg,
-                  unite: ing.unite,
-                  prix_precedent: existing.prix_kg,
-                  prix_updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', existing.id)
               misAJour++
+              if (catChange) categoriesAssignees++
             }
           } else {
             await supabase.from('ingredients').insert([{
-              ...ing,
+              nom: ing.nom,
+              prix_kg: ing.prix_kg,
+              unite: ing.unite,
+              categorie_id: ing.categorie_id || null,
               client_id: clientId
             }])
             importes++
+            if (ing.categorie_id) categoriesAssignees++
           }
-        } catch (e) { erreurs++ }
+        } catch { erreurs++ }
       }
+
       const done = Math.min(i + batchSize, total)
       setProgression(Math.round((done / total) * 100))
       setEtape(`Traitement ${done} / ${total} ingrédients...`)
@@ -118,11 +168,11 @@ export default function ImportPage() {
       entite: 'ingredients',
       entite_nom: `${importes} nouveaux, ${misAJour} mis à jour`,
       section: 'cuisine',
-      details: `${total} ingrédients traités`
+      details: `${total} traités, ${categoriesAssignees} catégories assignées`
     })
 
     setLoading(false)
-    setResultat({ importes, misAJour, erreurs, total })
+    setResultat({ importes, misAJour, erreurs, total, categoriesAssignees })
     setEtape('')
   }
 
@@ -135,9 +185,24 @@ export default function ImportPage() {
     setResultat(prev => ({ ...prev, recalculDone: true }))
   }
 
+  // Générer un fichier modèle Excel
+  const telechargerModele = () => {
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Nom', 'Prix HT (€)', 'Unité', 'Catégorie'],
+      ['Beurre doux', '4.50', 'kg', 'Produits laitiers'],
+      ['Filet de boeuf', '38.00', 'kg', 'Viandes & Volailles'],
+      ['Tomates cerises', '3.20', 'kg', 'Légumes & Herbes'],
+      ['Farine T55', '0.80', 'kg', 'Épicerie sèche'],
+    ])
+    // Largeurs colonnes
+    ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 25 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'Ingrédients')
+    XLSX.writeFile(wb, 'modele_import_ingredients.xlsx')
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-
       <NavbarCuisine />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '700px', margin: '0 auto' }}>
@@ -166,32 +231,67 @@ export default function ImportPage() {
 
         {/* Import Excel */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '28px', border: `0.5px solid ${c.bordure}`, marginBottom: '20px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>
-            Import Excel des ingrédients
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Import Excel des ingrédients
+            </div>
+            <button onClick={telechargerModele} style={{
+              background: c.accentClair, color: c.accent, border: `0.5px solid ${c.accent}40`,
+              borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: '500', cursor: 'pointer'
+            }}>
+              📥 Télécharger le modèle
+            </button>
           </div>
 
+          {/* Format attendu */}
           <div style={{ background: c.fond, borderRadius: '8px', padding: '14px 16px', fontSize: '13px', color: c.texteMuted, marginBottom: '20px', border: `0.5px solid ${c.bordure}` }}>
-            <strong style={{ color: c.texte }}>Colonne A</strong> — Nom de l'article<br />
-            <strong style={{ color: c.texte }}>Colonne B</strong> — Prix HT (avec . ou ,)<br />
-            <strong style={{ color: c.texte }}>Colonne C</strong> — Unité d'utilisation<br />
-            <div style={{ marginTop: '8px', color: c.vert, fontSize: '12px' }}>✓ Les prix existants seront mis à jour automatiquement</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
+              <strong style={{ color: c.texte }}>Colonne A</strong><span>Nom de l'article <span style={{ color: '#DC2626' }}>*</span></span>
+              <strong style={{ color: c.texte }}>Colonne B</strong><span>Prix HT en € (avec . ou ,)</span>
+              <strong style={{ color: c.texte }}>Colonne C</strong><span>Unité (kg, L, u…)</span>
+              <strong style={{ color: c.accent }}>Colonne D</strong><span style={{ color: c.accent }}>Catégorie (doit correspondre exactement)</span>
+            </div>
+            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `0.5px solid ${c.bordure}`, fontSize: '12px' }}>
+              <div style={{ color: c.vert, marginBottom: '2px' }}>✓ Les prix existants seront mis à jour automatiquement</div>
+              <div style={{ color: c.accent }}>✓ La catégorie doit correspondre exactement à une catégorie existante</div>
+            </div>
           </div>
 
           <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFichier}
             style={{ width: '100%', padding: '12px', border: `0.5px solid ${c.accent}`, borderRadius: '8px', fontSize: '13px', background: c.accentClair, cursor: 'pointer', color: c.texte, marginBottom: '16px' }}
           />
 
+          {/* Alerte catégories inconnues */}
+          {categoriesInconnues.length > 0 && (
+            <div style={{ background: '#FEF3C7', border: '0.5px solid #FDE68A', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '500', color: '#92400E', marginBottom: '8px' }}>
+                ⚠️ {categoriesInconnues.length} catégorie{categoriesInconnues.length > 1 ? 's' : ''} non reconnue{categoriesInconnues.length > 1 ? 's' : ''} :
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {categoriesInconnues.map(cat => (
+                  <span key={cat} style={{ background: '#FDE68A', color: '#92400E', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: '500' }}>
+                    {cat}
+                  </span>
+                ))}
+              </div>
+              <div style={{ fontSize: '12px', color: '#92400E', marginTop: '8px' }}>
+                Ces ingrédients seront importés sans catégorie. Créez d'abord les catégories manquantes dans la page Ingrédients.
+              </div>
+            </div>
+          )}
+
+          {/* Aperçu */}
           {apercu.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '8px', fontWeight: '500' }}>
-                Aperçu des 5 premiers ingrédients ({donnees.length} au total) :
+                Aperçu des 5 premiers ({donnees.length} au total) :
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: c.fond }}>
-                      {['Nom', 'Prix HT', 'Unité'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', border: `0.5px solid ${c.bordure}` }}>{h}</th>
+                      {['Nom', 'Prix HT', 'Unité', 'Catégorie'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', color: h === 'Catégorie' ? c.accent : c.texteMuted, fontWeight: '500', textTransform: 'uppercase', border: `0.5px solid ${c.bordure}` }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -201,6 +301,19 @@ export default function ImportPage() {
                         <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.nom}</td>
                         <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.prix_kg ? `${ing.prix_kg} €` : '—'}</td>
                         <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}`, color: c.texte }}>{ing.unite}</td>
+                        <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}` }}>
+                          {ing.categorieNom ? (
+                            <span style={{
+                              background: ing.categorieNonTrouvee ? '#FEF3C7' : c.accentClair,
+                              color: ing.categorieNonTrouvee ? '#92400E' : c.accent,
+                              borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500'
+                            }}>
+                              {ing.categorieNonTrouvee ? '⚠️ ' : '✓ '}{ing.categorieNom}
+                            </span>
+                          ) : (
+                            <span style={{ color: c.texteMuted, fontSize: '12px' }}>—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -209,6 +322,7 @@ export default function ImportPage() {
             </div>
           )}
 
+          {/* Progression */}
           {loading && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '6px' }}>{etape}</div>
@@ -222,7 +336,7 @@ export default function ImportPage() {
           {fichierPret && (
             <button onClick={handleImport} disabled={loading} style={{
               width: '100%', padding: '14px', background: loading ? c.texteMuted : c.accent,
-              color: c.principal, border: 'none', borderRadius: '8px', fontSize: '13px',
+              color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px',
               fontWeight: '600', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer'
             }}>
               {loading ? `Import en cours... ${progression}%` : `Importer / Mettre à jour ${donnees.length} ingrédients`}
@@ -230,22 +344,22 @@ export default function ImportPage() {
           )}
         </div>
 
+        {/* Résultat */}
         {resultat && (
           <div style={{ background: c.vertClair, border: `0.5px solid ${c.vert}40`, borderRadius: '12px', padding: '20px' }}>
             <div style={{ fontWeight: '600', marginBottom: '10px', color: c.vert }}>Import terminé !</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-              <div style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '500', color: c.vert }}>{resultat.importes}</div>
-                <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Nouveaux</div>
-              </div>
-              <div style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '500', color: '#854F0B' }}>{resultat.misAJour}</div>
-                <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Mis à jour</div>
-              </div>
-              <div style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '500', color: resultat.erreurs > 0 ? '#A32D2D' : c.texte }}>{resultat.erreurs}</div>
-                <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>Erreurs</div>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '14px' }}>
+              {[
+                { label: 'Nouveaux', value: resultat.importes, color: c.vert },
+                { label: 'Mis à jour', value: resultat.misAJour, color: '#D97706' },
+                { label: 'Catégories', value: resultat.categoriesAssignees, color: c.accent },
+                { label: 'Erreurs', value: resultat.erreurs, color: resultat.erreurs > 0 ? '#DC2626' : c.texte },
+              ].map((s, i) => (
+                <div key={i} style={{ background: c.blanc, borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '22px', fontWeight: '500', color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase' }}>{s.label}</div>
+                </div>
+              ))}
             </div>
 
             {resultat.misAJour > 0 && !resultat.recalculDone && (
@@ -266,10 +380,10 @@ export default function ImportPage() {
               </div>
             )}
 
-            <button onClick={() => router.push('/fiches')} style={{
-              width: '100%', padding: '10px 20px', background: c.vert, color: 'white',
+            <button onClick={() => router.push('/ingredients')} style={{
+              width: '100%', padding: '10px 20px', background: c.accent, color: 'white',
               border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', fontWeight: '500'
-            }}>Voir les fiches</button>
+            }}>Voir les ingrédients</button>
           </div>
         )}
       </div>
