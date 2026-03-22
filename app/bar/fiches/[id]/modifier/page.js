@@ -10,12 +10,12 @@ import { log } from '../../../../../lib/useLog'
 import { ALLERGENES } from '../../../../../lib/allergenes'
 import IngredientSearch from '../../../../../components/IngredientSearch'
 
-const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails', 'Eaux', 'Caféterie', 'Sous-fiche']
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
 export default function ModifierBarFiche() {
   const [nom, setNom] = useState('')
-  const [categorie, setCategorie] = useState('Cocktails')
+  const [categoriePlat, setCategoriePlat] = useState('')
+  const [lieuId, setLieuId] = useState('')
   const [nbPortions, setNbPortions] = useState('')
   const [prixTTC, setPrixTTC] = useState('')
   const [perte, setPerte] = useState(0)
@@ -28,6 +28,8 @@ export default function ModifierBarFiche() {
   const [photoExistante, setPhotoExistante] = useState(null)
   const [ingredients, setIngredients] = useState([])
   const [listeIngredients, setListeIngredients] = useState([])
+  const [lieux, setLieux] = useState([])
+  const [categoriesDyn, setCategoriesDyn] = useState([])
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -38,7 +40,12 @@ export default function ModifierBarFiche() {
   const { c } = useTheme()
   const isMobile = useIsMobile()
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, perte, description, instructions, saison, allergenes, ingredients }
+  const catSelectionnee = categoriesDyn.find(cat => cat.id === categoriePlat)
+  const isSousFiche = catSelectionnee?.nom === 'Sous-fiche' || catSelectionnee?.nom === 'Sous-fiches'
+  const nomCat = catSelectionnee?.nom || ''
+  const isAlcool = CATEGORIES_ALCOOL.includes(nomCat)
+
+  const autosaveData = { nom, categoriePlat, lieuId, nbPortions, prixTTC, perte, description, instructions, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(`modifier-fiche-bar-${params_route.id}`, autosaveData, 60000)
 
   useEffect(() => {
@@ -59,12 +66,30 @@ export default function ModifierBarFiche() {
 
   const loadData = async () => {
     try {
-      const { data: ficheData } = await supabase
-        .from('fiches_bar').select('*').eq('id', params_route.id).single()
+      const clientId = await getClientId()
+      if (!clientId) { router.push('/'); return }
+
+      const [
+        { data: ficheData },
+        { data: lieuxData },
+        { data: catsData },
+        { data: liste }
+      ] = await Promise.all([
+        supabase.from('fiches_bar').select('*').eq('id', params_route.id).single(),
+        supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre'),
+        supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre'),
+        supabase.from('ingredients_bar').select('*').order('nom').limit(5000)
+      ])
+
       if (!ficheData) { router.push('/bar/fiches'); return }
 
+      setLieux(lieuxData || [])
+      setCategoriesDyn(catsData || [])
+      setListeIngredients(liste || [])
+
       setNom(ficheData.nom)
-      setCategorie(ficheData.categorie || 'Cocktails')
+      setCategoriePlat(ficheData.categorie_plat_id || '')
+      setLieuId(ficheData.lieu_id || '')
       setNbPortions(ficheData.nb_portions || '')
       setPrixTTC(ficheData.prix_ttc || '')
       setPerte(ficheData.perte || 0)
@@ -74,7 +99,7 @@ export default function ModifierBarFiche() {
       setAllergenes(ficheData.allergenes || [])
       if (ficheData.photo_url) { setPhotoExistante(ficheData.photo_url); setPhotoPreview(ficheData.photo_url) }
 
-      // Requête ingrédients en deux temps pour éviter le bug de jointure Supabase
+      // Requête ingrédients en deux temps
       const { data: liens } = await supabase
         .from('fiche_bar_ingredients')
         .select('quantite, unite, ingredient_id, sous_fiche_id')
@@ -106,9 +131,6 @@ export default function ModifierBarFiche() {
       } else {
         setIngredients([])
       }
-
-      const { data: liste } = await supabase.from('ingredients_bar').select('*').order('nom').limit(5000)
-      setListeIngredients(liste || [])
     } catch (err) {
       console.error('Load data error:', err)
     } finally {
@@ -120,7 +142,8 @@ export default function ModifierBarFiche() {
     const draft = getDraft()
     if (!draft) return
     setNom(draft.nom || '')
-    setCategorie(draft.categorie || 'Cocktails')
+    setCategoriePlat(draft.categoriePlat || '')
+    setLieuId(draft.lieuId || '')
     setNbPortions(draft.nbPortions || '')
     setPrixTTC(draft.prixTTC || '')
     setPerte(draft.perte || 0)
@@ -184,7 +207,7 @@ export default function ModifierBarFiche() {
     return cout / (1 - parseFloat(perte) / 100)
   }
 
-  const TVA_BAR = () => CATEGORIES_ALCOOL.includes(categorie) ? 20 : 10
+  const TVA_BAR = () => isAlcool ? 20 : 10
 
   const foodCost = () => {
     const cout = calculerCoutAvecPerte()
@@ -225,7 +248,10 @@ export default function ModifierBarFiche() {
     }
 
     await supabase.from('fiches_bar').update({
-      nom, categorie,
+      nom,
+      categorie: nomCat,
+      categorie_plat_id: categoriePlat || null,
+      lieu_id: lieuId || null,
       nb_portions: nbPortions ? parseInt(nbPortions) : null,
       prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
       description,
@@ -255,7 +281,7 @@ export default function ModifierBarFiche() {
     await log({
       action: 'MODIFICATION', entite: 'fiche_bar', entite_id: params_route.id,
       entite_nom: nom, section: 'bar',
-      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
+      details: `Catégorie: ${nomCat}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -317,8 +343,8 @@ export default function ModifierBarFiche() {
 
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
-        <div style={{ background: CATEGORIES_ALCOOL.includes(categorie) ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${CATEGORIES_ALCOOL.includes(categorie) ? '#F09595' : '#4A7B6F40'}`, color: CATEGORIES_ALCOOL.includes(categorie) ? '#A32D2D' : '#3B6D11' }}>
-          {CATEGORIES_ALCOOL.includes(categorie) ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
+        <div style={{ background: isAlcool ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${isAlcool ? '#F09595' : '#4A7B6F40'}`, color: isAlcool ? '#A32D2D' : '#3B6D11' }}>
+          {isAlcool ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
         </div>
 
         {/* Photo */}
@@ -356,20 +382,34 @@ export default function ModifierBarFiche() {
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
               />
             </div>
+
+            {/* Catégorie + Lieu dynamiques bar */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
-                <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {CATEGORIES_BAR.map(cat => <option key={cat}>{cat}</option>)}
+                <select value={categoriePlat} onChange={e => setCategoriePlat(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans catégorie</option>
+                  {categoriesDyn.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
-                <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {theme.saisons.map(s => <option key={s}>{s}</option>)}
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Lieu de service</label>
+                <select value={lieuId} onChange={e => setLieuId(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans lieu</option>
+                  {lieux.map(l => <option key={l.id} value={l.id}>{l.emoji} {l.nom}</option>)}
                 </select>
               </div>
             </div>
+
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
+              <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                {theme.saisons.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
@@ -475,7 +515,7 @@ export default function ModifierBarFiche() {
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>📋 Instructions de préparation</div>
           <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '12px' }}>Les sauts de ligne seront respectés à l'écran et à l'impression.</div>
           <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={8}
-            placeholder={`1. Verser le rhum dans le shaker...\n2. Ajouter le jus de citron vert...\n3. Shaker vigoureusement 10 secondes...\n\nDressage :\n- Verser dans un verre à cocktail glacé...`}
+            placeholder={`1. Verser le rhum dans le shaker...\n2. Ajouter le jus de citron vert...\n\nDressage :\n- Verser dans un verre à cocktail glacé...`}
             style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '0.5px solid #AFA9EC', fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte, background: c.blanc, lineHeight: '1.7', minHeight: '180px' }}
           />
           {instructions && (

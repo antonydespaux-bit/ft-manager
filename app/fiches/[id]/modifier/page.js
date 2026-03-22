@@ -10,11 +10,12 @@ import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
 
-const isIngredientPossible = (cat) => cat === 'Sous-fiche' || cat === 'Accompagnements'
+const isIngredientPossible = (nom) => nom === 'Sous-fiches' || nom === 'Sous-fiche' || nom === 'Accompagnements'
 
 export default function ModifierFiche() {
   const [nom, setNom] = useState('')
-  const [categorie, setCategorie] = useState('Plats')
+  const [categoriePlat, setCategoriePlat] = useState('')
+  const [lieuId, setLieuId] = useState('')
   const [nbPortions, setNbPortions] = useState('')
   const [prixTTC, setPrixTTC] = useState('')
   const [perte, setPerte] = useState(0)
@@ -27,6 +28,8 @@ export default function ModifierFiche() {
   const [photoExistante, setPhotoExistante] = useState(null)
   const [ingredients, setIngredients] = useState([])
   const [listeIngredients, setListeIngredients] = useState([])
+  const [lieux, setLieux] = useState([])
+  const [categoriesDyn, setCategoriesDyn] = useState([])
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -35,11 +38,12 @@ export default function ModifierFiche() {
   const router = useRouter()
   const params_route = useParams()
   const { c } = useTheme()
-  const categories = [...theme.categories, 'Sous-fiche']
   const isMobile = useIsMobile()
-  const isSousFiche = categorie === 'Sous-fiche'
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, perte, description, instructions, saison, allergenes, ingredients }
+  const catSelectionnee = categoriesDyn.find(cat => cat.id === categoriePlat)
+  const isSousFiche = catSelectionnee?.nom === 'Sous-fiches' || catSelectionnee?.nom === 'Sous-fiche'
+
+  const autosaveData = { nom, categoriePlat, lieuId, nbPortions, prixTTC, perte, description, instructions, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave(`modifier-fiche-${params_route.id}`, autosaveData, 60000)
 
   useEffect(() => {
@@ -59,11 +63,30 @@ export default function ModifierFiche() {
   }
 
   const loadData = async () => {
-    const { data: ficheData } = await supabase.from('fiches').select('*').eq('id', params_route.id).single()
+    const clientId = await getClientId()
+    if (!clientId) { router.push('/'); return }
+
+    const [
+      { data: ficheData },
+      { data: lieuxData },
+      { data: catsData },
+      { data: liste }
+    ] = await Promise.all([
+      supabase.from('fiches').select('*').eq('id', params_route.id).single(),
+      supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
+      supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
+      supabase.from('ingredients').select('*').order('nom').limit(5000)
+    ])
+
     if (!ficheData) { router.push('/fiches'); return }
 
+    setLieux(lieuxData || [])
+    setCategoriesDyn(catsData || [])
+    setListeIngredients(liste || [])
+
     setNom(ficheData.nom)
-    setCategorie(ficheData.categorie || 'Plats')
+    setCategoriePlat(ficheData.categorie_plat_id || '')
+    setLieuId(ficheData.lieu_id || '')
     setNbPortions(ficheData.nb_portions || '')
     setPrixTTC(ficheData.prix_ttc || '')
     setPerte(ficheData.perte || 0)
@@ -85,8 +108,6 @@ export default function ModifierFiche() {
       unite: i.unite
     })))
 
-    const { data: liste } = await supabase.from('ingredients').select('*').order('nom').limit(5000)
-    setListeIngredients(liste || [])
     setLoading(false)
   }
 
@@ -94,7 +115,8 @@ export default function ModifierFiche() {
     const draft = getDraft()
     if (!draft) return
     setNom(draft.nom || '')
-    setCategorie(draft.categorie || 'Plats')
+    setCategoriePlat(draft.categoriePlat || '')
+    setLieuId(draft.lieuId || '')
     setNbPortions(draft.nbPortions || '')
     setPrixTTC(draft.prixTTC || '')
     setPerte(draft.perte || 0)
@@ -197,7 +219,10 @@ export default function ModifierFiche() {
     }
 
     await supabase.from('fiches').update({
-      nom, categorie,
+      nom,
+      categorie: catSelectionnee?.nom || '',
+      categorie_plat_id: categoriePlat || null,
+      lieu_id: lieuId || null,
       nb_portions: nbPortions ? parseInt(nbPortions) : null,
       prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
       description,
@@ -224,20 +249,16 @@ export default function ModifierFiche() {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
 
-    if (isIngredientPossible(categorie) && coutPortion) {
+    if (isIngredientPossible(catSelectionnee?.nom || '') && coutPortion) {
       const { data: ingExistant } = await supabase
         .from('ingredients').select('id').eq('fiche_id', params_route.id).single()
-
       if (ingExistant) {
-        await supabase.from('ingredients').update({
-          nom, prix_kg: parseFloat(coutPortion)
-        }).eq('fiche_id', params_route.id)
+        await supabase.from('ingredients').update({ nom, prix_kg: parseFloat(coutPortion) }).eq('fiche_id', params_route.id)
       } else {
         await supabase.from('ingredients').insert([{
           nom, prix_kg: parseFloat(coutPortion),
           unite: 'portions', est_sous_fiche: true,
-          fiche_id: params_route.id,
-          client_id: clientId
+          fiche_id: params_route.id, client_id: clientId
         }])
       }
     }
@@ -245,7 +266,7 @@ export default function ModifierFiche() {
     await log({
       action: 'MODIFICATION', entite: 'fiche', entite_id: params_route.id,
       entite_nom: nom, section: 'cuisine',
-      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
+      details: `Catégorie: ${catSelectionnee?.nom || ''}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -267,7 +288,6 @@ export default function ModifierFiche() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-
       <div style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 16px', display: 'flex', alignItems: 'center',
@@ -287,9 +307,7 @@ export default function ModifierFiche() {
           <button onClick={handleSubmit} disabled={saving} style={{
             background: saving ? c.texteMuted : c.accent, color: 'white', border: 'none',
             borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: saving ? 'not-allowed' : 'pointer'
-          }}>
-            {saving ? '...' : 'Enregistrer'}
-          </button>
+          }}>{saving ? '...' : 'Enregistrer'}</button>
         </div>
       </div>
 
@@ -309,13 +327,6 @@ export default function ModifierFiche() {
         )}
 
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
-
-        {categorie === 'Accompagnements' && (
-          <div style={{ background: c.vertClair, color: c.vert, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: `0.5px solid ${c.vert}40` }}>
-            <span style={{ background: c.vert, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>AC</span>
-            Cette fiche sera disponible comme ingrédient et aura un prix de vente
-          </div>
-        )}
 
         {/* Photo */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
@@ -352,20 +363,34 @@ export default function ModifierFiche() {
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
               />
             </div>
+
+            {/* Catégorie + Lieu dynamiques */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
-                <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {categories.map(cat => <option key={cat}>{cat}</option>)}
+                <select value={categoriePlat} onChange={e => setCategoriePlat(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans catégorie</option>
+                  {categoriesDyn.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
-                <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {theme.saisons.map(s => <option key={s}>{s}</option>)}
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Lieu de service</label>
+                <select value={lieuId} onChange={e => setLieuId(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans lieu</option>
+                  {lieux.map(l => <option key={l.id} value={l.id}>{l.emoji} {l.nom}</option>)}
                 </select>
               </div>
             </div>
+
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
+              <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                {theme.saisons.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
@@ -384,12 +409,9 @@ export default function ModifierFiche() {
               )}
             </div>
 
-            {/* % de perte */}
             {!isSousFiche && (
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                  % de perte — parures, épluchage, désossage...
-                </label>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>% de perte — parures, épluchage, désossage...</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <input type="number" value={perte} onChange={e => setPerte(e.target.value)}
                     placeholder="0" min="0" max="99" step="0.5"
@@ -475,26 +497,13 @@ export default function ModifierFiche() {
           </button>
         </div>
 
-        {/* ── INSTRUCTIONS — bloc dédié après ingrédients ── */}
+        {/* Instructions */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>
-            📋 Instructions de préparation
-          </div>
-          <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '12px' }}>
-            Les sauts de ligne seront respectés à l'écran et à l'impression.
-          </div>
-          <textarea
-            value={instructions}
-            onChange={e => setInstructions(e.target.value)}
-            rows={8}
-            placeholder={`1. Préparer la marinade en mélangeant...\n2. Saisir la viande à feu vif...\n3. Déglacer avec le vin blanc...\n\nDressage :\n- Disposer les légumes...`}
-            style={{
-              width: '100%', padding: '12px', borderRadius: '8px',
-              border: `0.5px solid ${c.bordure}`, fontSize: '14px',
-              outline: 'none', resize: 'vertical', fontFamily: 'inherit',
-              color: c.texte, background: c.blanc, lineHeight: '1.7',
-              minHeight: '180px'
-            }}
+          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px' }}>📋 Instructions de préparation</div>
+          <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '12px' }}>Les sauts de ligne seront respectés à l'écran et à l'impression.</div>
+          <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={8}
+            placeholder={`1. Préparer la marinade...\n2. Saisir la viande à feu vif...\n\nDressage :\n- Disposer les légumes...`}
+            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', color: c.texte, background: c.blanc, lineHeight: '1.7', minHeight: '180px' }}
           />
           {instructions && (
             <div style={{ marginTop: '8px', fontSize: '12px', color: c.texteMuted }}>

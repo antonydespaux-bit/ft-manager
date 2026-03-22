@@ -14,7 +14,8 @@ const isIngredientPossible = (cat) => cat === 'Sous-fiche' || cat === 'Accompagn
 
 export default function NouvelleFiche() {
   const [nom, setNom] = useState('')
-  const [categorie, setCategorie] = useState('Plats')
+  const [categoriePlat, setCategoriePlat] = useState('')
+  const [lieuId, setLieuId] = useState('')
   const [nbPortions, setNbPortions] = useState('')
   const [unitePortions, setUnitePortions] = useState('portions')
   const [prixTTC, setPrixTTC] = useState('')
@@ -28,6 +29,8 @@ export default function NouvelleFiche() {
     { ingredient_id: '', nom: '', quantite: '', unite: 'kg' }
   ])
   const [listeIngredients, setListeIngredients] = useState([])
+  const [lieux, setLieux] = useState([])
+  const [categoriesDyn, setCategoriesDyn] = useState([])
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -35,17 +38,20 @@ export default function NouvelleFiche() {
   const router = useRouter()
   const { c } = useTheme()
   const saisons = theme.saisons
-  const categories = [...theme.categories, 'Sous-fiche']
-  const isSousFiche = categorie === 'Sous-fiche'
   const isMobile = useIsMobile()
 
-  const autosaveData = { nom, categorie, nbPortions, unitePortions, prixTTC, perte, description, saison, allergenes, ingredients }
+  // Pour la rétrocompatibilité : isSousFiche basé sur la catégorie sélectionnée
+  const catSelectionnee = categoriesDyn.find(cat => cat.id === categoriePlat)
+  const isSousFiche = catSelectionnee?.nom === 'Sous-fiches' || catSelectionnee?.nom === 'Sous-fiche'
+
+  const autosaveData = { nom, categoriePlat, lieuId, nbPortions, unitePortions, prixTTC, perte, description, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave('nouvelle-fiche-draft', autosaveData, 60000)
 
   useEffect(() => {
     checkUser()
     loadIngredients()
     loadParams()
+    loadDynamique()
   }, [])
 
   const checkUser = async () => {
@@ -63,11 +69,24 @@ export default function NouvelleFiche() {
     setListeIngredients(data || [])
   }
 
+  const loadDynamique = async () => {
+    const clientId = await getClientId()
+    if (!clientId) return
+    const [{ data: lieuxData }, { data: catsData }] = await Promise.all([
+      supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
+      supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre')
+    ])
+    setLieux(lieuxData || [])
+    setCategoriesDyn(catsData || [])
+    if (catsData?.length > 0) setCategoriePlat(catsData[0].id)
+  }
+
   const restaurerBrouillon = () => {
     const draft = getDraft()
     if (!draft) return
     setNom(draft.nom || '')
-    setCategorie(draft.categorie || 'Plats')
+    setCategoriePlat(draft.categoriePlat || '')
+    setLieuId(draft.lieuId || '')
     setNbPortions(draft.nbPortions || '')
     setUnitePortions(draft.unitePortions || 'portions')
     setPrixTTC(draft.prixTTC || '')
@@ -156,7 +175,10 @@ export default function NouvelleFiche() {
     const { data: fiche, error: errFiche } = await supabase
       .from('fiches')
       .insert([{
-        nom, categorie,
+        nom,
+        categorie: catSelectionnee?.nom || '',
+        categorie_plat_id: categoriePlat || null,
+        lieu_id: lieuId || null,
         nb_portions: parseInt(nbPortions),
         prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
         description, saison, allergenes,
@@ -193,7 +215,7 @@ export default function NouvelleFiche() {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
 
-    if (isIngredientPossible(categorie) && coutPortion) {
+    if (isIngredientPossible(catSelectionnee?.nom || '') && coutPortion) {
       await supabase.from('ingredients').insert([{
         nom: fiche.nom,
         prix_kg: parseFloat(coutPortion),
@@ -207,7 +229,7 @@ export default function NouvelleFiche() {
     await log({
       action: 'CREATION', entite: 'fiche', entite_id: fiche.id,
       entite_nom: nom, section: 'cuisine',
-      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
+      details: `Catégorie: ${catSelectionnee?.nom || ''}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -280,13 +302,6 @@ export default function NouvelleFiche() {
           </div>
         )}
 
-        {categorie === 'Accompagnements' && (
-          <div style={{ background: c.vertClair, color: c.vert, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', border: `0.5px solid ${c.vert}40` }}>
-            <span style={{ background: c.vert, color: 'white', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>AC</span>
-            Cette fiche sera disponible comme ingrédient et aura un prix de vente
-          </div>
-        )}
-
         {/* Photo */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Photo du plat</div>
@@ -322,20 +337,34 @@ export default function NouvelleFiche() {
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
               />
             </div>
+
+            {/* Catégorie + Lieu dynamiques */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
-                <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {categories.map(cat => <option key={cat}>{cat}</option>)}
+                <select value={categoriePlat} onChange={e => setCategoriePlat(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans catégorie</option>
+                  {categoriesDyn.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
-                <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {saisons.map(s => <option key={s}>{s}</option>)}
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Lieu de service</label>
+                <select value={lieuId} onChange={e => setLieuId(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans lieu</option>
+                  {lieux.map(l => <option key={l.id} value={l.id}>{l.emoji} {l.nom}</option>)}
                 </select>
               </div>
             </div>
+
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
+              <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                {saisons.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>{isSousFiche ? 'Quantité produite *' : 'Nombre de portions *'}</label>
@@ -361,7 +390,6 @@ export default function NouvelleFiche() {
               )}
             </div>
 
-            {/* % de perte */}
             {!isSousFiche && (
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
@@ -414,15 +442,6 @@ export default function NouvelleFiche() {
                       {['kg', 'g', 'L', 'cl', 'ml', 'u', 'botte', 'pièce', 'portions'].map(u => <option key={u}>{u}</option>)}
                     </select>
                   </div>
-                  {(() => {
-                    const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
-                    const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
-                    return cout ? (
-                      <div style={{ marginTop: '6px', padding: '6px 10px', background: c.fond, borderRadius: '6px', fontSize: '12px', color: c.texte, fontWeight: '500', textAlign: 'right', border: `0.5px solid ${c.bordure}` }}>
-                        Coût : <strong>{cout} €</strong>
-                      </div>
-                    ) : null
-                  })()}
                 </div>
               ))}
             </>
@@ -447,11 +466,7 @@ export default function NouvelleFiche() {
                     {(() => {
                       const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
                       const cout = ingData?.prix_kg && ing.quantite ? (ingData.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
-                      return (
-                        <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>
-                          {cout ? `${cout} €` : '—'}
-                        </span>
-                      )
+                      return <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>{cout ? `${cout} €` : '—'}</span>
                     })()}
                   </div>
                   <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>

@@ -10,12 +10,12 @@ import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
 
-const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails', 'Eaux', 'Caféterie', 'Sous-fiche']
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
 export default function NouvelleBarFiche() {
   const [nom, setNom] = useState('')
-  const [categorie, setCategorie] = useState('Cocktails')
+  const [categoriePlat, setCategoriePlat] = useState('')
+  const [lieuId, setLieuId] = useState('')
   const [nbPortions, setNbPortions] = useState('')
   const [prixTTC, setPrixTTC] = useState('')
   const [perte, setPerte] = useState(0)
@@ -29,6 +29,8 @@ export default function NouvelleBarFiche() {
   ])
   const [listeIngredients, setListeIngredients] = useState([])
   const [listeSousFiches, setListeSousFiches] = useState([])
+  const [lieux, setLieux] = useState([])
+  const [categoriesDyn, setCategoriesDyn] = useState([])
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,26 +39,27 @@ export default function NouvelleBarFiche() {
   const { c } = useTheme()
   const isMobile = useIsMobile()
 
-  const isSousFiche = categorie === 'Sous-fiche'
+  const catSelectionnee = categoriesDyn.find(cat => cat.id === categoriePlat)
+  const isSousFiche = catSelectionnee?.nom === 'Sous-fiche' || catSelectionnee?.nom === 'Sous-fiches'
+  const nomCat = catSelectionnee?.nom || ''
+  const isAlcool = CATEGORIES_ALCOOL.includes(nomCat)
 
   const optionsRecherche = [
     ...listeIngredients.map(i => ({ ...i, type: 'ing' })),
     ...listeSousFiches.map(sf => ({
-      id: sf.id,
-      nom: `(SF) ${sf.nom}`,
-      prix_kg: sf.cout_portion,
-      unite: sf.unite_production || 'cl',
-      type: 'sf'
+      id: sf.id, nom: `(SF) ${sf.nom}`,
+      prix_kg: sf.cout_portion, unite: sf.unite_production || 'cl', type: 'sf'
     }))
   ]
 
-  const autosaveData = { nom, categorie, nbPortions, prixTTC, perte, description, saison, allergenes, ingredients }
+  const autosaveData = { nom, categoriePlat, lieuId, nbPortions, prixTTC, perte, description, saison, allergenes, ingredients }
   const { hasDraft, lastSaved, getDraft, clearDraft } = useAutosave('nouvelle-fiche-bar-draft', autosaveData, 60000)
 
   useEffect(() => {
     checkUser()
     loadData()
     loadParams()
+    loadDynamique()
   }, [])
 
   const checkUser = async () => {
@@ -76,11 +79,24 @@ export default function NouvelleBarFiche() {
     setListeSousFiches(sfs || [])
   }
 
+  const loadDynamique = async () => {
+    const clientId = await getClientId()
+    if (!clientId) return
+    const [{ data: lieuxData }, { data: catsData }] = await Promise.all([
+      supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre'),
+      supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre')
+    ])
+    setLieux(lieuxData || [])
+    setCategoriesDyn(catsData || [])
+    if (catsData?.length > 0) setCategoriePlat(catsData[0].id)
+  }
+
   const restaurerBrouillon = () => {
     const draft = getDraft()
     if (!draft) return
     setNom(draft.nom || '')
-    setCategorie(draft.categorie || 'Cocktails')
+    setCategoriePlat(draft.categoriePlat || '')
+    setLieuId(draft.lieuId || '')
     setNbPortions(draft.nbPortions || '')
     setPrixTTC(draft.prixTTC || '')
     setPerte(draft.perte || 0)
@@ -144,7 +160,7 @@ export default function NouvelleBarFiche() {
     return (cout / parseFloat(nbPortions)).toFixed(4)
   }
 
-  const TVA_BAR = () => CATEGORIES_ALCOOL.includes(categorie) ? 20 : 10
+  const TVA_BAR = () => isAlcool ? 20 : 10
 
   const foodCost = () => {
     const cout = calculerCoutAvecPerte()
@@ -176,7 +192,10 @@ export default function NouvelleBarFiche() {
     const { data: fiche, error: errFiche } = await supabase
       .from('fiches_bar')
       .insert([{
-        nom, categorie,
+        nom,
+        categorie: nomCat,
+        categorie_plat_id: categoriePlat || null,
+        lieu_id: lieuId || null,
         nb_portions: parseInt(nbPortions),
         prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
         description, saison, allergenes,
@@ -217,7 +236,7 @@ export default function NouvelleBarFiche() {
     await log({
       action: 'CREATION', entite: 'fiche_bar', entite_id: fiche.id,
       entite_nom: nom, section: 'bar',
-      details: `Catégorie: ${categorie}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
+      details: `Catégorie: ${nomCat}, Saison: ${saison}${perte > 0 ? `, Perte: ${perte}%` : ''}`
     })
 
     clearDraft()
@@ -234,7 +253,6 @@ export default function NouvelleBarFiche() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-
       <div style={{
         background: '#3C3489', borderBottom: '0.5px solid #7F77DD40',
         padding: '0 16px', display: 'flex', alignItems: 'center',
@@ -259,9 +277,7 @@ export default function NouvelleBarFiche() {
           <button onClick={handleSubmit} disabled={loading} style={{
             background: loading ? '#666' : '#C4956A', color: '#3C3489', border: 'none',
             borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer'
-          }}>
-            {loading ? '...' : 'Enregistrer'}
-          </button>
+          }}>{loading ? '...' : 'Enregistrer'}</button>
         </div>
       </div>
 
@@ -282,9 +298,8 @@ export default function NouvelleBarFiche() {
 
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
-        {/* TVA info */}
-        <div style={{ background: CATEGORIES_ALCOOL.includes(categorie) ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${CATEGORIES_ALCOOL.includes(categorie) ? '#F09595' : '#4A7B6F40'}`, color: CATEGORIES_ALCOOL.includes(categorie) ? '#A32D2D' : '#3B6D11' }}>
-          {CATEGORIES_ALCOOL.includes(categorie) ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
+        <div style={{ background: isAlcool ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${isAlcool ? '#F09595' : '#4A7B6F40'}`, color: isAlcool ? '#A32D2D' : '#3B6D11' }}>
+          {isAlcool ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
         </div>
 
         {/* Photo */}
@@ -322,20 +337,34 @@ export default function NouvelleBarFiche() {
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
               />
             </div>
+
+            {/* Catégorie + Lieu dynamiques bar */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Catégorie</label>
-                <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {CATEGORIES_BAR.map(cat => <option key={cat}>{cat}</option>)}
+                <select value={categoriePlat} onChange={e => setCategoriePlat(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans catégorie</option>
+                  {categoriesDyn.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
-                <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
-                  {theme.saisons.map(s => <option key={s}>{s}</option>)}
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Lieu de service</label>
+                <select value={lieuId} onChange={e => setLieuId(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                  <option value="">Sans lieu</option>
+                  {lieux.map(l => <option key={l.id} value={l.id}>{l.emoji} {l.nom}</option>)}
                 </select>
               </div>
             </div>
+
+            <div>
+              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Saison</label>
+              <select value={saison} onChange={e => setSaison(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}>
+                {theme.saisons.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions *</label>
@@ -354,12 +383,9 @@ export default function NouvelleBarFiche() {
               )}
             </div>
 
-            {/* % de perte */}
             {!isSousFiche && (
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                  % de perte — évaporation, décantation...
-                </label>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>% de perte — évaporation, décantation...</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <input type="number" value={perte} onChange={e => setPerte(e.target.value)}
                     placeholder="0" min="0" max="99" step="0.5"
@@ -432,11 +458,7 @@ export default function NouvelleBarFiche() {
                     {(() => {
                       const sel = optionsRecherche.find(i => i.id === ing.ingredient_id)
                       const cout = sel?.prix_kg && ing.quantite ? (sel.prix_kg * parseFloat(ing.quantite)).toFixed(2) : null
-                      return (
-                        <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>
-                          {cout ? `${cout} €` : '—'}
-                        </span>
-                      )
+                      return <span style={{ fontSize: '11px', fontWeight: '500', color: cout ? c.texte : c.texteMuted, whiteSpace: 'nowrap' }}>{cout ? `${cout} €` : '—'}</span>
                     })()}
                   </div>
                   <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: `0.5px solid ${c.bordure}`, borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#aaa', fontSize: '16px', flexShrink: 0 }}>×</button>
