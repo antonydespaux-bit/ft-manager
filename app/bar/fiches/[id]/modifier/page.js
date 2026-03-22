@@ -73,11 +73,17 @@ export default function ModifierBarFiche() {
     setAllergenes(ficheData.allergenes || [])
     if (ficheData.photo_url) { setPhotoExistante(ficheData.photo_url); setPhotoPreview(ficheData.photo_url) }
 
-    const { data: ingsData } = await supabase
+    const { data: ingsData, error: errIngs } = await supabase
       .from('fiche_bar_ingredients')
-      .select(`quantite, unite, ingredients_bar (id, nom, prix_kg, unite)`)
+      .select(`
+        quantite,
+        unite,
+        sous_fiche_id,
+        ingredients_bar!ingredient_id (id, nom, prix_kg, unite),
+        fiches_bar!sous_fiche_id (id, nom, cout_portion, unite_production)
+      `)
       .eq('fiche_bar_id', params_route.id)
-
+      
     setIngredients((ingsData || []).map(i => ({
       ingredient_id: i.ingredients_bar?.id || '',
       nom: i.ingredients_bar?.nom || '',

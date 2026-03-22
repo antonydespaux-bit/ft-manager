@@ -77,12 +77,12 @@ export default function BarFicheDetail() {
         .select(`
           quantite,
           unite,
-          ingredients_bar (id, nom, prix_kg, unite),
           sous_fiche_id,
+          ingredients_bar!ingredient_id (id, nom, prix_kg, unite),
           fiches_bar!sous_fiche_id (id, nom, cout_portion, unite_production)
         `)
         .eq('fiche_bar_id', params_route.id)
-
+        
       if (errIngs) console.error('Ingrédients error:', errIngs)
       setIngredients(ingsData || [])
     } catch (err) {
