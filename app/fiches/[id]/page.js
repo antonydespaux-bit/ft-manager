@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, getParametres, getClientId } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
-import { theme, Logo } from '../../../lib/theme.jsx'
+import { Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
@@ -23,7 +23,6 @@ export default function FicheDetail() {
   const peutModifier = role === 'admin' || role === 'cuisine'
 
   useEffect(() => {
-    // Injection CSS impression
     const style = document.createElement('style')
     style.innerHTML = `
       @media print {
@@ -72,11 +71,13 @@ export default function FicheDetail() {
       if (error || !ficheData) { router.push('/fiches'); return }
       setFiche(ficheData)
 
-      const { data: ingsData } = await supabase
+      // Chargement ingrédients SANS filtre client_id sur la table de jointure
+      const { data: ingsData, error: errIngs } = await supabase
         .from('fiche_ingredients')
         .select(`quantite, unite, ingredients (id, nom, prix_kg, unite)`)
         .eq('fiche_id', params_route.id)
 
+      if (errIngs) console.error('Ingrédients error:', errIngs)
       setIngredients(ingsData || [])
     } catch (err) {
       console.error('Load fiche error:', err)
@@ -151,7 +152,7 @@ export default function FicheDetail() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      {/* Navbar — masquée à l'impression */}
+      {/* ── NAVBAR ── */}
       <div className="no-print" style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 16px', display: 'flex', alignItems: 'center',
@@ -284,29 +285,8 @@ export default function FicheDetail() {
           )}
         </div>
 
-        {/* Instructions — APRÈS les ingrédients */}
-        {fiche.instructions && (
-          <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px', borderBottom: `0.5px solid ${c.bordure}`, fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              📋 Instructions de préparation
-            </div>
-            <div style={{ padding: '16px 20px' }}>
-              {/* Rendu avec sauts de lignes respectés */}
-              {fiche.instructions.split('\n').map((ligne, i) => (
-                ligne.trim() === '' ? (
-                  <div key={i} style={{ height: '10px' }} />
-                ) : (
-                  <div key={i} style={{ fontSize: '14px', color: c.texte, lineHeight: '1.8', marginBottom: '2px' }}>
-                    {ligne}
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Récapitulatif financier */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+        {/* Récap financier */}
+        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '20px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Coût total</div>
             <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{cout ? `${cout.toFixed(2)} €` : '—'}</div>
@@ -337,9 +317,27 @@ export default function FicheDetail() {
             </div>
           )}
         </div>
+
+        {/* Instructions écran — après récap */}
+        {fiche.instructions && (
+          <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', borderBottom: `0.5px solid ${c.bordure}`, fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              📋 Instructions de préparation
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              {fiche.instructions.split('\n').map((ligne, i) => (
+                ligne.trim() === '' ? (
+                  <div key={i} style={{ height: '10px' }} />
+                ) : (
+                  <div key={i} style={{ fontSize: '14px', color: c.texte, lineHeight: '1.8', marginBottom: '2px' }}>{ligne}</div>
+                )
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── VERSION IMPRESSION ── */}
+      {/* ── VERSION IMPRESSION CUISINE ── */}
       <div className="print-only" style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', background: 'white', padding: '0', width: '100%' }}>
 
         {/* En-tête */}
@@ -401,23 +399,7 @@ export default function FicheDetail() {
           </table>
         </div>
 
-        {/* ── INSTRUCTIONS À L'IMPRESSION — après ingrédients ── */}
-        {fiche.instructions && (
-          <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
-            <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8B7355', marginBottom: '10px', fontFamily: 'sans-serif', fontWeight: '600' }}>Instructions de préparation</div>
-            <div style={{
-              border: '0.5px solid #e8e4dc', borderRadius: '4px', padding: '14px 16px',
-              fontSize: '12px', fontFamily: 'sans-serif', color: '#2C1810',
-              lineHeight: '1.9',
-              /* CLEF : white-space pre-wrap respecte les sauts de ligne */
-              whiteSpace: 'pre-wrap'
-            }}>
-              {fiche.instructions}
-            </div>
-          </div>
-        )}
-
-        {/* Récap financier */}
+        {/* ── RÉCAP FINANCIER — avant instructions ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
           {[
             { label: `Coût / ${uniteLabel.slice(0, -1)}`, value: cout && fiche.nb_portions ? `${(cout / fiche.nb_portions).toFixed(2)} €` : '—' },
@@ -435,6 +417,20 @@ export default function FicheDetail() {
             </div>
           ))}
         </div>
+
+        {/* ── INSTRUCTIONS — après récap financier ── */}
+        {fiche.instructions && (
+          <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
+            <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8B7355', marginBottom: '10px', fontFamily: 'sans-serif', fontWeight: '600' }}>Instructions de préparation</div>
+            <div style={{
+              border: '0.5px solid #e8e4dc', borderRadius: '4px', padding: '14px 16px',
+              fontSize: '12px', fontFamily: 'sans-serif', color: '#2C1810',
+              lineHeight: '1.9', whiteSpace: 'pre-wrap'
+            }}>
+              {fiche.instructions}
+            </div>
+          </div>
+        )}
 
         {/* Allergènes */}
         {fiche.allergenes && fiche.allergenes.length > 0 && (
