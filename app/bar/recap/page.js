@@ -22,6 +22,7 @@ export default function BarRecapPage() {
   const [filtreLieu, setFiltreLieu] = useState('')
   const [filtreCat, setFiltreCat] = useState('')
   const [ouvert, setOuvert] = useState(null)
+  const [ouvertLieu, setOuvertLieu] = useState(null)
   const [modifArchive, setModifArchive] = useState({})
   const [saving, setSaving] = useState(false)
   const router = useRouter()
@@ -268,13 +269,13 @@ export default function BarRecapPage() {
         {lieuxAvecFiches.map(lieu => {
           const fichesLieu = fichesFiltrees.filter(f => f.lieu_id === lieu.id)
           const catsLieu = categories.filter(cat => fichesLieu.some(f => f.categorie_plat_id === cat.id))
-          const isOpenLieu = ouvert === `lieu-${lieu.id}`
+          const isOpenLieu = ouvertLieu === lieu.id
           const statsLieu = statsListe(fichesLieu)
           if (!statsLieu) return null
 
           return (
             <div key={lieu.id} style={{ marginBottom: '10px' }}>
-              <div onClick={() => setOuvert(isOpenLieu ? null : `lieu-${lieu.id}`)} style={{
+              <div onClick={() => setOuvertLieu(isOpenLieu ? null : lieu.id)} style={{
                 background: isOpenLieu ? '#EDE9FE' : c.blanc, borderRadius: isOpenLieu ? '12px 12px 0 0' : '12px',
                 padding: '14px 18px', cursor: 'pointer', border: `0.5px solid ${c.bordure}`,
                 borderBottom: isOpenLieu ? 'none' : `0.5px solid ${c.bordure}`,
