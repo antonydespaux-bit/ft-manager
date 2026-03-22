@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react'
 import { supabase, getParametres, getClientId } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
+import { useTheme } from '../../../lib/useTheme'
 import { log } from '../../../lib/useLog'
 
 export default function NouveauMenu() {
+  const { nomEtablissement } = useTheme()
   const [nom, setNom] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [prixVente, setPrixVente] = useState('')
@@ -128,7 +130,7 @@ export default function NouveauMenu() {
         justifyContent: 'space-between', height: '56px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Logo height={30} couleur="white" onClick={() => router.push('/fiches')} />
+          <Logo height={30} couleur="white" nom={nomEtablissement} onClick={() => router.push("/fiches")} />
           <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
           <button onClick={() => router.push('/menus')} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',

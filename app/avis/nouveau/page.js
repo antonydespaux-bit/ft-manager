@@ -19,7 +19,7 @@ export default function NouvelAvisPage() {
   const [error, setError] = useState('')
   const router = useRouter()
   const isMobile = useIsMobile()
-  const { c } = useTheme()
+  const { c, nomEtablissement } = useTheme()
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
@@ -52,7 +52,7 @@ const handleSubmit = async () => {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/dashboard")} />
           <button onClick={() => router.back()} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'

@@ -36,7 +36,7 @@ export default function NouvelleFiche() {
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
   const router = useRouter()
-  const { c } = useTheme()
+  const { c, nomEtablissement } = useTheme()
   const saisons = theme.saisons
   const isMobile = useIsMobile()
 
@@ -253,7 +253,7 @@ export default function NouvelleFiche() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/dashboard')} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/dashboard")} />
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>}
           <button onClick={() => router.push('/dashboard')} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',

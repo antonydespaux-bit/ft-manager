@@ -37,7 +37,7 @@ export default function ModifierBarFiche() {
   const [draftRestored, setDraftRestored] = useState(false)
   const router = useRouter()
   const params_route = useParams()
-  const { c } = useTheme()
+  const { c, nomEtablissement } = useTheme()
   const isMobile = useIsMobile()
 
   const catSelectionnee = categoriesDyn.find(cat => cat.id === categoriePlat)
@@ -310,7 +310,7 @@ export default function ModifierBarFiche() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" onClick={() => router.push('/bar/dashboard')} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/bar/dashboard")} />
           <button onClick={() => router.push(`/bar/fiches/${params_route.id}`)} style={{
             background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
             borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
