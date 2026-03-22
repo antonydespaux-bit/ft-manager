@@ -9,14 +9,16 @@ import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import NavbarBar from '../../../components/NavbarBar'
 
-const CATEGORIES_BAR = ['Cocktails', 'Vins', 'Bières', 'Softs', 'Champagnes', 'Spiritueux', 'Sans alcool', 'Mocktails', 'Sous-fiche']
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
 export default function BarFichesPage() {
   const [fiches, setFiches] = useState([])
+  const [lieux, setLieux] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
-  const [categorie, setCategorie] = useState('toutes')
+  const [filtreLieu, setFiltreLieu] = useState('tous')
+  const [filtreCat, setFiltreCat] = useState('toutes')
   const [saison, setSaison] = useState('toutes')
   const [modeArchive, setModeArchive] = useState(false)
   const [selection, setSelection] = useState([])
@@ -36,7 +38,7 @@ export default function BarFichesPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) router.push('/')
-    } catch (err) { router.push('/') }
+    } catch { router.push('/') }
   }
 
   const loadFiches = async () => {
@@ -45,15 +47,23 @@ export default function BarFichesPage() {
       const clientId = await getClientId()
       if (!clientId) { router.push('/'); return }
 
-      const { data, error } = await supabase
-        .from('fiches_bar')
-        .select('*')
-        .eq('client_id', clientId)
-        .eq('archive', showArchives)
-        .order('created_at', { ascending: false })
+      const [
+        { data: fichesData, error },
+        { data: lieuxData },
+        { data: catsData }
+      ] = await Promise.all([
+        supabase.from('fiches_bar').select('*, lieux(id,nom,emoji), categories_plats(id,nom,emoji)')
+          .eq('client_id', clientId)
+          .eq('archive', showArchives)
+          .order('created_at', { ascending: false }),
+        supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre'),
+        supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre')
+      ])
 
       if (error) throw error
-      setFiches(data || [])
+      setFiches(fichesData || [])
+      setLieux(lieuxData || [])
+      setCategories(catsData || [])
       setSelection([])
     } catch (err) {
       console.error('Load fiches bar error:', err)
@@ -77,8 +87,7 @@ export default function BarFichesPage() {
     try {
       const clientId = await getClientId()
       if (!clientId) return
-      const { error } = await supabase
-        .from('fiches_bar')
+      const { error } = await supabase.from('fiches_bar')
         .update({ archive: !showArchives })
         .in('id', selection)
         .eq('client_id', clientId)
@@ -102,9 +111,10 @@ export default function BarFichesPage() {
 
   const fichesFiltrees = fiches.filter(f => {
     const matchRecherche = f.nom.toLowerCase().includes(recherche.toLowerCase())
-    const matchCategorie = categorie === 'toutes' || f.categorie === categorie
+    const matchLieu = filtreLieu === 'tous' || f.lieu_id === filtreLieu
+    const matchCat = filtreCat === 'toutes' || f.categorie_plat_id === filtreCat
     const matchSaison = saison === 'toutes' || f.saison === saison
-    return matchRecherche && matchCategorie && matchSaison
+    return matchRecherche && matchLieu && matchCat && matchSaison
   })
 
   return (
@@ -113,59 +123,99 @@ export default function BarFichesPage() {
 
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-          {[
-            { label: 'Fiches bar', value: fiches.length },
-            { label: 'Cocktails', value: fiches.filter(f => f.categorie === 'Cocktails').length },
-            { label: 'Préparations', value: fiches.filter(f => f.categorie === 'Sous-fiche').length },
-          ].map((stat, i) => (
-            <div key={i} style={{ background: c.blanc, borderRadius: '10px', padding: '16px', border: `0.5px solid ${c.bordure}` }}>
-              <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase' }}>{stat.label}</div>
-              <div style={{ fontSize: '24px', fontWeight: '500', color: c.texte }}>{stat.value}</div>
+        {/* KPIs dynamiques */}
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(lieux.length + 1, 4)}, 1fr)`, gap: '12px', marginBottom: '24px' }}>
+          <div style={{ background: c.blanc, borderRadius: '10px', padding: '16px', border: `0.5px solid ${c.bordure}` }}>
+            <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>Total fiches</div>
+            <div style={{ fontSize: '24px', fontWeight: '500', color: c.texte }}>{fiches.length}</div>
+          </div>
+          {lieux.slice(0, 3).map(lieu => (
+            <div key={lieu.id} style={{ background: c.blanc, borderRadius: '10px', padding: '16px', border: `0.5px solid ${c.bordure}` }}>
+              <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>{lieu.emoji} {lieu.nom}</div>
+              <div style={{ fontSize: '24px', fontWeight: '500', color: c.texte }}>{fiches.filter(f => f.lieu_id === lieu.id).length}</div>
             </div>
           ))}
         </div>
 
         {/* Filtres + actions */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+
           <input type="text" placeholder="Rechercher..." value={recherche} onChange={e => setRecherche(e.target.value)}
-            style={{ flex: '1', minWidth: '200px', padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, background: c.blanc, outline: 'none', fontSize: '14px', color: c.texte }} />
-          <select value={categorie} onChange={e => setCategorie(e.target.value)}
-            style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, background: c.blanc, outline: 'none', cursor: 'pointer', color: c.texte, fontSize: '14px' }}>
-            <option value="toutes">Toutes catégories</option>
-            {CATEGORIES_BAR.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            style={{ flex: '1', minWidth: '180px', padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, background: c.blanc, outline: 'none', fontSize: '13px', color: c.texte }}
+          />
+
+          {/* Filtre lieu dynamique */}
+          <select value={filtreLieu} onChange={e => setFiltreLieu(e.target.value)}
+            style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${filtreLieu !== 'tous' ? '#7C3AED' : c.bordure}`, background: filtreLieu !== 'tous' ? '#EDE9FE' : c.blanc, outline: 'none', cursor: 'pointer', color: c.texte, fontSize: '13px' }}>
+            <option value="tous">Tous les lieux</option>
+            {lieux.map(l => <option key={l.id} value={l.id}>{l.emoji} {l.nom}</option>)}
           </select>
+
+          {/* Filtre catégorie dynamique */}
+          <select value={filtreCat} onChange={e => setFiltreCat(e.target.value)}
+            style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${filtreCat !== 'toutes' ? '#7C3AED' : c.bordure}`, background: filtreCat !== 'toutes' ? '#EDE9FE' : c.blanc, outline: 'none', cursor: 'pointer', color: c.texte, fontSize: '13px' }}>
+            <option value="toutes">Toutes catégories</option>
+            {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
+          </select>
+
+          {/* Filtre saison */}
           <select value={saison} onChange={e => setSaison(e.target.value)}
-            style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, background: c.blanc, outline: 'none', cursor: 'pointer', color: c.texte, fontSize: '14px' }}>
+            style={{ padding: '10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, background: c.blanc, outline: 'none', cursor: 'pointer', color: c.texte, fontSize: '13px' }}>
             <option value="toutes">Toutes saisons</option>
             {theme.saisons.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          <button onClick={() => { setShowArchives(!showArchives); setModeArchive(false); setSelection([]) }}
-            style={{
-              padding: '10px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
-              border: `0.5px solid ${showArchives ? '#7C3AED' : c.bordure}`,
-              background: showArchives ? '#EDE9FE' : c.blanc,
-              color: showArchives ? '#7C3AED' : c.texteMuted,
-              fontWeight: showArchives ? '500' : '400', whiteSpace: 'nowrap'
-            }}>
+          {/* Bouton archives */}
+          <button onClick={() => { setShowArchives(!showArchives); setModeArchive(false); setSelection([]) }} style={{
+            padding: '10px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
+            border: `0.5px solid ${showArchives ? '#7C3AED' : c.bordure}`,
+            background: showArchives ? '#EDE9FE' : c.blanc,
+            color: showArchives ? '#7C3AED' : c.texteMuted,
+            fontWeight: showArchives ? '500' : '400', whiteSpace: 'nowrap'
+          }}>
             📦 {showArchives ? 'Voir actives' : 'Voir archives'}
           </button>
 
           {peutModifier && fiches.length > 0 && (
-            <button onClick={() => { setModeArchive(!modeArchive); setSelection([]) }}
-              style={{
-                padding: '10px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
-                border: `0.5px solid ${modeArchive ? '#DC2626' : c.bordure}`,
-                background: modeArchive ? '#FEE2E2' : c.blanc,
-                color: modeArchive ? '#DC2626' : c.texteMuted,
-                fontWeight: modeArchive ? '500' : '400', whiteSpace: 'nowrap'
-              }}>
+            <button onClick={() => { setModeArchive(!modeArchive); setSelection([]) }} style={{
+              padding: '10px 14px', borderRadius: '8px', fontSize: '13px', cursor: 'pointer',
+              border: `0.5px solid ${modeArchive ? '#DC2626' : c.bordure}`,
+              background: modeArchive ? '#FEE2E2' : c.blanc,
+              color: modeArchive ? '#DC2626' : c.texteMuted,
+              fontWeight: modeArchive ? '500' : '400', whiteSpace: 'nowrap'
+            }}>
               {modeArchive ? '✕ Annuler' : showArchives ? '📤 Désarchiver' : '📥 Archiver'}
             </button>
           )}
         </div>
+
+        {/* Badges filtres actifs */}
+        {(filtreLieu !== 'tous' || filtreCat !== 'toutes') && (
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: c.texteMuted }}>Filtres actifs :</span>
+            {filtreLieu !== 'tous' && (() => {
+              const l = lieux.find(x => x.id === filtreLieu)
+              return l ? (
+                <span style={{ background: '#EDE9FE', color: '#3C3489', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {l.emoji} {l.nom}
+                  <button onClick={() => setFiltreLieu('tous')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3C3489', fontSize: '14px', padding: '0', lineHeight: 1 }}>×</button>
+                </span>
+              ) : null
+            })()}
+            {filtreCat !== 'toutes' && (() => {
+              const cat = categories.find(x => x.id === filtreCat)
+              return cat ? (
+                <span style={{ background: '#EDE9FE', color: '#3C3489', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {cat.emoji} {cat.nom}
+                  <button onClick={() => setFiltreCat('toutes')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3C3489', fontSize: '14px', padding: '0', lineHeight: 1 }}>×</button>
+                </span>
+              ) : null
+            })()}
+            <button onClick={() => { setFiltreLieu('tous'); setFiltreCat('toutes') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.texteMuted, fontSize: '12px', textDecoration: 'underline' }}>
+              Tout effacer
+            </button>
+          </div>
+        )}
 
         {/* Barre sélection mode archivage */}
         {modeArchive && (
@@ -191,8 +241,7 @@ export default function BarFichesPage() {
               <button onClick={archiverSelection} disabled={saving} style={{
                 padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
                 cursor: saving ? 'not-allowed' : 'pointer', border: 'none',
-                background: saving ? '#A5B4FC' : (showArchives ? '#D97706' : '#7C3AED'),
-                color: 'white'
+                background: saving ? '#A5B4FC' : (showArchives ? '#D97706' : '#7C3AED'), color: 'white'
               }}>
                 {saving ? 'En cours...' : showArchives ? `📤 Désarchiver (${selection.length})` : `📥 Archiver (${selection.length})`}
               </button>
@@ -244,8 +293,7 @@ export default function BarFichesPage() {
                     background: isSelected ? (showArchives ? '#FEF3C7' : '#EDE9FE') : c.blanc,
                     borderRadius: '12px',
                     border: `0.5px solid ${isSelected ? (showArchives ? '#FDE68A' : '#DDD6FE') : c.bordure}`,
-                    cursor: 'pointer', overflow: 'hidden', position: 'relative',
-                    transition: 'all 0.15s'
+                    cursor: 'pointer', overflow: 'hidden', position: 'relative', transition: 'all 0.15s'
                   }}
                   onMouseEnter={e => { if (!isSelected && !modeArchive) { e.currentTarget.style.borderColor = '#7C3AED'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(124,58,237,0.15)' } }}
                   onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = c.bordure; e.currentTarget.style.boxShadow = 'none' } }}
@@ -265,15 +313,26 @@ export default function BarFichesPage() {
                     />
                   )}
                   <div style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ fontWeight: '500', color: c.texte, paddingRight: modeArchive ? '24px' : '0' }}>{fiche.nom}</div>
-                      <span style={{
-                        background: fiche.categorie === 'Sous-fiche' ? '#EDE9FE' : c.fond,
-                        color: fiche.categorie === 'Sous-fiche' ? '#7C3AED' : c.texteMuted,
-                        borderRadius: '20px', padding: '2px 8px', fontSize: '10px', flexShrink: 0
-                      }}>{fiche.categorie}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'flex-start', gap: '6px' }}>
+                      <div style={{ fontWeight: '500', color: c.texte, paddingRight: modeArchive ? '24px' : '0', flex: 1 }}>{fiche.nom}</div>
+                      {/* Badge catégorie dynamique */}
+                      {fiche.categories_plats ? (
+                        <span style={{ background: '#EDE9FE', color: '#3C3489', borderRadius: '20px', padding: '2px 8px', fontSize: '10px', flexShrink: 0 }}>
+                          {fiche.categories_plats.emoji} {fiche.categories_plats.nom}
+                        </span>
+                      ) : fiche.categorie ? (
+                        <span style={{ background: '#EDE9FE', color: '#3C3489', borderRadius: '20px', padding: '2px 8px', fontSize: '10px', flexShrink: 0 }}>
+                          {fiche.categorie}
+                        </span>
+                      ) : null}
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '6px', fontSize: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Badge lieu dynamique */}
+                      {fiche.lieux && (
+                        <span style={{ background: '#EEEDFE', color: '#3C3489', borderRadius: '20px', padding: '1px 7px', fontSize: '10px', fontWeight: '500' }}>
+                          {fiche.lieux.emoji} {fiche.lieux.nom}
+                        </span>
+                      )}
                       {fiche.prix_ttc && <span style={{ fontWeight: '600', color: c.texte }}>{Number(fiche.prix_ttc).toFixed(2)} €</span>}
                       {fc && (
                         <span style={{
