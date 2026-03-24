@@ -55,7 +55,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
             background: c.principal, borderRadius: '16px',
-            padding: '24px', display: 'inline-flex',
+            padding: '16px 24px', display: 'inline-flex',
             alignItems: 'center', justifyContent: 'center',
             marginBottom: '16px'
           }}>

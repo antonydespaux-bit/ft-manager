@@ -49,7 +49,7 @@ export default function ChoixPage() {
       {/* Logo */}
       <div style={{
         background: c.principal, borderRadius: '16px',
-        padding: '20px 32px', marginBottom: '12px',
+        padding: '16px 24px', marginBottom: '12px',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
       }}>
         <Logo height={32} couleur="white" />

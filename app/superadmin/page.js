@@ -271,7 +271,7 @@ export default function SuperAdminPage() {
             padding: '2px 10px', borderRadius: '20px',
             background: 'rgba(99,102,241,0.2)', border: '0.5px solid rgba(99,102,241,0.3)'
           }}>
-            <span style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: '500' }}>FT Manager</span>
+            <span style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: '500' }}>Skalcook</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
