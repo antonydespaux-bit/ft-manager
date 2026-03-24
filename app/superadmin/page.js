@@ -55,6 +55,10 @@ export default function SuperAdminPage() {
   const [seuilOrangeCuisine, setSeuilOrangeCuisine] = useState('35')
   const [seuilVertBoissons, setSeuilVertBoissons] = useState('22')
   const [seuilOrangeBoissons, setSeuilOrangeBoissons] = useState('28')
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteClient, setInviteClient] = useState(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteNomComplet, setInviteNomComplet] = useState('')
 
   useEffect(() => {
     checkAuth()
@@ -234,6 +238,30 @@ export default function SuperAdminPage() {
     await loadClients()
   }
 
+  const ouvrirInviteAdmin = (client) => {
+    setInviteClient(client)
+    setInviteEmail('')
+    setInviteNomComplet('')
+    setShowInviteModal(true)
+  }
+
+  const fermerInviteAdmin = () => {
+    setShowInviteModal(false)
+    setInviteClient(null)
+    setInviteEmail('')
+    setInviteNomComplet('')
+  }
+
+  const handleInviteAdmin = () => {
+    if (!inviteEmail.trim() || !inviteNomComplet.trim() || !inviteClient?.id) return
+    console.log('Invite Admin payload', {
+      email: inviteEmail.trim(),
+      nom_complet: inviteNomComplet.trim(),
+      client_id: inviteClient.id
+    })
+    fermerInviteAdmin()
+  }
+
   if (!authorized || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F4F5' }}>
       <div style={{ fontSize: '14px', color: '#71717A' }}>Vérification des accès...</div>
@@ -332,6 +360,22 @@ export default function SuperAdminPage() {
 
             {/* Liste clients */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {!isMobile && clients.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  gap: '16px',
+                  padding: '0 8px',
+                  marginBottom: '4px'
+                }}>
+                  <div style={{ fontSize: '11px', color: '#71717A', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Établissement
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#71717A', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Actions
+                  </div>
+                </div>
+              )}
               {clients.map((client) => (
                 <div key={client.id} style={{
                   background: 'white', borderRadius: '12px',
@@ -407,6 +451,18 @@ export default function SuperAdminPage() {
                         padding: '7px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: '500'
                       }}
                     >Modifier</button>
+                    <button
+                      onClick={() => ouvrirInviteAdmin(client)}
+                      style={{
+                        background: '#EEF2FF', color: '#4338CA',
+                        border: '0.5px solid #C7D2FE', borderRadius: '8px',
+                        padding: '7px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: '500',
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      <span>✉️</span>
+                      Inviter Admin
+                    </button>
                   </div>
                 </div>
               ))}
@@ -681,6 +737,78 @@ export default function SuperAdminPage() {
           </>
         )}
       </div>
+
+      {/* Modale invitation Admin */}
+      {showInviteModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(9,9,11,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            width: '100%', maxWidth: '460px',
+            background: 'white', borderRadius: '14px',
+            border: '0.5px solid #E4E4E7', boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            padding: '20px'
+          }}>
+            <div style={{ fontSize: '17px', fontWeight: '600', color: '#18181B', marginBottom: '6px' }}>
+              Inviter Admin
+            </div>
+            <div style={{ fontSize: '13px', color: '#71717A', marginBottom: '16px' }}>
+              Établissement: <strong style={{ color: '#18181B' }}>{inviteClient?.nom_etablissement}</strong>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Email *</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="admin@etablissement.com"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Nom complet *</label>
+                <input
+                  type="text"
+                  value={inviteNomComplet}
+                  onChange={e => setInviteNomComplet(e.target.value)}
+                  placeholder="Prénom Nom"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
+              <button
+                onClick={fermerInviteAdmin}
+                style={{
+                  background: 'white', color: '#71717A',
+                  border: '0.5px solid #E4E4E7', borderRadius: '8px',
+                  padding: '10px 14px', fontSize: '13px', cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleInviteAdmin}
+                disabled={!inviteEmail.trim() || !inviteNomComplet.trim()}
+                style={{
+                  background: (!inviteEmail.trim() || !inviteNomComplet.trim()) ? '#A5B4FC' : '#6366F1',
+                  color: 'white', border: 'none', borderRadius: '8px',
+                  padding: '10px 14px', fontSize: '13px', fontWeight: '500',
+                  cursor: (!inviteEmail.trim() || !inviteNomComplet.trim()) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Inviter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
