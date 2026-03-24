@@ -46,15 +46,21 @@ export default function ChoixPage() {
       padding: '20px'
     }}>
 
-      {/* Logo */}
+{/* Logo */}
       <div style={{
-        background: c.principal, borderRadius: '16px',
-        padding: '14px 20px', marginBottom: '12px',
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+        background: c.principal, 
+        borderRadius: '16px',
+        padding: '14px 20px', 
+        marginBottom: '12px',
+        display: 'flex',          // On passe de inline-flex à flex
+        alignItems: 'center', 
+        justifyContent: 'center',
+        width: 'fit-content',     // Il prend la largeur du logo + ton padding
+        minWidth: '200px'         // Pour garder un beau rectangle comme sur ta capture
       }}>
         <Logo height={32} couleur="white" />
       </div>
-
+      
       <div style={{ fontSize: '12px', color: c.texteMuted, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '40px' }}>
         Bonjour {nom} — Choisissez votre espace
       </div>
