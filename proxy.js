@@ -23,7 +23,7 @@ export async function proxy(request) {
   }
 
   // Détecter le tenant depuis le sous-domaine
-  // Ex: lafantaisie.ftmanager.fr → slug = 'lafantaisie'
+  // Ex: lafantaisie.skalcook.app → slug = 'lafantaisie'
   // Ex: lafantaisie.localhost:3000 → slug = 'lafantaisie'
   // Ex: localhost:3000 → pas de tenant
   const parts = hostname.split('.')
@@ -39,7 +39,7 @@ export async function proxy(request) {
     // On utilise le cookie comme fallback
     tenantSlug = request.cookies.get('tenant_slug')?.value
   } else {
-    // Production : lafantaisie.ftmanager.fr
+    // Production : lafantaisie.skalcook.app
     if (parts.length >= 3) {
       tenantSlug = parts[0]
     }

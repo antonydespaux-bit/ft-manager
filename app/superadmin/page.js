@@ -526,7 +526,7 @@ export default function SuperAdminPage() {
                     <input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                       placeholder="Ex : la-fantaisie" style={inputStyle} />
                     <div style={{ fontSize: '11px', color: '#71717A', marginTop: '4px' }}>
-                      URL : <code style={{ background: '#F4F4F5', padding: '1px 6px', borderRadius: '4px' }}>{slug || 'votre-slug'}.ftmanager.fr</code>
+                      URL : <code style={{ background: '#F4F4F5', padding: '1px 6px', borderRadius: '4px' }}>{slug || 'votre-slug'}.skalcook.app</code>
                     </div>
                   </div>
                   <div>
