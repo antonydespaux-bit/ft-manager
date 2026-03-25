@@ -34,21 +34,23 @@ export default function LoginPage() {
       .single()
 
       const role = profil?.role
+    console.log("Mon rôle détecté :", role) // <--- Pour voir le problème dans la console
 
-      // 👑 AJOUT DU ROLE SUPER ADMIN
-      if (role === 'super_admin') {
-        router.push('/superadmin')
-        return // On s'arrête ici pour toi
-      }
-  
-      // Logique existante pour les autres
-      if (role === 'cuisine') {
-        router.push('/dashboard')
-      } else if (role === 'bar') {
-        router.push('/bar/dashboard')
-      } else {
-        router.push('/choix')
-      }
+    if (role === 'super_admin') {
+      console.log("Direction SuperAdmin")
+      router.push('/superadmin')
+      return 
+    }
+
+    if (role === 'cuisine') {
+      router.push('/dashboard')
+    } else if (role === 'bar') {
+      router.push('/bar/dashboard')
+    } else {
+      // Si on ne sait pas, on envoie au choix par défaut
+      console.log("Rôle inconnu, envoi vers /choix")
+      router.push('/choix')
+    }
     }
   return (
     <div style={{
