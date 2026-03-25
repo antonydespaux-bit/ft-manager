@@ -52,10 +52,19 @@ export default function ProspectsPage() {
   }
 
   const loadProspects = async () => {
-    const { data } = await supabase
+    setLoading(true)
+    const { data, error } = await supabase
       .from('prospects')
       .select('*')
       .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error loading prospects:', error)
+      setProspects([])
+      setLoading(false)
+      return
+    }
+
     setProspects(data || [])
     setLoading(false)
   }
