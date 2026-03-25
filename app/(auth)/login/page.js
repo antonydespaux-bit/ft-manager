@@ -48,28 +48,25 @@ export default function LoginPage() {
       .single()
 
     // 2) Multi-etablissements : vérifier les accès explicites sur `acces_clients`
-    const { data: accesRows } = await supabase
+    const { data: acces } = await supabase
       .from('acces_clients')
       .select('client_id')
       .eq('user_id', user?.id || data?.user?.id)
 
-    const acces = (accesRows || []).filter(r => r?.client_id)
+    const accesValides = (acces || []).filter(r => r?.client_id)
 
-    // Règle impérative multi-etablissements :
-    // dès qu'il y a plusieurs accès, on force le passage par /choix-etablissement,
-    // même si un client_id existe dans le profil.
-    if (acces.length > 1) {
+    // Priorité absolue : plusieurs accès => passage obligatoire par le hub.
+    if (accesValides && accesValides.length > 1) {
       try { localStorage.removeItem('client_id') } catch (e) {}
-      router.push('/choix-etablissement')
-      return
+      return router.push('/choix-etablissement')
     }
 
     // 3) Pré-définir client_id pour éviter des undefined plus tard
     // - si un seul accès multi-etablissements -> on le fixe
     // - sinon fallback ancien comportement via profil.client_id
-    if (acces.length === 1) {
+    if (accesValides.length === 1) {
       try {
-        localStorage.setItem('client_id', acces[0].client_id)
+        localStorage.setItem('client_id', accesValides[0].client_id)
       } catch (e) {}
     } else if (profil?.client_id) {
       try {
@@ -86,7 +83,7 @@ export default function LoginPage() {
     } else if (role === 'bar') {
       router.push('/bar/dashboard')
     } else {
-      if (acces.length >= 1) {
+      if (accesValides.length >= 1) {
         router.push('/choix-etablissement')
       } else {
         router.push('/choix')
