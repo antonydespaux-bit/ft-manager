@@ -286,6 +286,7 @@ export default function FichesPage() {
           }}>
             {fichesFiltrees.map(fiche => {
               const isSelected = selection.includes(fiche.id)
+              const isSousFiche = !!fiche.is_sub_fiche
               const fc = fiche.cout_portion > 0 && fiche.prix_ttc
                 ? (fiche.cout_portion / (fiche.prix_ttc / 1.10) * 100).toFixed(1)
                 : null
@@ -330,11 +331,29 @@ export default function FichesPage() {
                       </div>
                       {/* Badge catégorie dynamique */}
                       {fiche.categories_plats ? (
-                        <span style={{ background: c.accentClair, color: c.accent, borderRadius: '20px', padding: '2px 8px', fontSize: '10px', fontWeight: '500', flexShrink: 0, marginLeft: '6px' }}>
+                        <span style={{
+                          background: isSousFiche ? '#EDE9FE' : c.accentClair,
+                          color: isSousFiche ? '#4C1D95' : c.accent,
+                          borderRadius: '20px',
+                          padding: '2px 8px',
+                          fontSize: '10px',
+                          fontWeight: '500',
+                          flexShrink: 0,
+                          marginLeft: '6px'
+                        }}>
                           {fiche.categories_plats.emoji} {fiche.categories_plats.nom}
                         </span>
                       ) : fiche.categorie ? (
-                        <span style={{ background: c.accentClair, color: c.accent, borderRadius: '20px', padding: '2px 8px', fontSize: '10px', fontWeight: '500', flexShrink: 0, marginLeft: '6px' }}>
+                        <span style={{
+                          background: isSousFiche ? '#EDE9FE' : c.accentClair,
+                          color: isSousFiche ? '#4C1D95' : c.accent,
+                          borderRadius: '20px',
+                          padding: '2px 8px',
+                          fontSize: '10px',
+                          fontWeight: '500',
+                          flexShrink: 0,
+                          marginLeft: '6px'
+                        }}>
                           {fiche.categorie}
                         </span>
                       ) : null}

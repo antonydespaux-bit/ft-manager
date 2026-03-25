@@ -174,23 +174,26 @@ export default function NouvelleFiche() {
 
     const coutPortion = calculerCoutPortion()
 
+    const newFiche = {
+      nom,
+      categorie: catSelectionnee?.nom || '',
+      categorie_plat_id: categoriePlat || null,
+      lieu_id: lieuId || null,
+      // Le bool "Sous-fiche" est piloté par l'état UI (ici: sélection de catégorie "Sous-fiche"/"Sous-fiches").
+      is_sub_fiche: !!isSousFiche,
+      nb_portions: parseInt(nbPortions),
+      prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
+      description, saison, allergenes,
+      cout_portion: coutPortion ? parseFloat(coutPortion) : null,
+      perte: perte ? parseFloat(perte) : 0,
+      client_id: clientId
+    }
+
+    console.log('Données fiche envoyées:', newFiche)
+
     const { data: fiche, error: errFiche } = await supabase
       .from('fiches')
-      .insert([{
-        nom,
-        categorie: catSelectionnee?.nom || '',
-        categorie_plat_id: categoriePlat || null,
-        lieu_id: lieuId || null,
-        // La checkbox "Sous-fiche" côté UI est gérée via la catégorie sélectionnée.
-        // On synchronise donc le bool vers la colonne dédiée en base.
-        is_sub_fiche: isSousFiche,
-        nb_portions: parseInt(nbPortions),
-        prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
-        description, saison, allergenes,
-        cout_portion: coutPortion ? parseFloat(coutPortion) : null,
-        perte: perte ? parseFloat(perte) : 0,
-        client_id: clientId
-      }])
+      .insert([newFiche])
       .select().single()
 
     if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
@@ -220,7 +223,10 @@ export default function NouvelleFiche() {
       await supabase.from('fiche_ingredients').insert(ingredientsAInserer)
     }
 
-    if (isIngredientPossible(catSelectionnee?.nom || '') && coutPortion) {
+    // Ingredient miroir : pour que la sous-fiche devienne utilisable ailleurs,
+    // on insère une ligne dans `ingredients` avec le coût (par portion) comme prix.
+    const shouldCreateSousFicheIngredient = isSousFiche || (catSelectionnee?.nom || '') === 'Accompagnements'
+    if (shouldCreateSousFicheIngredient && coutPortion !== null && coutPortion !== undefined) {
       await supabase.from('ingredients').insert([{
         nom: fiche.nom,
         prix_kg: parseFloat(coutPortion),
