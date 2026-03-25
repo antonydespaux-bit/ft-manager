@@ -23,8 +23,11 @@ export default function NavbarCuisine() {
   const ACCENT = c.accent || '#6366F1'
   const ACCENT_LIGHT = c.accentClair || '#EEF2FF'
 
-  const modules = tenant?.modules_actifs || ['fiches', 'sous-fiches', 'menus', 'bar', 'avis', 'recap', 'ingredients', 'ardoise']
+  // Important: pas de fallback "bar" si le tenant n'est pas chargé.
+  // Sinon, l'onglet Bar peut rester visible avec un tenant précédent.
+  const modules = tenant?.modules_actifs || []
   const hasModule = (id) => modules.includes(id)
+  const hasBar = typeof tenant?.has_bar === 'boolean' ? tenant.has_bar : hasModule('bar')
 
   const peutModifier = role === 'admin' || role === 'cuisine'
 
@@ -196,7 +199,7 @@ export default function NavbarCuisine() {
           })}
 
           {/* Lien Bar — conditionné par module */}
-          {!isMobile && hasModule('bar') && (role === 'admin' || role === 'directeur') && (
+          {!isMobile && hasBar && (role === 'admin' || role === 'directeur') && (
             <button
               onClick={(e) => { e.stopPropagation(); router.push('/bar/dashboard') }}
               style={{
@@ -311,7 +314,7 @@ export default function NavbarCuisine() {
               }}
             >{item.label}</button>
           ))}
-          {hasModule('bar') && (role === 'admin' || role === 'directeur') && (
+          {hasBar && (role === 'admin' || role === 'directeur') && (
             <button onClick={() => { setMenuOuvert(false); router.push('/bar/dashboard') }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',

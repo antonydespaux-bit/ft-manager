@@ -206,6 +206,7 @@ export default function SuperAdminPage() {
 
     setSuccess(`✓ Établissement "${nomEtablissement}" créé avec succès !`)
     await loadClients()
+    try { window.dispatchEvent(new Event('tenant_refresh')) } catch (e) { /* no-op */ }
     resetForm()
     setVue('liste')
     setSaving(false)
@@ -242,6 +243,7 @@ export default function SuperAdminPage() {
 
     setSuccess(`✓ Établissement "${nomEtablissement}" mis à jour !`)
     await loadClients()
+    try { window.dispatchEvent(new Event('tenant_refresh')) } catch (e) { /* no-op */ }
     setSaving(false)
   }
 

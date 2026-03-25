@@ -25,12 +25,27 @@ export default function ProspectsPage() {
   const [savingNotes, setSavingNotes] = useState(false)
   const router = useRouter()
 
+  const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
+
   useEffect(() => { checkAuth() }, [])
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/'); return }
-    const { data: profil } = await supabase.from('profils').select('is_superadmin').eq('id', session.user.id).single()
+
+    const sessionEmail = (session?.user?.email || '').toLowerCase().trim()
+    if (SUPERADMIN_EMAILS.includes(sessionEmail)) {
+      setAuthorized(true)
+      loadProspects()
+      return
+    }
+
+    const { data: profil } = await supabase
+      .from('profils')
+      .select('is_superadmin')
+      .eq('id', session.user.id)
+      .single()
+
     if (!profil?.is_superadmin) { router.push('/dashboard'); return }
     setAuthorized(true)
     loadProspects()
