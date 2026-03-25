@@ -496,9 +496,12 @@ export default function SuperAdminPage() {
                           localStorage.removeItem('tenant')
                         } catch (e) { /* no-op */ }
 
-                        const clientId = client.id
-                        try { localStorage.setItem('client_id', clientId) } catch (e) { /* no-op */ }
-                        router.push('/dashboard')
+                        const selectedId = client.id // ID unique de l’itération
+                        console.log('Clic sur :', client.nom_etablissement, 'ID:', selectedId)
+                        try { localStorage.setItem('client_id', selectedId) } catch (e) { /* no-op */ }
+
+                        // Forcer un reload pour que TenantProvider relise localStorage immédiatement.
+                        window.location.href = '/dashboard'
                       }}
                       style={{
                         background: '#EEF2FF', color: '#4338CA',
