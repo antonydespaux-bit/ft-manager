@@ -29,7 +29,12 @@ export default function LoginPage() {
       return
     }
 
-    const userEmail = (data?.user?.email || '').toLowerCase().trim()
+    const { data: sessionData } = await supabase.auth.getSession()
+    const user = sessionData?.session?.user
+    const userEmail =
+      (user?.email || email || '')
+        .toLowerCase()
+        .trim()
     if (SUPERADMIN_EMAILS.includes(userEmail)) {
       router.push('/superadmin')
       return
@@ -38,7 +43,7 @@ export default function LoginPage() {
     const { data: profil } = await supabase
       .from('profils')
       .select('role')
-      .eq('id', data.user.id)
+      .eq('id', user?.id || data?.user?.id)
       .single()
 
     const role = profil?.role

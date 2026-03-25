@@ -69,7 +69,11 @@ export default function SuperAdminPage() {
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/'); return }
-    const userEmail = (session.user?.email || '').toLowerCase().trim()
+    let userEmail = (session.user?.email || '').toLowerCase().trim()
+    if (!userEmail) {
+      const { data: userData } = await supabase.auth.getUser()
+      userEmail = (userData?.user?.email || '').toLowerCase().trim()
+    }
     if (SUPERADMIN_EMAILS.includes(userEmail)) {
       setAuthorized(true)
       loadClients()
