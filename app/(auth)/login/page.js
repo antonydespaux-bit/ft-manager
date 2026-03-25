@@ -83,11 +83,9 @@ export default function LoginPage() {
     } else if (role === 'bar') {
       router.push('/bar/dashboard')
     } else {
-      if (accesValides.length >= 1) {
-        router.push('/choix-etablissement')
-      } else {
-        router.push('/choix')
-      }
+      // Directeur/admin/etc. : on passe toujours par le hub établissements.
+      // Si aucun accès n'existe, la page affichera un message explicite.
+      router.push('/choix-etablissement')
     }
   }
 

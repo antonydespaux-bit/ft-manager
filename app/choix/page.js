@@ -24,7 +24,20 @@ export default function ChoixPage() {
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) router.push('/')
+    if (!session) { router.push('/'); return }
+
+    // Garde-fou multi-etablissements :
+    // si l'utilisateur a des accès explicites, on utilise le hub dédié.
+    const { data: accesRows } = await supabase
+      .from('acces_clients')
+      .select('client_id')
+      .eq('user_id', session.user.id)
+
+    const accesValides = (accesRows || []).filter(r => r?.client_id)
+    if (accesValides.length >= 1) {
+      router.push('/choix-etablissement')
+      return
+    }
   }
 
   const handleLogout = async () => {
