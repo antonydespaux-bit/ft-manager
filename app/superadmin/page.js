@@ -490,7 +490,12 @@ export default function SuperAdminPage() {
                     >Modifier</button>
                     <button
                       onClick={() => {
-                        try { localStorage.clear() } catch (e) { /* no-op */ }
+                        // Nettoyage ciblé : ne pas casser les tokens Supabase.
+                        try {
+                          localStorage.removeItem('client_id')
+                          localStorage.removeItem('tenant')
+                        } catch (e) { /* no-op */ }
+
                         const clientId = client.id
                         try { localStorage.setItem('client_id', clientId) } catch (e) { /* no-op */ }
                         router.push('/dashboard')
