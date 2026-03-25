@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo, LogoBand } from '../lib/theme.jsx'
 
+const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,31 +29,28 @@ export default function LoginPage() {
       return
     }
 
+    const userEmail = (data?.user?.email || '').toLowerCase().trim()
+    if (SUPERADMIN_EMAILS.includes(userEmail)) {
+      router.push('/superadmin')
+      return
+    }
+
     const { data: profil } = await supabase
       .from('profils')
       .select('role')
       .eq('id', data.user.id)
       .single()
 
-      const role = profil?.role
-    console.log("Mon rôle détecté :", role) // <--- Pour voir le problème dans la console
-
-    if (role === 'super_admin') {
-      console.log("Direction SuperAdmin")
-      router.push('/superadmin')
-      return 
-    }
+    const role = profil?.role
 
     if (role === 'cuisine') {
       router.push('/dashboard')
     } else if (role === 'bar') {
       router.push('/bar/dashboard')
     } else {
-      // Si on ne sait pas, on envoie au choix par défaut
-      console.log("Rôle inconnu, envoi vers /choix")
       router.push('/choix')
     }
-    }
+  }
   return (
     <div style={{
       minHeight: '100vh', background: c.fond,

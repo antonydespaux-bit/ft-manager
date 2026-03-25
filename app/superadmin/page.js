@@ -23,6 +23,7 @@ const COULEURS_PRESETS = [
   { label: 'Zinc/Rose', principale: '#18181B', accent: '#EC4899', fond: '#F4F4F5' },
   { label: 'Personnalisé', principale: '', accent: '', fond: '' },
 ]
+const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
 
 export default function SuperAdminPage() {
   const [clients, setClients] = useState([])
@@ -68,6 +69,12 @@ export default function SuperAdminPage() {
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/'); return }
+    const userEmail = (session.user?.email || '').toLowerCase().trim()
+    if (SUPERADMIN_EMAILS.includes(userEmail)) {
+      setAuthorized(true)
+      loadClients()
+      return
+    }
 
     const { data: profil } = await supabase
       .from('profils')
