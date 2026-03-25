@@ -224,6 +224,8 @@ export default function ModifierFiche() {
       categorie_plat_id: categoriePlat || null,
       lieu_id: lieuId || null,
       nb_portions: nbPortions ? parseInt(nbPortions) : null,
+      // Même logique que dans la création : la catégorie "Sous-fiche" pilote `is_sub_fiche`.
+      is_sub_fiche: isSousFiche,
       prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
       description,
       instructions: instructions || null,

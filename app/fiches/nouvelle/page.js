@@ -181,6 +181,9 @@ export default function NouvelleFiche() {
         categorie: catSelectionnee?.nom || '',
         categorie_plat_id: categoriePlat || null,
         lieu_id: lieuId || null,
+        // La checkbox "Sous-fiche" côté UI est gérée via la catégorie sélectionnée.
+        // On synchronise donc le bool vers la colonne dédiée en base.
+        is_sub_fiche: isSousFiche,
         nb_portions: parseInt(nbPortions),
         prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
         description, saison, allergenes,
