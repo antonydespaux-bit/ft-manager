@@ -6,7 +6,6 @@ import { isSuperadminEmail } from '../../../lib/superadmin'
 import { useRouter } from 'next/navigation'
 import ChefLoader from '../../../components/ChefLoader'
 import { useIsMobile } from '../../../lib/useIsMobile'
-import { useIsMobile } from '../../../lib/useIsMobile'
 
 const STATUTS = [
   { id: 'nouveau', label: 'Nouveau', color: '#6366F1', bg: '#EEF2FF' },
@@ -29,7 +28,6 @@ export default function ProspectsPage() {
   const [savingNotes, setSavingNotes] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
   const router = useRouter()
-  const isMobile = useIsMobile()
   const isMobile = useIsMobile()
 
   useEffect(() => { checkAuth() }, [])
