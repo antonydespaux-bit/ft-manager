@@ -50,9 +50,14 @@ export default function SuperadminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [updatingId, setUpdatingId] = useState(null)
   const [currentUserId, setCurrentUserId] = useState(null)
   const [roleFilter, setRoleFilter] = useState('tous')
+  const [editingUser, setEditingUser] = useState(null)
+  const [editNom, setEditNom] = useState('')
+  const [editEmail, setEditEmail] = useState('')
 
   const loadUsers = async () => {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -141,6 +146,7 @@ export default function SuperadminUsersPage() {
 
     setDeletingId(user.id)
     setError('')
+    setSuccess('')
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token
@@ -167,6 +173,65 @@ export default function SuperadminUsersPage() {
       setUsers((prev) => prev.filter((u) => u.id !== user.id))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const openEditModal = (user) => {
+    setEditingUser(user)
+    setEditNom(user?.nom || '')
+    setEditEmail(user?.email || '')
+    setError('')
+    setSuccess('')
+  }
+
+  const closeEditModal = () => {
+    if (updatingId) return
+    setEditingUser(null)
+    setEditNom('')
+    setEditEmail('')
+  }
+
+  const updateUser = async () => {
+    if (!editingUser?.id) return
+    setUpdatingId(editingUser.id)
+    setError('')
+    setSuccess('')
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if (!token) {
+        setError('Session expirée. Reconnectez-vous.')
+        return
+      }
+
+      const res = await fetch('/api/superadmin/update-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user_id: editingUser.id,
+          nom: editNom.trim(),
+          email: editEmail.trim()
+        })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(typeof data.error === 'string' ? data.error : 'Erreur lors de la mise à jour.')
+        return
+      }
+
+      setUsers((prev) => prev.map((u) => (
+        u.id === editingUser.id
+          ? { ...u, nom: editNom.trim(), email: editEmail.trim() }
+          : u
+      )))
+      setSuccess('Utilisateur mis à jour avec succès.')
+      closeEditModal()
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -268,6 +333,16 @@ export default function SuperadminUsersPage() {
           </div>
         )}
 
+        {success && (
+          <div style={{
+            background: '#DCFCE7', color: '#166534',
+            borderRadius: '8px', padding: '10px 12px',
+            border: '0.5px solid #86EFAC', fontSize: '13px', marginBottom: '10px'
+          }}>
+            {success}
+          </div>
+        )}
+
         <div style={{
           background: 'white',
           borderRadius: '14px',
@@ -322,6 +397,25 @@ export default function SuperadminUsersPage() {
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>
                         <button
+                          onClick={(e) => { e.stopPropagation(); openEditModal(user) }}
+                          disabled={!!deletingId || !!updatingId}
+                          title="Modifier cet utilisateur"
+                          style={{
+                            border: '0.5px solid #CBD5E1',
+                            background: 'white',
+                            color: '#334155',
+                            borderRadius: '8px',
+                            padding: '7px 10px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: (!!deletingId || !!updatingId) ? 'not-allowed' : 'pointer',
+                            marginRight: '8px',
+                            opacity: (!!deletingId || !!updatingId) ? 0.7 : 1
+                          }}
+                        >
+                          ✏️ Modifier
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); deleteUser(user) }}
                           disabled={!!deletingId || isSelf}
                           title={isSelf ? 'Suppression de votre propre compte interdite' : 'Supprimer cet utilisateur'}
@@ -355,6 +449,115 @@ export default function SuperadminUsersPage() {
           </div>
         </div>
       </div>
+
+      {editingUser && (
+        <div
+          onClick={closeEditModal}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(24,24,27,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 300
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '520px',
+              background: 'white',
+              borderRadius: '14px',
+              border: `0.5px solid ${c.bordure}`,
+              padding: '16px'
+            }}
+          >
+            <div style={{ fontSize: '17px', fontWeight: 700, color: c.texte, marginBottom: '4px' }}>
+              Modifier l&apos;utilisateur
+            </div>
+            <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '14px' }}>
+              Mettez à jour le nom et l&apos;email du compte.
+            </div>
+
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  Nom
+                </label>
+                <input
+                  value={editNom}
+                  onChange={(e) => setEditNom(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: `0.5px solid ${c.bordure}`,
+                    fontSize: '14px',
+                    outline: 'none',
+                    color: c.texte
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: `0.5px solid ${c.bordure}`,
+                    fontSize: '14px',
+                    outline: 'none',
+                    color: c.texte
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '14px' }}>
+              <button
+                onClick={closeEditModal}
+                disabled={!!updatingId}
+                style={{
+                  border: `0.5px solid ${c.bordure}`,
+                  background: 'white',
+                  color: c.texteMuted,
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  fontSize: '12px',
+                  cursor: !!updatingId ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={updateUser}
+                disabled={!!updatingId}
+                style={{
+                  border: 'none',
+                  background: c.accent,
+                  color: 'white',
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: !!updatingId ? 'not-allowed' : 'pointer',
+                  opacity: !!updatingId ? 0.7 : 1
+                }}
+              >
+                {updatingId ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
