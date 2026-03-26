@@ -199,10 +199,16 @@ export default function NouvelleFiche() {
     if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
 
     if (photo) {
+      const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
+      if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setLoading(false); return }
       const ext = photo.name.split('.').pop()
       const path = `${clientId}/${fiche.id}.${ext}`
       const { error: errPhoto } = await supabase.storage
-        .from('fiches-photos').upload(path, photo, { upsert: true })
+        .from('fiches-photos').upload(path, fileToUpload, {
+          upsert: true,
+          contentType: fileToUpload.type || `image/${ext}`,
+          cacheControl: '3600'
+        })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
         await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id).eq('client_id', clientId)

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase, getParametres, getClientId } from '../../../../lib/supabase'
+import { supabase, getParametres, getClientId, ensureFichePhotoUrl } from '../../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
@@ -69,6 +69,19 @@ const loadFiche = async () => {
       .single()
 
     if (error || !ficheData) { router.push('/bar/fiches'); return }
+
+    if (ficheData?.photo_url) {
+      const repairedUrl = await ensureFichePhotoUrl({
+        tableName: 'fiches_bar',
+        ficheId: params_route.id,
+        clientId,
+        photoUrl: ficheData.photo_url,
+        isBar: true
+      })
+      if (repairedUrl && repairedUrl !== ficheData.photo_url) {
+        ficheData.photo_url = repairedUrl
+      }
+    }
     setFiche(ficheData)
 
     // Requête 1 — liens de jointure

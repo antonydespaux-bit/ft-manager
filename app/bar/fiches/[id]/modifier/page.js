@@ -240,9 +240,15 @@ export default function ModifierBarFiche() {
     let photoUrl = photoExistante
 
     if (photo) {
+      const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
+      if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setSaving(false); return }
       const ext = photo.name.split('.').pop()
       const path = `${clientId}/bar-${params_route.id}.${ext}`
-      const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, photo, { upsert: true })
+      const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, fileToUpload, {
+        upsert: true,
+        contentType: fileToUpload.type || `image/${ext}`,
+        cacheControl: '3600'
+      })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
         photoUrl = urlData.publicUrl

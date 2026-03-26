@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase, getParametres, getClientId } from '../../../lib/supabase'
+import { supabase, getParametres, getClientId, ensureFichePhotoUrl } from '../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
@@ -69,6 +69,19 @@ export default function FicheDetail() {
         .single()
 
       if (error || !ficheData) { router.push('/fiches'); return }
+
+      if (ficheData?.photo_url) {
+        const repairedUrl = await ensureFichePhotoUrl({
+          tableName: 'fiches',
+          ficheId: params_route.id,
+          clientId,
+          photoUrl: ficheData.photo_url,
+          isBar: false
+        })
+        if (repairedUrl && repairedUrl !== ficheData.photo_url) {
+          ficheData.photo_url = repairedUrl
+        }
+      }
       setFiche(ficheData)
 
       // Chargement ingrédients SANS filtre client_id sur la table de jointure
