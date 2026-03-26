@@ -24,7 +24,6 @@ export default function NouveauUtilisateurPage() {
   const [passwordTemp, setPasswordTemp] = useState('')
   const [selectedClientIds, setSelectedClientIds] = useState([])
   const [createdUserId, setCreatedUserId] = useState(null)
-  const [createdPassword, setCreatedPassword] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -91,7 +90,6 @@ export default function NouveauUtilisateurPage() {
     setError('')
     setSuccess('')
     setCreatedUserId(null)
-    setCreatedPassword('')
 
     try {
       const { data: sessionData } = await supabase.auth.getSession()
@@ -124,7 +122,6 @@ export default function NouveauUtilisateurPage() {
 
       setSuccess('Utilisateur global créé avec succès.')
       setCreatedUserId(data.user_id || null)
-      setCreatedPassword(data.password_temporaire || '')
       setEmail('')
       setNom('')
       setPasswordTemp('')
@@ -212,7 +209,9 @@ export default function NouveauUtilisateurPage() {
             border: '0.5px solid #86EFAC', fontSize: '13px', marginBottom: '10px'
           }}>
             {success}
-            {createdPassword ? <div style={{ marginTop: '6px' }}>Mot de passe temporaire: <strong>{createdPassword}</strong></div> : null}
+            <div style={{ marginTop: '6px' }}>
+              Un email de réinitialisation a été envoyé à l’utilisateur pour définir son mot de passe.
+            </div>
             {createdUserId ? (
               <div style={{ marginTop: '8px' }}>
                 <button

@@ -23,6 +23,15 @@ function temporaryPassword() {
   return randomBytes(18).toString('base64url')
 }
 
+function appOrigin(request) {
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL
+  if (envUrl) return envUrl.replace(/\/$/, '')
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'http'
+  if (host) return `${proto}://${host}`.replace(/\/$/, '')
+  return 'http://localhost:3000'
+}
+
 async function requireSuperAdmin(request) {
   const authHeader = request.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
@@ -79,6 +88,7 @@ export async function POST(request) {
     } = parsed.data
 
     const password = tempPasswordInput || temporaryPassword()
+    const redirectTo = `${appOrigin(request)}/nouveau-mot-de-passe`
 
     let createResult = await supabaseServiceRole.auth.admin.createUser({
       email,
@@ -140,11 +150,27 @@ export async function POST(request) {
       }
     }
 
+    const { error: errRecoveryEmail } = await supabaseServiceRole.auth.resetPasswordForEmail(email, {
+      redirectTo
+    })
+    if (errRecoveryEmail) {
+      await supabaseServiceRole.from('acces_clients').delete().eq('user_id', userId)
+      await supabaseServiceRole.from('profils').delete().eq('id', userId)
+      await supabaseServiceRole.auth.admin.deleteUser(userId)
+      return Response.json(
+        {
+          error:
+            errRecoveryEmail.message ||
+            'Impossible d’envoyer l’email de réinitialisation (vérifiez SMTP et URL autorisées dans Supabase).'
+        },
+        { status: 502 }
+      )
+    }
+
     return Response.json({
       success: true,
       user_id: userId,
-      email,
-      password_temporaire: password
+      email
     })
   } catch (err) {
     console.error(err)
