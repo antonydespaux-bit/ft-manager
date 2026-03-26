@@ -25,13 +25,14 @@ export default function ChoixEtablissementPage() {
           router.push('/login')
           return
         }
- 
-        const { data, error: accesErr } = await supabase
+
+        // Lecture unique via acces_clients + jointure clients
+        const { data: accesData, error: accesErr } = await supabase
           .from('acces_clients')
-          .select('*, clients(*)')
+          .select('client_id, role, clients(id, nom_etablissement, nom, slug, actif)')
           .eq('user_id', user.id)
 
-        console.log('choix-etablissement:acces_clients raw data', data)
+        console.log('choix-etablissement:acces_clients raw data', accesData)
         console.log('choix-etablissement:acces_clients error', accesErr)
 
         if (accesErr) {
@@ -40,12 +41,29 @@ export default function ChoixEtablissementPage() {
           return
         }
 
-        const rows = (data || []).filter((r) => r?.client_id)
-        console.log('choix-etablissement:acces_clients filtered rows', rows)
+        const rows = (accesData || []).filter((r) => r?.client_id && r?.clients)
+
+        console.log('choix-etablissement:merged rows', rows)
         setEtablissements(rows)
 
+        // Evite un écran "vide" : si un seul établissement, on le sélectionne automatiquement.
+        if (rows.length === 1) {
+          const only = rows[0]
+          try {
+            localStorage.setItem('client_id', only.client_id)
+          } catch (e) {
+            // no-op
+          }
+          if ((only.role || '').toLowerCase() === 'bar') {
+            router.push('/bar/dashboard')
+          } else {
+            router.push('/dashboard')
+          }
+          return
+        }
+
         if (rows.length === 0) {
-          setError('Aucun établissement associé à votre compte.')
+          setError('Aucun établissement associé')
         }
       } catch (e) {
         console.log('choix-etablissement:init exception', e)
