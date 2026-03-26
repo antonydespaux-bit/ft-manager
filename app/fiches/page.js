@@ -58,7 +58,8 @@ export default function FichesPage() {
       ] = await Promise.all([
         supabase.from('fiches').select('*, lieux(id,nom,emoji), categories_plats(id,nom,emoji)')
           .eq('client_id', clientId)
-          .neq('categorie', 'Sous-fiche')
+          // Le badge violet s'appuie sur is_sub_fiche: on exclut explicitement les sous-fiches.
+          .or('is_sub_fiche.is.null,is_sub_fiche.eq.false')
           .eq('archive', showArchives)
           .order('created_at', { ascending: false }),
         supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),

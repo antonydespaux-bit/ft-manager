@@ -34,7 +34,8 @@ export default function SousFichesPage() {
       .from('fiches')
       .select('*')
       .eq('client_id', clientId)
-      .eq('categorie', 'Sous-fiche')
+      // Critère identique au badge violet: seules les vraies sous-fiches.
+      .eq('is_sub_fiche', true)
       .eq('archive', false)
       .order('nom')
     setFiches(data || [])
