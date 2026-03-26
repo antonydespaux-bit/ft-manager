@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { isSuperadminEmail } from '../../../../lib/superadmin'
+import { z } from 'zod'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -7,6 +8,10 @@ const supabaseServiceRole = createClient(
   supabaseUrl,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
+const userDetailQuerySchema = z.object({
+  user_id: z.string().uuid()
+})
 
 
 async function requireSuperAdmin(request) {
@@ -50,10 +55,16 @@ export async function GET(request) {
     if (gate.response) return gate.response
 
     const url = new URL(request.url)
-    const userId = url.searchParams.get('user_id') || ''
-    if (!userId) {
-      return Response.json({ error: 'Paramètre user_id manquant.' }, { status: 400 })
+    const parsedQuery = userDetailQuerySchema.safeParse({
+      user_id: url.searchParams.get('user_id')
+    })
+    if (!parsedQuery.success) {
+      return Response.json(
+        { error: 'Query invalide.', details: parsedQuery.error.flatten() },
+        { status: 400 }
+      )
     }
+    const userId = parsedQuery.data.user_id
 
     const [profilRes, clientsRes, accesRes] = await Promise.all([
       supabaseServiceRole

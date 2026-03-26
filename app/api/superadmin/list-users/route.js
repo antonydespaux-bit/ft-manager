@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { isSuperadminEmail } from '../../../../lib/superadmin'
+import { z } from 'zod'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -7,6 +8,10 @@ const supabaseServiceRole = createClient(
   supabaseUrl,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
+const listUsersQuerySchema = z.object({
+  role: z.string().trim().min(1).optional()
+})
 
 
 async function requireSuperAdmin(request) {
@@ -49,6 +54,19 @@ export async function GET(request) {
     const gate = await requireSuperAdmin(request)
     if (gate.response) return gate.response
 
+    const url = new URL(request.url)
+    const parsedQuery = listUsersQuerySchema.safeParse({
+      role: url.searchParams.get('role') || undefined
+    })
+    if (!parsedQuery.success) {
+      return Response.json(
+        { error: 'Query invalide.', details: parsedQuery.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const roleFilter = parsedQuery.data.role?.toLowerCase()
+
     // AUCUN filtre: on lit tous les profils.
     const [profilsRes, accesRes] = await Promise.all([
       supabaseServiceRole
@@ -76,10 +94,13 @@ export async function GET(request) {
       accessMap.get(uid).add(cid)
     }
 
-    const users = (profilsRes.data || []).map((u) => ({
+    let users = (profilsRes.data || []).map((u) => ({
       ...u,
       etablissement_count: accessMap.get(u.id)?.size || 0
     }))
+    if (roleFilter) {
+      users = users.filter((u) => String(u.role || '').toLowerCase() === roleFilter)
+    }
 
     return Response.json({ users, total: users.length })
   } catch (err) {

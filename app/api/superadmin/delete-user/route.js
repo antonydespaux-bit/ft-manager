@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { isSuperadminEmail } from '../../../../lib/superadmin'
+import { z } from 'zod'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -7,6 +8,10 @@ const supabaseServiceRole = createClient(
   supabaseUrl,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
+
+const deleteUserSchema = z.object({
+  user_id: z.string().uuid()
+})
 
 
 async function requireSuperAdmin(request) {
@@ -49,12 +54,14 @@ export async function POST(request) {
     const gate = await requireSuperAdmin(request)
     if (gate.response) return gate.response
 
-    const body = await request.json()
-    const userId = typeof body.user_id === 'string' ? body.user_id.trim() : ''
-
-    if (!userId) {
-      return Response.json({ error: 'Paramètre user_id manquant.' }, { status: 400 })
+    const parsed = deleteUserSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return Response.json(
+        { error: 'Payload invalide.', details: parsed.error.flatten() },
+        { status: 400 }
+      )
     }
+    const userId = parsed.data.user_id
 
     if (userId === gate.user.id) {
       return Response.json({ error: 'Vous ne pouvez pas vous supprimer vous-même.' }, { status: 400 })
