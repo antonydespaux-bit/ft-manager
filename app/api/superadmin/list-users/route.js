@@ -71,7 +71,7 @@ export async function GET(request) {
     const [profilsRes, accesRes] = await Promise.all([
       supabaseServiceRole
         .from('profils')
-        .select('id, nom, email, role, client_id, created_at')
+        .select('id, nom, email, role, client_id, created_at, telephone, site_web, siret_personnel, adresse_pro')
         .order('created_at', { ascending: false }),
       supabaseServiceRole
         .from('acces_clients')

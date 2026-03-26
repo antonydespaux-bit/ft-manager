@@ -58,6 +58,11 @@ export default function SuperadminUsersPage() {
   const [editingUser, setEditingUser] = useState(null)
   const [editNom, setEditNom] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editRole, setEditRole] = useState('')
+  const [editTelephone, setEditTelephone] = useState('')
+  const [editSiteWeb, setEditSiteWeb] = useState('')
+  const [editSiretPersonnel, setEditSiretPersonnel] = useState('')
+  const [editAdressePro, setEditAdressePro] = useState('')
 
   const loadUsers = async () => {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -180,6 +185,11 @@ export default function SuperadminUsersPage() {
     setEditingUser(user)
     setEditNom(user?.nom || '')
     setEditEmail(user?.email || '')
+    setEditRole(user?.role || '')
+    setEditTelephone(user?.telephone || '')
+    setEditSiteWeb(user?.site_web || '')
+    setEditSiretPersonnel(user?.siret_personnel || '')
+    setEditAdressePro(user?.adresse_pro || '')
     setError('')
     setSuccess('')
   }
@@ -189,6 +199,11 @@ export default function SuperadminUsersPage() {
     setEditingUser(null)
     setEditNom('')
     setEditEmail('')
+    setEditRole('')
+    setEditTelephone('')
+    setEditSiteWeb('')
+    setEditSiretPersonnel('')
+    setEditAdressePro('')
   }
 
   const updateUser = async () => {
@@ -213,7 +228,12 @@ export default function SuperadminUsersPage() {
         body: JSON.stringify({
           user_id: editingUser.id,
           nom: editNom.trim(),
-          email: editEmail.trim()
+          email: editEmail.trim(),
+          role: editRole,
+          telephone: editTelephone.trim(),
+          site_web: editSiteWeb.trim(),
+          siret_personnel: editSiretPersonnel.trim(),
+          adresse_pro: editAdressePro.trim()
         })
       })
 
@@ -225,7 +245,16 @@ export default function SuperadminUsersPage() {
 
       setUsers((prev) => prev.map((u) => (
         u.id === editingUser.id
-          ? { ...u, nom: editNom.trim(), email: editEmail.trim() }
+          ? {
+              ...u,
+              nom: editNom.trim(),
+              email: editEmail.trim(),
+              role: editRole,
+              telephone: editTelephone.trim() || null,
+              site_web: editSiteWeb.trim() || null,
+              siret_personnel: editSiretPersonnel.trim() || null,
+              adresse_pro: editAdressePro.trim() || null
+            }
           : u
       )))
       setSuccess('Utilisateur mis à jour avec succès.')
@@ -482,13 +511,52 @@ export default function SuperadminUsersPage() {
             </div>
 
             <div style={{ display: 'grid', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Nom
+                  </label>
+                  <input
+                    value={editNom}
+                    onChange={(e) => setEditNom(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: `0.5px solid ${c.bordure}`,
+                      fontSize: '14px',
+                      outline: 'none',
+                      color: c.texte
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: `0.5px solid ${c.bordure}`,
+                      fontSize: '14px',
+                      outline: 'none',
+                      color: c.texte
+                    }}
+                  />
+                </div>
+              </div>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                  Nom
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Role
                 </label>
-                <input
-                  value={editNom}
-                  onChange={(e) => setEditNom(e.target.value)}
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -496,29 +564,99 @@ export default function SuperadminUsersPage() {
                     border: `0.5px solid ${c.bordure}`,
                     fontSize: '14px',
                     outline: 'none',
-                    color: c.texte
+                    color: c.texte,
+                    background: 'white'
                   }}
-                />
+                >
+                  {['admin', 'consultant', 'directeur', 'cuisine', 'bar'].map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: `0.5px solid ${c.bordure}`,
-                    fontSize: '14px',
-                    outline: 'none',
-                    color: c.texte
-                  }}
-                />
-              </div>
+
+              {editRole === 'consultant' && (
+                <div style={{ border: `0.5px solid ${c.bordure}`, borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                    Informations Professionnelles
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Téléphone
+                      </label>
+                      <input
+                        value={editTelephone}
+                        onChange={(e) => setEditTelephone(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: `0.5px solid ${c.bordure}`,
+                          fontSize: '14px',
+                          outline: 'none',
+                          color: c.texte
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Site Web
+                      </label>
+                      <input
+                        value={editSiteWeb}
+                        onChange={(e) => setEditSiteWeb(e.target.value)}
+                        placeholder="https://..."
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: `0.5px solid ${c.bordure}`,
+                          fontSize: '14px',
+                          outline: 'none',
+                          color: c.texte
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        SIRET Personnel
+                      </label>
+                      <input
+                        value={editSiretPersonnel}
+                        onChange={(e) => setEditSiretPersonnel(e.target.value)}
+                        placeholder="14 chiffres"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: `0.5px solid ${c.bordure}`,
+                          fontSize: '14px',
+                          outline: 'none',
+                          color: c.texte
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: 600, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Adresse Professionnelle
+                      </label>
+                      <input
+                        value={editAdressePro}
+                        onChange={(e) => setEditAdressePro(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: `0.5px solid ${c.bordure}`,
+                          fontSize: '14px',
+                          outline: 'none',
+                          color: c.texte
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '14px' }}>

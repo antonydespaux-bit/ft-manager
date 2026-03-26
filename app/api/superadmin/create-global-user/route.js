@@ -14,7 +14,20 @@ const createGlobalUserSchema = z.object({
   email: z.string().trim().email(),
   nom: z.string().trim().min(2),
   role: z.string().trim().min(1),
-  client_ids: z.array(z.string().uuid()).optional()
+  client_ids: z.array(z.string().uuid()).optional(),
+  telephone: z.string().trim().optional().or(z.literal('')),
+  site_web: z.string().trim().url().optional().or(z.literal('')),
+  siret_personnel: z.string().trim().optional().or(z.literal('')),
+  adresse_pro: z.string().trim().optional().or(z.literal(''))
+}).superRefine((data, ctx) => {
+  const siret = String(data.siret_personnel || '').replace(/\s+/g, '')
+  if (siret && !/^\d{14}$/.test(siret)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Le SIRET personnel doit contenir 14 chiffres.',
+      path: ['siret_personnel']
+    })
+  }
 })
 
 
@@ -82,7 +95,11 @@ export async function POST(request) {
       email,
       nom,
       role,
-      client_ids: clientIds = []
+      client_ids: clientIds = [],
+      telephone = '',
+      site_web = '',
+      siret_personnel = '',
+      adresse_pro = ''
     } = parsed.data
 
     const password = temporaryPassword()
@@ -122,7 +139,11 @@ export async function POST(request) {
         email,
         nom,
         role,
-        client_id: null
+        client_id: null,
+        telephone: telephone || null,
+        site_web: site_web || null,
+        siret_personnel: (siret_personnel || '').replace(/\s+/g, '') || null,
+        adresse_pro: adresse_pro || null
       })
 
     if (errProfil) {

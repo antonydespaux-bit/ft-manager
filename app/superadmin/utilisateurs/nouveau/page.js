@@ -21,6 +21,10 @@ export default function NouveauUtilisateurPage() {
   const [email, setEmail] = useState('')
   const [nom, setNom] = useState('')
   const [role, setRole] = useState('consultant')
+  const [telephone, setTelephone] = useState('')
+  const [siteWeb, setSiteWeb] = useState('')
+  const [siretPersonnel, setSiretPersonnel] = useState('')
+  const [adressePro, setAdressePro] = useState('')
   const [selectedClientIds, setSelectedClientIds] = useState([])
   const [createdUserId, setCreatedUserId] = useState(null)
 
@@ -108,6 +112,10 @@ export default function NouveauUtilisateurPage() {
           email: email.trim(),
           nom: nom.trim(),
           role,
+          telephone: telephone.trim(),
+          site_web: siteWeb.trim(),
+          siret_personnel: siretPersonnel.trim(),
+          adresse_pro: adressePro.trim(),
           client_ids: selectedClientIds
         })
       })
@@ -122,6 +130,10 @@ export default function NouveauUtilisateurPage() {
       setCreatedUserId(data.user_id || null)
       setEmail('')
       setNom('')
+      setTelephone('')
+      setSiteWeb('')
+      setSiretPersonnel('')
+      setAdressePro('')
       setSelectedClientIds([])
     } finally {
       setSaving(false)
@@ -247,6 +259,32 @@ export default function NouveauUtilisateurPage() {
               </select>
             </div>
           </div>
+
+          {role === 'consultant' && (
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: c.texteMuted, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+                Informations Professionnelles
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={labelStyle}>Téléphone</label>
+                  <input value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder="+33..." style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Site Web</label>
+                  <input value={siteWeb} onChange={(e) => setSiteWeb(e.target.value)} placeholder="https://..." style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>SIRET Personnel</label>
+                  <input value={siretPersonnel} onChange={(e) => setSiretPersonnel(e.target.value)} placeholder="14 chiffres" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Adresse Professionnelle</label>
+                  <input value={adressePro} onChange={(e) => setAdressePro(e.target.value)} placeholder="Adresse pro" style={inputStyle} />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ fontSize: '12px', fontWeight: 700, color: c.texteMuted, textTransform: 'uppercase', marginBottom: '8px' }}>
             Établissements autorisés ({dirtyAccessCount})
