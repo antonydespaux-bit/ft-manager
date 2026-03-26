@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { isSuperadminEmail } from '../../../../lib/superadmin'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -7,7 +8,6 @@ const supabaseServiceRole = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
 
 async function requireSuperAdmin(request) {
   const authHeader = request.headers.get('Authorization')
@@ -27,7 +27,7 @@ async function requireSuperAdmin(request) {
   }
 
   const userEmail = (user.email || '').toLowerCase().trim()
-  if (SUPERADMIN_EMAILS.includes(userEmail)) {
+  if (isSuperadminEmail(userEmail)) {
     return { user }
   }
 

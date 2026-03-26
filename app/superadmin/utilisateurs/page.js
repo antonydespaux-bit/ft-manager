@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import { isSuperadminEmail } from '../../../lib/superadmin'
 import { theme, Logo, LogoBand } from '../../../lib/theme.jsx'
-
-const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
 
 function formatDate(value) {
   if (!value) return '-'
@@ -92,7 +91,7 @@ export default function SuperadminUsersPage() {
         setCurrentUserId(session.user.id || null)
 
         const sessionEmail = (session.user?.email || '').toLowerCase().trim()
-        let isAllowed = SUPERADMIN_EMAILS.includes(sessionEmail)
+        let isAllowed = isSuperadminEmail(sessionEmail)
 
         if (!isAllowed) {
           const { data: meProfil } = await supabase

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { isSuperadminEmail } from '../lib/superadmin'
 import { useRouter } from 'next/navigation'
 
 const SUPABASE_URL = 'https://uvmslpdcywephdneciwd.supabase.co'
@@ -616,7 +617,6 @@ export default function LandingClient({ markup }) {
 
     // If user is already logged-in, swap landing CTA to dashboard.
     const swapLandingCta = async () => {
-      const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
       try {
         const { data: sessionData } = await supabase.auth.getSession()
         const user = sessionData?.session?.user
@@ -625,7 +625,7 @@ export default function LandingClient({ markup }) {
         const email = (user.email || '').toLowerCase().trim()
         let target = '/choix'
 
-        if (SUPERADMIN_EMAILS.includes(email)) {
+        if (isSuperadminEmail(email)) {
           target = '/superadmin'
         } else {
           try {

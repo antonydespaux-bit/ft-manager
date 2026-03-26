@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { isSuperadminEmail } from '../../lib/superadmin'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../lib/useTheme'
 import { useIsMobile } from '../../lib/useIsMobile'
@@ -23,8 +24,6 @@ const COULEURS_PRESETS = [
   { label: 'Zinc/Rose', principale: '#18181B', accent: '#EC4899', fond: '#F4F4F5' },
   { label: 'Personnalisé', principale: '', accent: '', fond: '' },
 ]
-const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
-
 export default function SuperAdminPage() {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -78,7 +77,7 @@ export default function SuperAdminPage() {
       const { data: userData } = await supabase.auth.getUser()
       userEmail = (userData?.user?.email || '').toLowerCase().trim()
     }
-    if (SUPERADMIN_EMAILS.includes(userEmail)) {
+    if (isSuperadminEmail(userEmail)) {
       setAuthorized(true)
       loadClients()
       return

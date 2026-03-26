@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { isSuperadminEmail } from '../../../lib/superadmin'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -8,7 +9,6 @@ const supabaseAnon = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
-const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
 
 async function requireSuperAdmin(request) {
   const authHeader = request.headers.get('Authorization')
@@ -26,7 +26,7 @@ async function requireSuperAdmin(request) {
   }
 
   const email = (user.email || '').toLowerCase().trim()
-  if (SUPERADMIN_EMAILS.includes(email)) return { user }
+  if (isSuperadminEmail(email)) return { user }
 
   const { data: profil, error: profilErr } = await supabaseAdmin
     .from('profils')

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
+import { isSuperadminEmail } from '../../../lib/superadmin'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -8,7 +9,6 @@ const supabaseServiceRole = createClient(
   supabaseUrl,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
-const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
 
 function appOrigin(request) {
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -46,7 +46,7 @@ async function requireSuperAdmin(request) {
     .single()
 
   const userEmail = (user.email || '').toLowerCase().trim()
-  const isAllowedByEmail = SUPERADMIN_EMAILS.includes(userEmail)
+  const isAllowedByEmail = isSuperadminEmail(userEmail)
   if (!isAllowedByEmail && (profilErr || !profil?.is_superadmin)) {
     return { response: Response.json({ error: 'Accès refusé : super admin requis.' }, { status: 403 }) }
   }

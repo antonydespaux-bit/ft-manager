@@ -1,11 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { isSuperadminEmail } from '../../../lib/superadmin'
 import { useRouter } from 'next/navigation'
 import { theme, Logo, LogoBand } from '../../../lib/theme.jsx'
-
-// Login compatible multi-etablissements (acces_clients)
-const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -32,7 +30,7 @@ export default function LoginPage() {
 
     // Redirection superadmin prioritaire : ne pas laisser la logique profil/role interférer.
     const loginEmail = (email || '').toLowerCase().trim()
-    if (SUPERADMIN_EMAILS.includes(loginEmail)) {
+    if (isSuperadminEmail(loginEmail)) {
       router.push('/superadmin')
       return
     }

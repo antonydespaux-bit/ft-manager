@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { isSuperadminEmail } from '../../../lib/superadmin'
 import { useRouter } from 'next/navigation'
 
 const STATUTS = [
@@ -25,8 +26,6 @@ export default function ProspectsPage() {
   const [savingNotes, setSavingNotes] = useState(false)
   const router = useRouter()
 
-  const SUPERADMIN_EMAILS = ['antony.despaux@hotmail.fr', 'antony@skalcook.com']
-
   useEffect(() => { checkAuth() }, [])
 
   const checkAuth = async () => {
@@ -34,7 +33,7 @@ export default function ProspectsPage() {
     if (!session) { router.push('/'); return }
 
     const sessionEmail = (session?.user?.email || '').toLowerCase().trim()
-    if (SUPERADMIN_EMAILS.includes(sessionEmail)) {
+    if (isSuperadminEmail(sessionEmail)) {
       setAuthorized(true)
       loadProspects()
       return

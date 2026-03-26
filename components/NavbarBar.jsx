@@ -2,6 +2,7 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { isSuperadminEmail } from '../lib/superadmin'
 import { useTheme } from '../lib/useTheme'
 import { useRole } from '../lib/useRole'
 import { useIsMobile } from '../lib/useIsMobile'
@@ -16,7 +17,6 @@ export default function NavbarBar() {
   const isMobile = useIsMobile()
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [groupeOuvert, setGroupeOuvert] = useState(null)
-  const SUPERADMIN_EMAIL = 'antony.despaux@hotmail.fr'
   const [showReturnSuperAdmin, setShowReturnSuperAdmin] = useState(false)
 
   const NAV = c.principal || '#18181B'
@@ -38,7 +38,7 @@ export default function NavbarBar() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!alive) return
       const email = (user?.email || '').toLowerCase().trim()
-      setShowReturnSuperAdmin(email === SUPERADMIN_EMAIL)
+      setShowReturnSuperAdmin(isSuperadminEmail(email))
     }).catch(() => {
       if (!alive) return
       setShowReturnSuperAdmin(false)
