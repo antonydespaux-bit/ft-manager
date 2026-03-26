@@ -34,9 +34,9 @@ export default function SousFichesPage() {
       .from('fiches')
       .select('*')
       .eq('client_id', clientId)
-      // Compat legacy: anciennes sous-fiches marquées par categorie="Sous-fiche".
-      .or('is_sub_fiche.eq.true,categorie.eq.Sous-fiche')
-      .eq('archive', false)
+      // Compat legacy: anciennes sous-fiches parfois sans booléen, catégorie hétérogène.
+      .or('is_sub_fiche.eq.true,categorie.ilike.%sous%')
+      .or('archive.is.null,archive.eq.false')
       .order('nom')
     setFiches(data || [])
     setLoading(false)

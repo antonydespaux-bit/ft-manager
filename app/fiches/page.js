@@ -60,8 +60,8 @@ export default function FichesPage() {
           .eq('client_id', clientId)
           // Exclut les sous-fiches (nouvelles + legacy).
           .or('is_sub_fiche.is.null,is_sub_fiche.eq.false')
-          .or('categorie.is.null,categorie.neq.Sous-fiche')
-          .eq('archive', showArchives)
+          .or('categorie.is.null,categorie.not.ilike.%sous%')
+          .or(showArchives ? 'archive.eq.true' : 'archive.is.null,archive.eq.false')
           .order('created_at', { ascending: false }),
         supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
         supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre')
