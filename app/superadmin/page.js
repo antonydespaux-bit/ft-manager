@@ -384,11 +384,6 @@ export default function SuperAdminPage() {
             border: '0.5px solid rgba(16,185,129,0.35)',
             borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer'
           }}>➕ Utilisateur global</button>
-          <button onClick={() => router.push('/dashboard')} style={{
-            background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
-            borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer'
-          }}>App →</button>
           <button
             onClick={handleLogout}
             style={{
