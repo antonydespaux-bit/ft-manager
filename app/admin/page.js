@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
+import { isSuperadminEmail } from '../../lib/superadmin'
 import NavbarCuisine from '../../components/NavbarCuisine'
 
 export default function AdminPage() {
@@ -18,24 +19,83 @@ export default function AdminPage() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isSuperadmin, setIsSuperadmin] = useState(false)
   const router = useRouter()
   const { c } = useTheme()
   const isMobile = useIsMobile()
   const { role, loading: roleLoading } = useRole()
 
   useEffect(() => {
-    if (!roleLoading && role !== 'admin') router.push('/dashboard')
-  }, [role, roleLoading])
+    if (!roleLoading && role !== 'admin' && !isSuperadmin) router.push('/dashboard')
+  }, [role, roleLoading, isSuperadmin])
 
   useEffect(() => {
+    checkSuperadmin()
     loadProfils()
   }, [])
 
+  const checkSuperadmin = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const email = (user?.email || '').toLowerCase().trim()
+      setIsSuperadmin(isSuperadminEmail(email))
+    } catch {
+      setIsSuperadmin(false)
+    }
+  }
+
   const loadProfils = async () => {
-    const { data } = await supabase
-      .from('profils').select('*').order('created_at')
-    setProfils(data || [])
-    setLoading(false)
+    try {
+      const clientId = await getClientId()
+      if (!clientId) {
+        setProfils([])
+        return
+      }
+
+      // Source de vérité par établissement: acces_clients.
+      const { data: accessRows, error: accessErr } = await supabase
+        .from('acces_clients')
+        .select('user_id, role, created_at')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: true })
+
+      if (accessErr) throw accessErr
+
+      const userIds = Array.from(new Set((accessRows || []).map((row) => row?.user_id).filter(Boolean)))
+      if (userIds.length === 0) {
+        setProfils([])
+        return
+      }
+
+      const { data: profilsRows, error: profilsErr } = await supabase
+        .from('profils')
+        .select('id, nom, email, created_at')
+        .in('id', userIds)
+
+      if (profilsErr) throw profilsErr
+
+      const profilsMap = new Map((profilsRows || []).map((p) => [p.id, p]))
+      const merged = (accessRows || [])
+        .map((access) => {
+          const profil = profilsMap.get(access.user_id)
+          return {
+            id: access.user_id,
+            nom: profil?.nom || null,
+            email: profil?.email || null,
+            created_at: profil?.created_at || access.created_at || null,
+            role: access.role || null
+          }
+        })
+        .filter((row) => row.id)
+
+      setProfils(merged)
+    } catch (err) {
+      console.error('Erreur chargement utilisateurs établissement:', err)
+      setError('Impossible de charger les utilisateurs de cet établissement.')
+      setProfils([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const creerUtilisateur = async () => {
@@ -89,13 +149,25 @@ export default function AdminPage() {
   }
 
   const changerRole = async (id, newRole) => {
-    await supabase.from('profils').update({ role: newRole }).eq('id', id)
+    const clientId = await getClientId()
+    if (!clientId) return
+    await supabase
+      .from('acces_clients')
+      .update({ role: newRole })
+      .eq('user_id', id)
+      .eq('client_id', clientId)
     await loadProfils()
   }
 
   const supprimerUtilisateur = async (id, nom) => {
-    if (!confirm(`Supprimer le compte de ${nom} ? Cette action est irréversible.`)) return
-    await supabase.from('profils').delete().eq('id', id)
+    if (!confirm(`Retirer l'accès de ${nom} à cet établissement ?`)) return
+    const clientId = await getClientId()
+    if (!clientId) return
+    await supabase
+      .from('acces_clients')
+      .delete()
+      .eq('user_id', id)
+      .eq('client_id', clientId)
     await loadProfils()
   }
 
