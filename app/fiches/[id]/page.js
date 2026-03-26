@@ -76,6 +76,7 @@ export default function FicheDetail() {
         .from('fiche_ingredients')
         .select(`quantite, unite, ingredients (id, nom, prix_kg, unite)`)
         .eq('fiche_id', params_route.id)
+        .eq('client_id', clientId)
 
       if (errIngs) console.error('Ingrédients error:', errIngs)
       setIngredients(ingsData || [])

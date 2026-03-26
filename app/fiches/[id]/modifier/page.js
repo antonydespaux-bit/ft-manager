@@ -72,7 +72,7 @@ export default function ModifierFiche() {
       { data: catsData },
       { data: liste }
     ] = await Promise.all([
-      supabase.from('fiches').select('*').eq('id', params_route.id).single(),
+      supabase.from('fiches').select('*').eq('id', params_route.id).eq('client_id', clientId).single(),
       supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
       supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
       supabase.from('ingredients').select('*').eq('client_id', clientId).order('nom').limit(5000)
@@ -100,6 +100,7 @@ export default function ModifierFiche() {
       .from('fiche_ingredients')
       .select(`quantite, unite, ingredients (id, nom, prix_kg, unite)`)
       .eq('fiche_id', params_route.id)
+      .eq('client_id', clientId)
 
     setIngredients((ingsData || []).map(i => ({
       ingredient_id: i.ingredients?.id || '',
@@ -143,7 +144,8 @@ export default function ModifierFiche() {
     if (photoExistante) {
       const path = photoExistante.split('/').pop()
       await supabase.storage.from('fiches-photos').remove([path])
-      await supabase.from('fiches').update({ photo_url: null }).eq('id', params_route.id)
+      const clientId = await getClientId()
+      if (clientId) await supabase.from('fiches').update({ photo_url: null }).eq('id', params_route.id).eq('client_id', clientId)
     }
     setPhoto(null); setPhotoPreview(null); setPhotoExistante(null)
   }
@@ -233,9 +235,9 @@ export default function ModifierFiche() {
       cout_portion: coutPortion,
       perte: perte ? parseFloat(perte) : 0,
       updated_at: new Date().toISOString()
-    }).eq('id', params_route.id)
+    }).eq('id', params_route.id).eq('client_id', clientId)
 
-    await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id)
+    await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id).eq('client_id', clientId)
 
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)
@@ -253,9 +255,9 @@ export default function ModifierFiche() {
 
     if (isIngredientPossible(catSelectionnee?.nom || '') && coutPortion) {
       const { data: ingExistant } = await supabase
-        .from('ingredients').select('id').eq('fiche_id', params_route.id).single()
+        .from('ingredients').select('id').eq('fiche_id', params_route.id).eq('client_id', clientId).single()
       if (ingExistant) {
-        await supabase.from('ingredients').update({ nom, prix_kg: parseFloat(coutPortion) }).eq('fiche_id', params_route.id)
+        await supabase.from('ingredients').update({ nom, prix_kg: parseFloat(coutPortion) }).eq('fiche_id', params_route.id).eq('client_id', clientId)
       } else {
         await supabase.from('ingredients').insert([{
           nom, prix_kg: parseFloat(coutPortion),

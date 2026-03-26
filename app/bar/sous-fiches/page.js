@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { supabase, getClientId } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
@@ -28,9 +28,12 @@ export default function BarSousFichesPage() {
   }
 
   const loadFiches = async () => {
+    const clientId = await getClientId()
+    if (!clientId) { setLoading(false); router.push('/'); return }
     const { data } = await supabase
       .from('fiches_bar')
       .select('*')
+      .eq('client_id', clientId)
       .eq('categorie', 'Sous-fiche')
       .eq('archive', false)
       .order('nom')

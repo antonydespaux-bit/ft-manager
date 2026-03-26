@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { supabase, getClientId } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../lib/useTheme'
 import NavbarCuisine from '../../../components/NavbarCuisine'
@@ -215,7 +215,14 @@ export default function ArdoisePage() {
                 onChange={async (e) => {
                   setSearch(e.target.value)
                   if (e.target.value.length > 1) {
-                    const { data } = await supabase.from('ingredients').select('id, nom, prix_kg, unite').ilike('nom', `%${e.target.value}%`).limit(5)
+                    const clientId = await getClientId()
+                    if (!clientId) { setResults([]); return }
+                    const { data } = await supabase
+                      .from('ingredients')
+                      .select('id, nom, prix_kg, unite')
+                      .eq('client_id', clientId)
+                      .ilike('nom', `%${e.target.value}%`)
+                      .limit(5)
                     setResults(data || [])
                   } else {
                     setResults([])

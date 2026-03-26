@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { supabase, getClientId } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
@@ -25,20 +25,26 @@ export default function BarArchivesPage() {
   }
 
   const loadData = async () => {
+    const clientId = await getClientId()
+    if (!clientId) { setLoading(false); router.push('/'); return }
     const { data } = await supabase
-      .from('fiches_bar').select('*').eq('archive', true).order('nom')
+      .from('fiches_bar').select('*').eq('client_id', clientId).eq('archive', true).order('nom')
     setFiches(data || [])
     setLoading(false)
   }
 
   const restaurer = async (id) => {
-    await supabase.from('fiches_bar').update({ archive: false }).eq('id', id)
+    const clientId = await getClientId()
+    if (!clientId) return
+    await supabase.from('fiches_bar').update({ archive: false }).eq('id', id).eq('client_id', clientId)
     loadData()
   }
 
   const supprimer = async (id) => {
     if (!confirm('Supprimer définitivement ? Cette action est irréversible.')) return
-    await supabase.from('fiches_bar').delete().eq('id', id)
+    const clientId = await getClientId()
+    if (!clientId) return
+    await supabase.from('fiches_bar').delete().eq('id', id).eq('client_id', clientId)
     loadData()
   }
 

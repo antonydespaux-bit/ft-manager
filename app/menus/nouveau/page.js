@@ -39,9 +39,12 @@ export default function NouveauMenu() {
   }
 
   const loadFiches = async () => {
+    const clientId = await getClientId()
+    if (!clientId) return
     const { data } = await supabase
       .from('fiches')
       .select('*')
+      .eq('client_id', clientId)
       .neq('categorie', 'Sous-fiche')
       .order('nom')
     setFiches(data || [])

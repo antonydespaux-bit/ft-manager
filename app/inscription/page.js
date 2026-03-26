@@ -34,9 +34,12 @@ export default function IngredientsPage() {
   }
 
   const loadIngredients = async () => {
+    const clientId = await getClientId()
+    if (!clientId) { setLoading(false); return }
     const { data } = await supabase
       .from('ingredients')
       .select('*')
+      .eq('client_id', clientId)
       .eq('est_sous_fiche', false)
       .order('nom')
       .limit(5000)
@@ -66,7 +69,9 @@ export default function IngredientsPage() {
   const supprimerSelection = async () => {
     if (!confirm(`Supprimer ${selection.length} ingrédient${selection.length > 1 ? 's' : ''} ? Cette action est irréversible.`)) return
     setSupprimant(true)
-    await supabase.from('ingredients').delete().in('id', selection)
+    const clientId = await getClientId()
+    if (!clientId) { setSupprimant(false); return }
+    await supabase.from('ingredients').delete().in('id', selection).eq('client_id', clientId)
     await log({
       action: 'SUPPRESSION', entite: 'ingredient',
       entite_nom: `${selection.length} ingrédients`, section: 'cuisine',

@@ -46,10 +46,14 @@ useEffect(() => {
   }
 
   const loadData = async () => {
+    const clientId = await getClientId()
+    if (!clientId) { router.push('/'); return }
+
     const { data: menuData } = await supabase
       .from('menus')
       .select(`*, menu_fiches(id, service, ordre, fiches(id, nom, categorie, cout_portion, prix_ttc))`)
       .eq('id', params_route.id)
+      .eq('client_id', clientId)
       .single()
 
     if (!menuData) { router.push('/menus'); return }
@@ -70,6 +74,7 @@ useEffect(() => {
     const { data: fichesData } = await supabase
       .from('fiches')
       .select('*')
+      .eq('client_id', clientId)
       .neq('categorie', 'Sous-fiche')
       .order('nom')
     setToutesLesFiches(fichesData || [])
@@ -112,9 +117,9 @@ useEffect(() => {
       nom, saison,
       prix_vente: prixVente ? parseFloat(prixVente) : null,
       description
-    }).eq('id', params_route.id)
+    }).eq('id', params_route.id).eq('client_id', clientId)
 
-    await supabase.from('menu_fiches').delete().eq('menu_id', params_route.id)
+    await supabase.from('menu_fiches').delete().eq('menu_id', params_route.id).eq('client_id', clientId)
 
     const menuFichesAInserer = services
       .filter(service => selection[service])
@@ -143,7 +148,9 @@ useEffect(() => {
 
   const handleDelete = async () => {
     if (!confirm('Supprimer ce menu ?')) return
-    await supabase.from('menus').delete().eq('id', params_route.id)
+    const clientId = await getClientId()
+    if (!clientId) return
+    await supabase.from('menus').delete().eq('id', params_route.id).eq('client_id', clientId)
     await log({
       action: 'SUPPRESSION', entite: 'menu', entite_id: params_route.id,
       entite_nom: menu.nom, section: 'cuisine'

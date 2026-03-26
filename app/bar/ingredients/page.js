@@ -36,9 +36,13 @@ export default function BarIngredientsPage() {
   }
 
   const loadIngredients = async () => {
+    const clientId = await getClientId()
+    if (!clientId) { router.push('/'); return }
+
     const { data } = await supabase
       .from('ingredients_bar')
       .select('*')
+      .eq('client_id', clientId)
       .eq('est_sous_fiche', false)
       .order('nom')
       .limit(5000)
@@ -63,7 +67,9 @@ export default function BarIngredientsPage() {
   const supprimerSelection = async () => {
     if (!confirm(`Supprimer ${selection.length} ingrédient${selection.length > 1 ? 's' : ''} ?`)) return
     setSupprimant(true)
-    await supabase.from('ingredients_bar').delete().in('id', selection)
+    const clientId = await getClientId()
+    if (!clientId) { setSupprimant(false); return }
+    await supabase.from('ingredients_bar').delete().in('id', selection).eq('client_id', clientId)
     await log({
       action: 'SUPPRESSION', entite: 'ingredient_bar',
       entite_nom: `${selection.length} ingrédients`, section: 'bar',

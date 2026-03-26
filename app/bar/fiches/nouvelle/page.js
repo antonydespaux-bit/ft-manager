@@ -73,9 +73,20 @@ export default function NouvelleBarFiche() {
   }
 
   const loadData = async () => {
-    const { data: ings } = await supabase.from('ingredients_bar').select('*').order('nom')
+    const clientId = await getClientId()
+    if (!clientId) return
+    const { data: ings } = await supabase
+      .from('ingredients_bar')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('nom')
+      .limit(5000)
     setListeIngredients(ings || [])
-    const { data: sfs } = await supabase.from('fiches_bar').select('id, nom, cout_portion, unite_production').order('nom')
+    const { data: sfs } = await supabase
+      .from('fiches_bar')
+      .select('id, nom, cout_portion, unite_production')
+      .eq('client_id', clientId)
+      .order('nom')
     setListeSousFiches(sfs || [])
   }
 
@@ -214,7 +225,7 @@ export default function NouvelleBarFiche() {
       const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        await supabase.from('fiches_bar').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
+        await supabase.from('fiches_bar').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id).eq('client_id', clientId)
       }
     }
 

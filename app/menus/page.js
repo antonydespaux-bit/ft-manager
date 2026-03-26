@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase, getClientId } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
@@ -25,9 +25,12 @@ export default function MenusPage() {
   }
 
   const loadMenus = async () => {
+    const clientId = await getClientId()
+    if (!clientId) { setLoading(false); router.push('/'); return }
     const { data } = await supabase
       .from('menus')
       .select(`*, menu_fiches(id, service, fiches(id, nom, categorie, cout_portion))`)
+      .eq('client_id', clientId)
       .eq('archive', false)
       .order('created_at', { ascending: false })
     setMenus(data || [])
@@ -48,7 +51,9 @@ export default function MenusPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Supprimer ce menu ?')) return
-    await supabase.from('menus').delete().eq('id', id)
+    const clientId = await getClientId()
+    if (!clientId) return
+    await supabase.from('menus').delete().eq('id', id).eq('client_id', clientId)
     loadMenus()
   }
 

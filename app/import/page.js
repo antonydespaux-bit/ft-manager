@@ -140,6 +140,7 @@ export default function ImportPage() {
               await supabase.from('ingredients')
                 .update(updateData)
                 .eq('id', existing.id)
+                .eq('client_id', clientId)
               misAJour++
               if (catChange) categoriesAssignees++
             }

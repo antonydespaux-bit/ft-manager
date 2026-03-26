@@ -75,10 +75,10 @@ export default function ModifierBarFiche() {
         { data: catsData },
         { data: liste }
       ] = await Promise.all([
-        supabase.from('fiches_bar').select('*').eq('id', params_route.id).single(),
+        supabase.from('fiches_bar').select('*').eq('id', params_route.id).eq('client_id', clientId).single(),
         supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre'),
         supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'bar').order('ordre'),
-        supabase.from('ingredients_bar').select('*').order('nom').limit(5000)
+        supabase.from('ingredients_bar').select('*').eq('client_id', clientId).order('nom').limit(5000)
       ])
 
       if (!ficheData) { router.push('/bar/fiches'); return }
@@ -104,6 +104,7 @@ export default function ModifierBarFiche() {
         .from('fiche_bar_ingredients')
         .select('quantite, unite, ingredient_id, sous_fiche_id')
         .eq('fiche_bar_id', params_route.id)
+        .eq('client_id', clientId)
 
       if (liens && liens.length > 0) {
         const ingIds = liens.filter(l => l.ingredient_id && !l.sous_fiche_id).map(l => l.ingredient_id)
@@ -111,10 +112,10 @@ export default function ModifierBarFiche() {
 
         const [{ data: ingsData }, { data: sfsData }] = await Promise.all([
           ingIds.length > 0
-            ? supabase.from('ingredients_bar').select('id, nom, prix_kg, unite').in('id', ingIds)
+            ? supabase.from('ingredients_bar').select('id, nom, prix_kg, unite').eq('client_id', clientId).in('id', ingIds)
             : Promise.resolve({ data: [] }),
           sfIds.length > 0
-            ? supabase.from('fiches_bar').select('id, nom, cout_portion, unite_production').in('id', sfIds)
+            ? supabase.from('fiches_bar').select('id, nom, cout_portion, unite_production').eq('client_id', clientId).in('id', sfIds)
             : Promise.resolve({ data: [] })
         ])
 
@@ -170,7 +171,8 @@ export default function ModifierBarFiche() {
     if (photoExistante) {
       const path = photoExistante.split('/').pop()
       await supabase.storage.from('fiches-photos').remove([path])
-      await supabase.from('fiches_bar').update({ photo_url: null }).eq('id', params_route.id)
+      const clientId = await getClientId()
+      if (clientId) await supabase.from('fiches_bar').update({ photo_url: null }).eq('id', params_route.id).eq('client_id', clientId)
     }
     setPhoto(null); setPhotoPreview(null); setPhotoExistante(null)
   }
@@ -260,9 +262,9 @@ export default function ModifierBarFiche() {
       cout_portion: coutPortion,
       perte: perte ? parseFloat(perte) : 0,
       updated_at: new Date().toISOString()
-    }).eq('id', params_route.id)
+    }).eq('id', params_route.id).eq('client_id', clientId)
 
-    await supabase.from('fiche_bar_ingredients').delete().eq('fiche_bar_id', params_route.id)
+    await supabase.from('fiche_bar_ingredients').delete().eq('fiche_bar_id', params_route.id).eq('client_id', clientId)
 
     const ingredientsAInserer = ingredients
       .filter(i => i.ingredient_id && i.quantite)

@@ -96,6 +96,7 @@ export default function BarImportPage() {
                   prix_updated_at: new Date().toISOString()
                 })
                 .eq('id', existing.id)
+                .eq('client_id', clientId)
               misAJour++
             }
           } else {

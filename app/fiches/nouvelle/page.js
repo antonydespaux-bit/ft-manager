@@ -205,7 +205,7 @@ export default function NouvelleFiche() {
         .from('fiches-photos').upload(path, photo, { upsert: true })
       if (!errPhoto) {
         const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id)
+        await supabase.from('fiches').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id).eq('client_id', clientId)
       }
     }
 

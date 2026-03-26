@@ -76,6 +76,7 @@ const loadFiche = async () => {
       .from('fiche_bar_ingredients')
       .select('quantite, unite, ingredient_id, sous_fiche_id')
       .eq('fiche_bar_id', params_route.id)
+      .eq('client_id', clientId)
 
     if (!liens || liens.length === 0) {
       setIngredients([])
@@ -89,10 +90,10 @@ const loadFiche = async () => {
 
     const [{ data: ingsData }, { data: sfsData }] = await Promise.all([
       ingIds.length > 0
-        ? supabase.from('ingredients_bar').select('id, nom, prix_kg, unite').in('id', ingIds)
+        ? supabase.from('ingredients_bar').select('id, nom, prix_kg, unite').eq('client_id', clientId).in('id', ingIds)
         : Promise.resolve({ data: [] }),
       sfIds.length > 0
-        ? supabase.from('fiches_bar').select('id, nom, cout_portion, unite_production').in('id', sfIds)
+        ? supabase.from('fiches_bar').select('id, nom, cout_portion, unite_production').eq('client_id', clientId).in('id', sfIds)
         : Promise.resolve({ data: [] })
     ])
 
