@@ -13,7 +13,7 @@ export default function BarIngredientsPage() {
   const [ingredients, setIngredients] = useState([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
-  const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused'
+  const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused' | 'uncategorized'
   const [selection, setSelection] = useState([])
   const [supprimant, setSupprimant] = useState(false)
   const [nouveauNom, setNouveauNom] = useState('')
@@ -61,7 +61,12 @@ export default function BarIngredientsPage() {
   const ingredientsFiltres = useMemo(() => ingredients.filter((i) => {
     const matchRecherche = i.nom.toLowerCase().includes(recherche.toLowerCase())
     const isUsed = Array.isArray(i.fiche_bar_ingredients) && i.fiche_bar_ingredients.length > 0
-    const matchUsage = filterUsage === 'all' || (filterUsage === 'used' ? isUsed : !isUsed)
+    const isUncategorized = i.categorie_id == null
+    const matchUsage =
+      filterUsage === 'all' ||
+      (filterUsage === 'used' ? isUsed : false) ||
+      (filterUsage === 'unused' ? !isUsed : false) ||
+      (filterUsage === 'uncategorized' ? isUncategorized : false)
     return matchRecherche && matchUsage
   }), [ingredients, recherche, filterUsage])
 
@@ -176,7 +181,8 @@ export default function BarIngredientsPage() {
           {[
             { id: 'all', label: 'Tous' },
             { id: 'used', label: 'Utilisés en bar' },
-            { id: 'unused', label: 'Non utilisés' }
+            { id: 'unused', label: 'Non utilisés' },
+            { id: 'uncategorized', label: 'Sans catégorie' }
           ].map((opt) => (
             <button
               key={opt.id}
@@ -229,6 +235,11 @@ export default function BarIngredientsPage() {
                         🟢 Utilisé
                       </span>
                     )}
+                    {ing.categorie_id == null && (
+                      <span style={{ fontSize: '11px', color: '#9A3412', background: '#FFEDD5', border: '0.5px solid #FDBA74', borderRadius: '999px', padding: '1px 8px' }}>
+                        ⚠️ À catégoriser
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>
                     {ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'} / {ing.unite || '—'}
@@ -271,6 +282,11 @@ export default function BarIngredientsPage() {
                         <span>{ing.nom}</span>
                         {Array.isArray(ing.fiche_bar_ingredients) && ing.fiche_bar_ingredients.length > 0 && (
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} title="Utilisé en fiche bar" />
+                        )}
+                        {ing.categorie_id == null && (
+                          <span style={{ fontSize: '11px', color: '#9A3412', background: '#FFEDD5', border: '0.5px solid #FDBA74', borderRadius: '999px', padding: '1px 8px' }}>
+                            ⚠️ À catégoriser
+                          </span>
                         )}
                       </div>
                     </td>

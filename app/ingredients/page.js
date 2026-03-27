@@ -16,7 +16,7 @@ export default function IngredientsPage() {
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
   const [filtreCategorie, setFiltreCategorie] = useState('toutes')
-  const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused'
+  const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused' | 'uncategorized'
   const [vue, setVue] = useState('liste') // 'liste' | 'categories' | 'inflation'
   const [selection, setSelection] = useState([])
   const [supprimant, setSupprimant] = useState(false)
@@ -102,7 +102,12 @@ export default function IngredientsPage() {
     const matchRecherche = i.nom.toLowerCase().includes(recherche.toLowerCase())
     const matchCat = filtreCategorie === 'toutes' || i.categorie_id === filtreCategorie
     const isUsed = Array.isArray(i.fiche_ingredients) && i.fiche_ingredients.length > 0
-    const matchUsage = filterUsage === 'all' || (filterUsage === 'used' ? isUsed : !isUsed)
+    const isUncategorized = i.categorie_id == null
+    const matchUsage =
+      filterUsage === 'all' ||
+      (filterUsage === 'used' ? isUsed : false) ||
+      (filterUsage === 'unused' ? !isUsed : false) ||
+      (filterUsage === 'uncategorized' ? isUncategorized : false)
     return matchRecherche && matchCat && matchUsage
   }), [ingredients, recherche, filtreCategorie, filterUsage])
 
@@ -302,7 +307,8 @@ export default function IngredientsPage() {
               {[
                 { id: 'all', label: 'Tous' },
                 { id: 'used', label: 'Utilisés en cuisine' },
-                { id: 'unused', label: 'Non utilisés' }
+                { id: 'unused', label: 'Non utilisés' },
+                { id: 'uncategorized', label: 'Sans catégorie' }
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -393,6 +399,11 @@ export default function IngredientsPage() {
                             🟢 Utilisé
                           </span>
                         )}
+                        {ing.categorie_id == null && (
+                          <span style={{ fontSize: '11px', color: '#9A3412', background: '#FFEDD5', border: '0.5px solid #FDBA74', borderRadius: '999px', padding: '1px 8px' }}>
+                            ⚠️ À catégoriser
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <span>{ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'} / {ing.unite || '—'}</span>
@@ -430,6 +441,11 @@ export default function IngredientsPage() {
                             <span>{ing.nom}</span>
                             {Array.isArray(ing.fiche_ingredients) && ing.fiche_ingredients.length > 0 && (
                               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} title="Utilisé en fiche technique" />
+                            )}
+                            {ing.categorie_id == null && (
+                              <span style={{ fontSize: '11px', color: '#9A3412', background: '#FFEDD5', border: '0.5px solid #FDBA74', borderRadius: '999px', padding: '1px 8px' }}>
+                                ⚠️ À catégoriser
+                              </span>
                             )}
                           </div>
                         </td>
