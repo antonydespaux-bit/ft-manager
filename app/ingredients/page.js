@@ -16,6 +16,7 @@ export default function IngredientsPage() {
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
   const [filtreCategorie, setFiltreCategorie] = useState('toutes')
+  const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused'
   const [vue, setVue] = useState('liste') // 'liste' | 'categories' | 'inflation'
   const [selection, setSelection] = useState([])
   const [supprimant, setSupprimant] = useState(false)
@@ -72,7 +73,7 @@ export default function IngredientsPage() {
 
       const [{ data: ings, error: errIngs }, { data: cats, error: errCats }] = await Promise.all([
         supabase.from('ingredients')
-          .select('*, categories_ingredients(id, nom, emoji)')
+          .select('*, categories_ingredients(id, nom, emoji), fiche_ingredients(id)')
           .eq('client_id', clientId)
           .eq('est_sous_fiche', false)
           .order('nom')
@@ -100,8 +101,10 @@ export default function IngredientsPage() {
   const ingredientsFiltres = useMemo(() => ingredients.filter(i => {
     const matchRecherche = i.nom.toLowerCase().includes(recherche.toLowerCase())
     const matchCat = filtreCategorie === 'toutes' || i.categorie_id === filtreCategorie
-    return matchRecherche && matchCat
-  }), [ingredients, recherche, filtreCategorie])
+    const isUsed = Array.isArray(i.fiche_ingredients) && i.fiche_ingredients.length > 0
+    const matchUsage = filterUsage === 'all' || (filterUsage === 'used' ? isUsed : !isUsed)
+    return matchRecherche && matchCat && matchUsage
+  }), [ingredients, recherche, filtreCategorie, filterUsage])
 
   // ── Stats inflation par catégorie ─────────────────────────────────────────
   const statsParCategorie = useMemo(() => {
@@ -294,6 +297,32 @@ export default function IngredientsPage() {
               </div>
             </div>
 
+            {/* Filtres d'utilisation */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'all', label: 'Tous' },
+                { id: 'used', label: 'Utilisés en cuisine' },
+                { id: 'unused', label: 'Non utilisés' }
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setFilterUsage(opt.id)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '999px',
+                    border: `0.5px solid ${filterUsage === opt.id ? c.accent : c.bordure}`,
+                    background: filterUsage === opt.id ? c.accentClair : c.blanc,
+                    color: filterUsage === opt.id ? c.accent : c.texteMuted,
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
             {/* Formulaire ajout */}
             {ajoutVisible && peutModifier && (
               <div style={{ background: c.blanc, borderRadius: '12px', padding: '20px', border: `1px solid ${c.accent}`, marginBottom: '16px' }}>
@@ -357,7 +386,14 @@ export default function IngredientsPage() {
                   <div key={ing.id} style={{ background: selection.includes(ing.id) ? c.accentClair : c.blanc, borderRadius: '8px', padding: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <input type="checkbox" checked={selection.includes(ing.id)} onChange={() => toggleSelection(ing.id)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: c.accent, flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{ing.nom}</div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{ing.nom}</span>
+                        {Array.isArray(ing.fiche_ingredients) && ing.fiche_ingredients.length > 0 && (
+                          <span style={{ fontSize: '11px', color: '#166534', background: '#DCFCE7', border: '0.5px solid #86EFAC', borderRadius: '999px', padding: '1px 8px' }}>
+                            🟢 Utilisé
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <span>{ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'} / {ing.unite || '—'}</span>
                         {ing.categories_ingredients && (
@@ -389,7 +425,14 @@ export default function IngredientsPage() {
                         <td style={{ padding: '10px 16px' }}>
                           <input type="checkbox" checked={selection.includes(ing.id)} onChange={() => toggleSelection(ing.id)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: c.accent }} />
                         </td>
-                        <td style={{ padding: '10px 16px', fontWeight: '500', color: c.texte }}>{ing.nom}</td>
+                        <td style={{ padding: '10px 16px', fontWeight: '500', color: c.texte }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>{ing.nom}</span>
+                            {Array.isArray(ing.fiche_ingredients) && ing.fiche_ingredients.length > 0 && (
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} title="Utilisé en fiche technique" />
+                            )}
+                          </div>
+                        </td>
                         <td style={{ padding: '10px 16px' }}>
                           {editionId === ing.id ? (
                             <select value={editionCategorie} onChange={e => setEditionCategorie(e.target.value)}

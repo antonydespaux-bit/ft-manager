@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase, getClientId } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
@@ -13,6 +13,7 @@ export default function BarIngredientsPage() {
   const [ingredients, setIngredients] = useState([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
+  const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused'
   const [selection, setSelection] = useState([])
   const [supprimant, setSupprimant] = useState(false)
   const [nouveauNom, setNouveauNom] = useState('')
@@ -47,7 +48,7 @@ export default function BarIngredientsPage() {
 
     const { data } = await supabase
       .from('ingredients_bar')
-      .select('*')
+      .select('*, fiche_bar_ingredients(id)')
       .eq('client_id', clientId)
       .eq('est_sous_fiche', false)
       .order('nom')
@@ -57,9 +58,12 @@ export default function BarIngredientsPage() {
     setLoading(false)
   }
 
-  const ingredientsFiltres = ingredients.filter(i =>
-    i.nom.toLowerCase().includes(recherche.toLowerCase())
-  )
+  const ingredientsFiltres = useMemo(() => ingredients.filter((i) => {
+    const matchRecherche = i.nom.toLowerCase().includes(recherche.toLowerCase())
+    const isUsed = Array.isArray(i.fiche_bar_ingredients) && i.fiche_bar_ingredients.length > 0
+    const matchUsage = filterUsage === 'all' || (filterUsage === 'used' ? isUsed : !isUsed)
+    return matchRecherche && matchUsage
+  }), [ingredients, recherche, filterUsage])
 
   const toggleSelection = (id) => {
     setSelection(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
@@ -168,6 +172,31 @@ export default function BarIngredientsPage() {
           </span>
         </div>
 
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'all', label: 'Tous' },
+            { id: 'used', label: 'Utilisés en bar' },
+            { id: 'unused', label: 'Non utilisés' }
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setFilterUsage(opt.id)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '999px',
+                border: `0.5px solid ${filterUsage === opt.id ? '#7F77DD' : c.bordure}`,
+                background: filterUsage === opt.id ? '#EEEDFE' : c.blanc,
+                color: filterUsage === opt.id ? '#5B52C6' : c.texteMuted,
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
         ) : isMobile ? (
@@ -193,7 +222,14 @@ export default function BarIngredientsPage() {
                   style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#7F77DD', flexShrink: 0 }}
                 />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{ing.nom}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span>{ing.nom}</span>
+                    {Array.isArray(ing.fiche_bar_ingredients) && ing.fiche_bar_ingredients.length > 0 && (
+                      <span style={{ fontSize: '11px', color: '#166534', background: '#DCFCE7', border: '0.5px solid #86EFAC', borderRadius: '999px', padding: '1px 8px' }}>
+                        🟢 Utilisé
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '2px' }}>
                     {ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'} / {ing.unite || '—'}
                   </div>
@@ -230,7 +266,14 @@ export default function BarIngredientsPage() {
                         style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#7F77DD' }}
                       />
                     </td>
-                    <td style={{ padding: '10px 16px', fontWeight: '500', color: c.texte }}>{ing.nom}</td>
+                    <td style={{ padding: '10px 16px', fontWeight: '500', color: c.texte }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{ing.nom}</span>
+                        {Array.isArray(ing.fiche_bar_ingredients) && ing.fiche_bar_ingredients.length > 0 && (
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} title="Utilisé en fiche bar" />
+                        )}
+                      </div>
+                    </td>
                     <td style={{ padding: '10px 16px', textAlign: 'right', color: c.texte }}>
                       {ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'}
                     </td>
