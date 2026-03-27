@@ -23,6 +23,7 @@ export default function SuperadminUserAccessPage() {
   const [clients, setClients] = useState([])
   const [initialClientIds, setInitialClientIds] = useState([])
   const [selectedClientIds, setSelectedClientIds] = useState([])
+  const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -127,11 +128,22 @@ export default function SuperadminUserAccessPage() {
       setSaving(false)
     }
   }
+  const handleNavigation = (url) => {
+    setIsNavigating(true)
+    router.push(url)
+  }
 
   if (!authorized || loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
         <ChefLoader />
+      </div>
+    )
+  }
+  if (isNavigating) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
+        <ChefLoader message="Navigation en cours..." />
       </div>
     )
   }
@@ -154,7 +166,7 @@ export default function SuperadminUserAccessPage() {
           <Logo height={28} couleur="white" />
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <button
-            onClick={() => router.push('/superadmin')}
+            onClick={() => handleNavigation('/superadmin')}
             style={{
               background: 'transparent',
               border: '0.5px solid rgba(255,255,255,0.2)',

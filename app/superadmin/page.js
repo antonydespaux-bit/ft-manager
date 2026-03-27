@@ -62,6 +62,7 @@ export default function SuperAdminPage() {
   const [inviteNomComplet, setInviteNomComplet] = useState('')
   const [inviteSending, setInviteSending] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -110,6 +111,11 @@ export default function SuperAdminPage() {
     if (!ok) return
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const handleNavigation = (url) => {
+    setIsNavigating(true)
+    router.push(url)
   }
 
   const resetForm = () => {
@@ -327,6 +333,11 @@ export default function SuperAdminPage() {
       <ChefLoader message="Vérification des accès..." />
     </div>
   )
+  if (isNavigating) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F4F5' }}>
+      <ChefLoader message="Navigation en cours..." />
+    </div>
+  )
 
   const inputStyle = {
     width: '100%', padding: '10px 12px', borderRadius: '8px',
@@ -400,17 +411,17 @@ export default function SuperAdminPage() {
                     borderRadius: '8px', padding: '7px 10px', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
                   }}>← Retour</button>
                 )}
-                <button onClick={() => { setMobileNavOpen(false); router.push('/superadmin/prospects') }} style={{
+                <button onClick={() => { setMobileNavOpen(false); handleNavigation('/superadmin/prospects') }} style={{
                   background: 'rgba(99,102,241,0.2)', color: '#A5B4FC',
                   border: '0.5px solid rgba(99,102,241,0.3)',
                   borderRadius: '8px', padding: '7px 10px', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
                 }}>👥 Prospects</button>
-                <button onClick={() => { setMobileNavOpen(false); router.push('/superadmin/utilisateurs') }} style={{
+                <button onClick={() => { setMobileNavOpen(false); handleNavigation('/superadmin/utilisateurs') }} style={{
                   background: 'rgba(14,165,233,0.2)', color: '#BAE6FD',
                   border: '0.5px solid rgba(14,165,233,0.35)',
                   borderRadius: '8px', padding: '7px 10px', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
                 }}>🧑‍💼 Utilisateurs</button>
-                <button onClick={() => { setMobileNavOpen(false); router.push('/superadmin/utilisateurs/nouveau') }} style={{
+                <button onClick={() => { setMobileNavOpen(false); handleNavigation('/superadmin/utilisateurs/nouveau') }} style={{
                   background: 'rgba(16,185,129,0.2)', color: '#A7F3D0',
                   border: '0.5px solid rgba(16,185,129,0.35)',
                   borderRadius: '8px', padding: '7px 10px', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
@@ -437,17 +448,17 @@ export default function SuperAdminPage() {
                 borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer'
               }}>← Retour</button>
             )}
-            <button onClick={() => router.push('/superadmin/prospects')} style={{
+            <button onClick={() => handleNavigation('/superadmin/prospects')} style={{
               background: 'rgba(99,102,241,0.2)', color: '#A5B4FC',
               border: '0.5px solid rgba(99,102,241,0.3)',
               borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer'
             }}>👥 Prospects</button>
-            <button onClick={() => router.push('/superadmin/utilisateurs')} style={{
+            <button onClick={() => handleNavigation('/superadmin/utilisateurs')} style={{
               background: 'rgba(14,165,233,0.2)', color: '#BAE6FD',
               border: '0.5px solid rgba(14,165,233,0.35)',
               borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer'
             }}>🧑‍💼 Utilisateurs</button>
-            <button onClick={() => router.push('/superadmin/utilisateurs/nouveau')} style={{
+            <button onClick={() => handleNavigation('/superadmin/utilisateurs/nouveau')} style={{
               background: 'rgba(16,185,129,0.2)', color: '#A7F3D0',
               border: '0.5px solid rgba(16,185,129,0.35)',
               borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer'
@@ -609,7 +620,7 @@ export default function SuperAdminPage() {
                       }}
                     >Modifier</button>
                     <button
-                      onClick={() => router.push(`/superadmin/etablissements/${client.id}`)}
+                      onClick={() => handleNavigation(`/superadmin/etablissements/${client.id}`)}
                       style={{
                         background: '#F8FAFC', color: '#0F172A',
                         border: '0.5px solid #CBD5E1', borderRadius: '8px',
@@ -623,6 +634,7 @@ export default function SuperAdminPage() {
                       onClick={() => {
                         const selectedId = client.id
                         console.log('FORCE SET:', selectedId)
+                        setIsNavigating(true)
                         window.localStorage.removeItem('client_id')
                         window.localStorage.removeItem('tenant')
                         window.localStorage.setItem('client_id', selectedId)

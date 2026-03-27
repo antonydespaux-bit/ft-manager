@@ -28,6 +28,7 @@ export default function NouveauUtilisateurPage() {
   const [adressePro, setAdressePro] = useState('')
   const [selectedClientIds, setSelectedClientIds] = useState([])
   const [createdUserId, setCreatedUserId] = useState(null)
+  const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -75,6 +76,10 @@ export default function NouveauUtilisateurPage() {
   }, [])
 
   const dirtyAccessCount = useMemo(() => selectedClientIds.length, [selectedClientIds])
+  const handleNavigation = (url) => {
+    setIsNavigating(true)
+    router.push(url)
+  }
 
   const toggleClient = (clientId) => {
     setSelectedClientIds((prev) =>
@@ -148,6 +153,13 @@ export default function NouveauUtilisateurPage() {
       </div>
     )
   }
+  if (isNavigating) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
+        <ChefLoader message="Navigation en cours..." />
+      </div>
+    )
+  }
 
   const inputStyle = {
     width: '100%', padding: '10px 12px', borderRadius: '8px',
@@ -170,7 +182,7 @@ export default function NouveauUtilisateurPage() {
           <Logo height={28} couleur="white" />
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <button
-            onClick={() => router.push('/superadmin')}
+            onClick={() => handleNavigation('/superadmin')}
             style={{
               background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '6px 10px', fontSize: '13px',
@@ -225,7 +237,7 @@ export default function NouveauUtilisateurPage() {
             {createdUserId ? (
               <div style={{ marginTop: '8px' }}>
                 <button
-                  onClick={() => router.push(`/superadmin/utilisateurs/${createdUserId}`)}
+                  onClick={() => handleNavigation(`/superadmin/utilisateurs/${createdUserId}`)}
                   style={{
                     border: 'none', background: '#6366F1', color: 'white', borderRadius: '8px',
                     padding: '7px 10px', fontSize: '12px', cursor: 'pointer'

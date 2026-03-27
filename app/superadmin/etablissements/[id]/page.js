@@ -48,6 +48,7 @@ export default function SuperadminEtablissementDetailPage() {
   const [codeNaf, setCodeNaf] = useState('')
   const [urlKbis, setUrlKbis] = useState('')
   const [urlRib, setUrlRib] = useState('')
+  const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {
     init()
@@ -202,11 +203,22 @@ export default function SuperadminEtablissementDetailPage() {
       setShowSlowSavingLoader(false)
     }
   }
+  const handleNavigation = (url) => {
+    setIsNavigating(true)
+    router.push(url)
+  }
 
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: c.fond, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <ChefLoader />
+      </div>
+    )
+  }
+  if (isNavigating) {
+    return (
+      <div style={{ minHeight: '100vh', background: c.fond, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <ChefLoader message="Navigation en cours..." />
       </div>
     )
   }
@@ -226,7 +238,7 @@ export default function SuperadminEtablissementDetailPage() {
           <Logo height={28} couleur="white" />
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <button
-            onClick={() => router.push('/superadmin')}
+            onClick={() => handleNavigation('/superadmin')}
             style={{
               background: 'transparent',
               border: '0.5px solid rgba(255,255,255,0.25)',

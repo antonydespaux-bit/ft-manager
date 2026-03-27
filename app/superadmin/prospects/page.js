@@ -27,6 +27,7 @@ export default function ProspectsPage() {
   const [notes, setNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+  const [isNavigating, setIsNavigating] = useState(false)
   const router = useRouter()
   const isMobile = useIsMobile()
 
@@ -149,10 +150,19 @@ export default function ProspectsPage() {
   })
 
   const statutInfo = (id) => STATUTS.find(s => s.id === id) || STATUTS[0]
+  const handleNavigation = (url) => {
+    setIsNavigating(true)
+    router.push(url)
+  }
 
   if (!authorized || loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F4F5' }}>
       <ChefLoader />
+    </div>
+  )
+  if (isNavigating) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F4F5' }}>
+      <ChefLoader message="Navigation en cours..." />
     </div>
   )
 
@@ -174,7 +184,7 @@ export default function ProspectsPage() {
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            onClick={() => router.push('/superadmin')}
+            onClick={() => handleNavigation('/superadmin')}
             style={{ background: 'rgba(99,102,241,0.2)', color: '#A5B4FC', border: '0.5px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer' }}
           >
             ← Retour SuperAdmin

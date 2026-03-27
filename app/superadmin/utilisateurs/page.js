@@ -66,6 +66,7 @@ export default function SuperadminUsersPage() {
   const [editSiteWeb, setEditSiteWeb] = useState('')
   const [editSiretPersonnel, setEditSiretPersonnel] = useState('')
   const [editAdressePro, setEditAdressePro] = useState('')
+  const [isNavigating, setIsNavigating] = useState(false)
 
   const loadUsers = async () => {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -266,11 +267,22 @@ export default function SuperadminUsersPage() {
       setUpdatingId(null)
     }
   }
+  const handleNavigation = (url) => {
+    setIsNavigating(true)
+    router.push(url)
+  }
 
   if (!authorized || loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
         <ChefLoader />
+      </div>
+    )
+  }
+  if (isNavigating) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
+        <ChefLoader message="Navigation en cours..." />
       </div>
     )
   }
@@ -286,7 +298,7 @@ export default function SuperadminUsersPage() {
           <Logo height={28} couleur="white" />
           <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>
           <button
-            onClick={() => router.push('/superadmin')}
+            onClick={() => handleNavigation('/superadmin')}
             style={{
               background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
               borderRadius: '8px', padding: '6px 10px', fontSize: '13px',
@@ -298,7 +310,7 @@ export default function SuperadminUsersPage() {
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            onClick={() => router.push('/superadmin/utilisateurs/nouveau')}
+            onClick={() => handleNavigation('/superadmin/utilisateurs/nouveau')}
             style={{
               background: 'rgba(16,185,129,0.2)', color: '#A7F3D0',
               border: '0.5px solid rgba(16,185,129,0.35)',
@@ -401,7 +413,7 @@ export default function SuperadminUsersPage() {
                   return (
                     <tr
                       key={user.id}
-                      onClick={() => router.push(`/superadmin/utilisateurs/${user.id}`)}
+                      onClick={() => handleNavigation(`/superadmin/utilisateurs/${user.id}`)}
                       style={{ borderBottom: `0.5px solid ${c.bordure}`, cursor: 'pointer' }}
                     >
                       <td style={{ padding: '12px', fontSize: '13px', color: c.texte, fontWeight: 600 }}>
@@ -489,7 +501,7 @@ export default function SuperadminUsersPage() {
               return (
                 <div
                   key={user.id}
-                  onClick={() => router.push(`/superadmin/utilisateurs/${user.id}`)}
+                  onClick={() => handleNavigation(`/superadmin/utilisateurs/${user.id}`)}
                   style={{
                     background: 'white',
                     borderRadius: '12px',
