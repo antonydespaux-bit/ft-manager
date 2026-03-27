@@ -13,6 +13,7 @@ export default function BarIngredientsPage() {
   const [ingredients, setIngredients] = useState([])
   const [loading, setLoading] = useState(true)
   const [recherche, setRecherche] = useState('')
+  const [filtreCategorie, setFiltreCategorie] = useState('toutes')
   const [filterUsage, setFilterUsage] = useState('all') // 'all' | 'used' | 'unused' | 'uncategorized'
   const [selection, setSelection] = useState([])
   const [supprimant, setSupprimant] = useState(false)
@@ -60,6 +61,14 @@ export default function BarIngredientsPage() {
 
   const ingredientsFiltres = useMemo(() => ingredients.filter((i) => {
     const matchRecherche = i.nom.toLowerCase().includes(recherche.toLowerCase())
+    let matchCat = false
+    if (filtreCategorie === 'toutes') {
+      matchCat = true
+    } else if (filtreCategorie === 'sans_categorie') {
+      matchCat = i.categorie_id === null || i.categorie_id === undefined || i.categorie_id === ''
+    } else {
+      matchCat = i.categorie_id === filtreCategorie
+    }
     const isUsed = Array.isArray(i.fiche_bar_ingredients) && i.fiche_bar_ingredients.length > 0
     const isUncategorized = i.categorie_id == null
     const matchUsage =
@@ -67,8 +76,8 @@ export default function BarIngredientsPage() {
       (filterUsage === 'used' ? isUsed : false) ||
       (filterUsage === 'unused' ? !isUsed : false) ||
       (filterUsage === 'uncategorized' ? isUncategorized : false)
-    return matchRecherche && matchUsage
-  }), [ingredients, recherche, filterUsage])
+    return matchRecherche && matchCat && matchUsage
+  }), [ingredients, recherche, filtreCategorie, filterUsage])
 
   const toggleSelection = (id) => {
     setSelection(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
@@ -172,6 +181,14 @@ export default function BarIngredientsPage() {
             value={recherche} onChange={e => setRecherche(e.target.value)}
             style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', background: c.blanc, outline: 'none', color: c.texte }}
           />
+          <select
+            value={filtreCategorie}
+            onChange={(e) => setFiltreCategorie(e.target.value)}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, cursor: 'pointer' }}
+          >
+            <option value="toutes">Toutes catégories</option>
+            <option value="sans_categorie">📦 Sans catégorie</option>
+          </select>
           <span style={{ fontSize: '12px', color: c.texteMuted, whiteSpace: 'nowrap' }}>
             {ingredientsFiltres.length}{selection.length > 0 && ` — ${selection.length} sél.`}
           </span>

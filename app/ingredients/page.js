@@ -100,7 +100,14 @@ export default function IngredientsPage() {
   // ── Filtres ──────────────────────────────────────────────────────────────
   const ingredientsFiltres = useMemo(() => ingredients.filter(i => {
     const matchRecherche = i.nom.toLowerCase().includes(recherche.toLowerCase())
-    const matchCat = filtreCategorie === 'toutes' || i.categorie_id === filtreCategorie
+    let matchCat = false
+    if (filtreCategorie === 'toutes') {
+      matchCat = true
+    } else if (filtreCategorie === 'sans_categorie') {
+      matchCat = i.categorie_id === null || i.categorie_id === undefined || i.categorie_id === ''
+    } else {
+      matchCat = i.categorie_id === filtreCategorie
+    }
     const isUsed = Array.isArray(i.fiche_ingredients) && i.fiche_ingredients.length > 0
     const isUncategorized = i.categorie_id == null
     const matchUsage =
@@ -275,6 +282,7 @@ export default function IngredientsPage() {
               <select value={filtreCategorie} onChange={e => setFiltreCategorie(e.target.value)}
                 style={{ padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte, cursor: 'pointer' }}>
                 <option value="toutes">Toutes catégories</option>
+                <option value="sans_categorie">📦 Sans catégorie</option>
                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
               </select>
               <span style={{ fontSize: '12px', color: c.texteMuted, whiteSpace: 'nowrap' }}>
