@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase, getParametres, getClientId } from '../../../../lib/supabase'
+import { uploadFichePhoto } from '../../../../lib/uploadPhoto'
 import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
@@ -223,21 +224,13 @@ export default function NouvelleBarFiche() {
     if (photo) {
       const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
       if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setLoading(false); return }
-      const ext = photo.name.split('.').pop()
-      const mimeType = ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif' })[ext.toLowerCase()] || 'image/jpeg'
-      const path = `${clientId}/bar-${fiche.id}.${ext}`
-      await supabase.storage.from('fiches-photos').remove([path])
-      const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, fileToUpload.slice(0, fileToUpload.size, mimeType), {
-        upsert: false,
-        cacheControl: '3600'
-      })
-      if (!errPhoto) {
-        const { data: signedData, error: signErr } = await supabase.storage
-          .from('fiches-photos').createSignedUrl(path, 60 * 60 * 24 * 365)
-        const photoUrlBar = (!signErr && signedData?.signedUrl)
-          ? signedData.signedUrl
-          : supabase.storage.from('fiches-photos').getPublicUrl(path).data.publicUrl
+      try {
+        const photoUrlBar = await uploadFichePhoto(supabase, { clientId, ficheId: fiche.id, file: fileToUpload, isBar: true })
         await supabase.from('fiches_bar').update({ photo_url: photoUrlBar }).eq('id', fiche.id).eq('client_id', clientId)
+      } catch (err) {
+        setError('Erreur upload photo : ' + err.message)
+        setLoading(false)
+        return
       }
     }
 
