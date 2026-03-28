@@ -253,9 +253,14 @@ export default function ModifierBarFiche() {
         cacheControl: '3600'
       })
       if (!errPhoto) {
-        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        photoUrl = urlData.publicUrl
-        console.log('[photo upload bar] public URL generated:', photoUrl)
+        const { data: signedData, error: signErr } = await supabase.storage
+          .from('fiches-photos').createSignedUrl(path, 60 * 60 * 24 * 365)
+        if (!signErr && signedData?.signedUrl) {
+          photoUrl = signedData.signedUrl
+        } else {
+          const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
+          photoUrl = urlData.publicUrl
+        }
       }
     }
 

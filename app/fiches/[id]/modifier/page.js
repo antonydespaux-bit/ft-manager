@@ -235,9 +235,15 @@ export default function ModifierFiche() {
           cacheControl: '3600'
         })
       if (!errPhoto) {
-        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        photoUrl = urlData.publicUrl
-        console.log('[photo upload cuisine] public URL generated:', photoUrl)
+        const { data: signedData, error: signErr } = await supabase.storage
+          .from('fiches-photos').createSignedUrl(path, 60 * 60 * 24 * 365)
+        if (!signErr && signedData?.signedUrl) {
+          photoUrl = signedData.signedUrl
+        } else {
+          // Fallback URL publique si la création de signed URL échoue
+          const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
+          photoUrl = urlData.publicUrl
+        }
       }
     }
 

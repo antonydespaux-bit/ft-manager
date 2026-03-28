@@ -231,10 +231,12 @@ export default function NouvelleBarFiche() {
         cacheControl: '3600'
       })
       if (!errPhoto) {
-        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        console.log('[photo upload bar] public URL generated:', urlData.publicUrl)
-        await supabase.from('fiches_bar').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id).eq('client_id', clientId)
-        console.log('[photo upload bar] photo_url saved for fiche_bar:', fiche.id)
+        const { data: signedData, error: signErr } = await supabase.storage
+          .from('fiches-photos').createSignedUrl(path, 60 * 60 * 24 * 365)
+        const photoUrlBar = (!signErr && signedData?.signedUrl)
+          ? signedData.signedUrl
+          : supabase.storage.from('fiches-photos').getPublicUrl(path).data.publicUrl
+        await supabase.from('fiches_bar').update({ photo_url: photoUrlBar }).eq('id', fiche.id).eq('client_id', clientId)
       }
     }
 

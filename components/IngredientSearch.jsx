@@ -21,9 +21,13 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
   }, [value])
 
   const ingredientsFiltres = recherche.length > 0
-    ? ingredients.filter(i =>
-        i.nom.toLowerCase().includes(recherche.toLowerCase())
-      ).slice(0, 20)
+    ? ingredients.filter(i => {
+        const termeNorm = recherche.toLowerCase()
+        const nomNorm = i.nom.toLowerCase()
+        // Correspondance par début de mot : évite "BOEUF" quand on tape "OEUF"
+        return nomNorm.startsWith(termeNorm) ||
+          nomNorm.split(/[\s\-]+/).some(mot => mot.startsWith(termeNorm))
+      }).slice(0, 20)
     : []
 
   // Liste ordonnée dans le même ordre que le rendu (ingrédients normaux, puis sous-fiches).
