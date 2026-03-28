@@ -17,6 +17,7 @@ export default function ModifierFiche() {
   const [categoriePlat, setCategoriePlat] = useState('')
   const [lieuId, setLieuId] = useState('')
   const [nbPortions, setNbPortions] = useState('')
+  const [unitePortions, setUnitePortions] = useState('portions')
   const [prixTTC, setPrixTTC] = useState('')
   const [perte, setPerte] = useState(0)
   const [description, setDescription] = useState('')
@@ -96,6 +97,15 @@ export default function ModifierFiche() {
     setLieuId(ficheData.lieu_id || '')
     setNbPortions(ficheData.nb_portions || '')
     setPrixTTC(ficheData.prix_ttc || '')
+    if (ficheData.is_sub_fiche) {
+      const { data: ingMiroir } = await supabase
+        .from('ingredients')
+        .select('unite')
+        .eq('fiche_id', params_route.id)
+        .eq('client_id', clientId)
+        .single()
+      if (ingMiroir?.unite) setUnitePortions(ingMiroir.unite)
+    }
     setPerte(ficheData.perte || 0)
     setDescription(ficheData.description || '')
     setInstructions(ficheData.instructions || '')
@@ -232,11 +242,11 @@ export default function ModifierFiche() {
       const { data: ingExistant } = await supabase
         .from('ingredients').select('id').eq('fiche_id', params_route.id).eq('client_id', clientId).single()
       if (ingExistant) {
-        await supabase.from('ingredients').update({ nom, prix_kg: parseFloat(coutPortion) }).eq('fiche_id', params_route.id).eq('client_id', clientId)
+        await supabase.from('ingredients').update({ nom, prix_kg: parseFloat(coutPortion), unite: unitePortions }).eq('fiche_id', params_route.id).eq('client_id', clientId)
       } else {
         await supabase.from('ingredients').insert([{
           nom, prix_kg: parseFloat(coutPortion),
-          unite: 'portions', est_sous_fiche: true,
+          unite: unitePortions, est_sous_fiche: true,
           fiche_id: params_route.id, client_id: clientId
         }])
       }
@@ -347,10 +357,18 @@ export default function ModifierFiche() {
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Nombre de portions</label>
-                <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
-                  style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
-                />
+                <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>{isSousFiche ? 'Quantité produite' : 'Nombre de portions'}</label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input type="number" value={nbPortions} onChange={e => setNbPortions(e.target.value)}
+                    style={{ flex: 1, padding: '12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '14px', outline: 'none', color: c.texte, background: c.blanc }}
+                  />
+                  {isSousFiche && (
+                    <select value={unitePortions} onChange={e => setUnitePortions(e.target.value)}
+                      style={{ padding: '12px 8px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte }}>
+                      {['portions', 'kg', 'g', 'L', 'cl', 'ml', 'u'].map(u => <option key={u}>{u}</option>)}
+                    </select>
+                  )}
+                </div>
               </div>
               {!isSousFiche && (
                 <div>
