@@ -249,7 +249,7 @@ export default function ModifierBarFiche() {
       const path = `${clientId}/bar-${params_route.id}.${ext}`
       const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, fileToUpload, {
         upsert: true,
-        contentType: fileToUpload.type || `image/${ext}`,
+        contentType: ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif' })[ext.toLowerCase()] || 'image/jpeg',
         cacheControl: '3600'
       })
       if (!errPhoto) {
