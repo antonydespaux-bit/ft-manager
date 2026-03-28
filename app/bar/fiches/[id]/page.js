@@ -28,6 +28,7 @@ export default function BarFicheDetail() {
       @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
+        .print-instructions { page-break-before: always; margin-top: 0 !important; }
         body { background: white !important; margin: 0; padding: 0; }
         @page { margin: 15mm 15mm 15mm 15mm; }
       }
@@ -435,7 +436,7 @@ const loadFiche = async () => {
 
         {/* ── INSTRUCTIONS — après récap financier ── */}
         {fiche.instructions && (
-          <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
+          <div className="print-instructions" style={{ marginBottom: '20px', pageBreakBefore: 'always', marginTop: '0' }}>
             <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#7C3AED', marginBottom: '10px', fontFamily: 'sans-serif', fontWeight: '600' }}>Instructions de préparation</div>
             <div style={{
               border: '0.5px solid #DDD6FE', borderRadius: '4px', padding: '14px 16px',
