@@ -28,6 +28,7 @@ export default function FicheDetail() {
       @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
+        .print-instructions { page-break-before: always; margin-top: 0 !important; }
         body { background: white !important; margin: 0; padding: 0; }
         @page { margin: 15mm 15mm 15mm 15mm; }
       }
@@ -416,9 +417,19 @@ export default function FicheDetail() {
           ))}
         </div>
 
-        {/* ── INSTRUCTIONS — après récap financier ── */}
+        {/* Allergènes — sur la même page que le récap */}
+        {fiche.allergenes && fiche.allergenes.length > 0 && (
+          <div style={{ background: '#FCEBEB', borderRadius: '6px', padding: '12px', marginBottom: '16px', border: '0.5px solid #F09595' }}>
+            <div style={{ fontSize: '9px', color: '#A32D2D', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'sans-serif', fontWeight: '600', marginBottom: '8px' }}>⚠ Allergènes présents</div>
+            <div style={{ fontSize: '11px', color: '#A32D2D', fontFamily: 'sans-serif', fontWeight: '500' }}>
+              {fiche.allergenes.map(id => { const a = ALLERGENES.find(a => a.id === id); return a ? `${a.emoji} ${a.label}` : null }).filter(Boolean).join('  •  ')}
+            </div>
+          </div>
+        )}
+
+        {/* ── INSTRUCTIONS — page séparée ── */}
         {fiche.instructions && (
-          <div style={{ marginBottom: '20px', pageBreakInside: 'avoid' }}>
+          <div className="print-instructions" style={{ marginBottom: '20px', pageBreakBefore: 'always', marginTop: '0' }}>
             <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8B7355', marginBottom: '10px', fontFamily: 'sans-serif', fontWeight: '600' }}>Instructions de préparation</div>
             <div style={{
               border: '0.5px solid #e8e4dc', borderRadius: '4px', padding: '14px 16px',
@@ -426,16 +437,6 @@ export default function FicheDetail() {
               lineHeight: '1.9', whiteSpace: 'pre-wrap'
             }}>
               {fiche.instructions}
-            </div>
-          </div>
-        )}
-
-        {/* Allergènes */}
-        {fiche.allergenes && fiche.allergenes.length > 0 && (
-          <div style={{ background: '#FCEBEB', borderRadius: '6px', padding: '12px', marginBottom: '16px', border: '0.5px solid #F09595' }}>
-            <div style={{ fontSize: '9px', color: '#A32D2D', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'sans-serif', fontWeight: '600', marginBottom: '8px' }}>⚠ Allergènes présents</div>
-            <div style={{ fontSize: '11px', color: '#A32D2D', fontFamily: 'sans-serif', fontWeight: '500' }}>
-              {fiche.allergenes.map(id => { const a = ALLERGENES.find(a => a.id === id); return a ? `${a.emoji} ${a.label}` : null }).filter(Boolean).join('  •  ')}
             </div>
           </div>
         )}
