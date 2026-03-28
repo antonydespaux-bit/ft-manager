@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase, getParametres, getClientId, ensureFichePhotoUrl } from '../../../../lib/supabase'
+import { supabase, getParametres, getClientId } from '../../../../lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import { Logo } from '../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../lib/useIsMobile'
@@ -70,18 +70,6 @@ const loadFiche = async () => {
 
     if (error || !ficheData) { router.push('/bar/fiches'); return }
 
-    if (ficheData?.photo_url) {
-      const repairedUrl = await ensureFichePhotoUrl({
-        tableName: 'fiches_bar',
-        ficheId: params_route.id,
-        clientId,
-        photoUrl: ficheData.photo_url,
-        isBar: true
-      })
-      if (repairedUrl && repairedUrl !== ficheData.photo_url) {
-        ficheData.photo_url = repairedUrl
-      }
-    }
     setFiche(ficheData)
 
     // Requête 1 — liens de jointure
@@ -240,9 +228,6 @@ const loadFiche = async () => {
 
         {/* Infos générales */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-          {fiche.photo_url && (
-            <img src={fiche.photo_url} alt={fiche.nom} style={{ width: '100%', height: isMobile ? '200px' : '250px', objectFit: 'cover', borderRadius: '8px', marginBottom: '16px' }} />
-          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
@@ -383,11 +368,10 @@ const loadFiche = async () => {
           </div>
         </div>
 
-        {/* Photo + description */}
-        {(fiche.photo_url || fiche.description) && (
-          <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-            {fiche.photo_url && <img src={fiche.photo_url} alt={fiche.nom} style={{ width: '180px', height: '130px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }} />}
-            {fiche.description && <div style={{ flex: 1, fontSize: '12px', color: '#555', lineHeight: '1.8', fontStyle: 'italic' }}>{fiche.description}</div>}
+        {/* Description */}
+        {fiche.description && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ fontSize: '12px', color: '#555', lineHeight: '1.8', fontStyle: 'italic' }}>{fiche.description}</div>
           </div>
         )}
 

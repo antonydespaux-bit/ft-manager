@@ -313,11 +313,6 @@ export default function BarFichesPage() {
                       />
                     </div>
                   )}
-                  {fiche.photo_url && (
-                    <img src={fiche.photo_url} alt={fiche.nom}
-                      style={{ width: '100%', height: '160px', objectFit: 'cover', opacity: modeArchive && !isSelected ? 0.6 : 1 }}
-                    />
-                  )}
                   <div style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'flex-start', gap: '6px' }}>
                       <div style={{ fontWeight: '500', color: c.texte, paddingRight: modeArchive ? '24px' : '0', flex: 1 }}>{fiche.nom}</div>

@@ -22,8 +22,6 @@ export default function NouvelleBarFiche() {
   const [description, setDescription] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
-  const [photo, setPhoto] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
   const [ingredients, setIngredients] = useState([
     { ingredient_id: '', nom: '', quantite: '', unite: 'cl', is_sf: false }
   ])
@@ -47,8 +45,9 @@ export default function NouvelleBarFiche() {
   const optionsRecherche = [
     ...listeIngredients.map(i => ({ ...i, type: 'ing' })),
     ...listeSousFiches.map(sf => ({
-      id: sf.id, nom: `(SF) ${sf.nom}`,
-      prix_kg: sf.cout_portion, unite: sf.unite_production || 'cl', type: 'sf'
+      id: sf.id, nom: sf.nom,
+      prix_kg: sf.cout_portion, unite: sf.unite_production || 'cl', type: 'sf',
+      est_sous_fiche: true
     }))
   ]
 
@@ -120,13 +119,6 @@ export default function NouvelleBarFiche() {
 
   const toggleAllergene = (id) => {
     setAllergenes(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id])
-  }
-
-  const handlePhoto = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setPhoto(file)
-    setPhotoPreview(URL.createObjectURL(file))
   }
 
   const ajouterIngredient = () => {
@@ -219,24 +211,6 @@ export default function NouvelleBarFiche() {
 
     if (errFiche) { setError('Erreur : ' + errFiche.message); setLoading(false); return }
 
-    if (photo) {
-      const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
-      if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setLoading(false); return }
-      const ext = photo.name.split('.').pop()
-      const path = `${clientId}/bar-${fiche.id}.${ext}`
-      const { error: errPhoto } = await supabase.storage.from('fiches-photos').upload(path, fileToUpload, {
-        upsert: true,
-        contentType: fileToUpload.type || `image/${ext}`,
-        cacheControl: '3600'
-      })
-      if (!errPhoto) {
-        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        console.log('[photo upload bar] public URL generated:', urlData.publicUrl)
-        await supabase.from('fiches_bar').update({ photo_url: urlData.publicUrl }).eq('id', fiche.id).eq('client_id', clientId)
-        console.log('[photo upload bar] photo_url saved for fiche_bar:', fiche.id)
-      }
-    }
-
     const linesToInsert = ingredients
       .filter(i => i.ingredient_id && i.quantite)
       .map(i => ({
@@ -319,30 +293,6 @@ export default function NouvelleBarFiche() {
 
         <div style={{ background: isAlcool ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${isAlcool ? '#F09595' : '#4A7B6F40'}`, color: isAlcool ? '#A32D2D' : '#3B6D11' }}>
           {isAlcool ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
-        </div>
-
-        {/* Photo */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Photo</div>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            {photoPreview ? (
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <img src={photoPreview} alt="Aperçu" style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }} />
-                <button onClick={() => { setPhoto(null); setPhotoPreview(null) }} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
-              </div>
-            ) : (
-              <div style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', borderRadius: '8px', border: `1px dashed ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                <span style={{ fontSize: '20px' }}>📷</span>
-                <span style={{ fontSize: '10px', color: c.texteMuted }}>Aucune photo</span>
-              </div>
-            )}
-            <div style={{ flex: 1 }}>
-              <input type="file" accept="image/*" onChange={handlePhoto}
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #7F77DD', borderRadius: '8px', fontSize: '13px', background: '#EEEDFE', cursor: 'pointer', color: c.texte }}
-              />
-              <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '6px' }}>JPG, PNG, WEBP — Max 5MB</div>
-            </div>
-          </div>
         </div>
 
         {/* Informations générales */}

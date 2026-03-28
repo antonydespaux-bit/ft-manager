@@ -23,9 +23,6 @@ export default function ModifierFiche() {
   const [instructions, setInstructions] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
-  const [photo, setPhoto] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
-  const [photoExistante, setPhotoExistante] = useState(null)
   const [ingredients, setIngredients] = useState([])
   const [listeIngredients, setListeIngredients] = useState([])
   const [lieux, setLieux] = useState([])
@@ -70,19 +67,29 @@ export default function ModifierFiche() {
       { data: ficheData },
       { data: lieuxData },
       { data: catsData },
-      { data: liste }
+      { data: liste },
+      { data: sousFiches }
     ] = await Promise.all([
       supabase.from('fiches').select('*').eq('id', params_route.id).eq('client_id', clientId).single(),
       supabase.from('lieux').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
       supabase.from('categories_plats').select('*').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
-      supabase.from('ingredients').select('*').eq('client_id', clientId).order('nom').limit(5000)
+      supabase.from('ingredients').select('*').eq('client_id', clientId).order('nom').limit(5000),
+      supabase.from('fiches').select('id, nom, cout_portion').eq('client_id', clientId).eq('is_sub_fiche', true).eq('archive', false).order('nom')
     ])
 
     if (!ficheData) { router.push('/fiches'); return }
 
     setLieux(lieuxData || [])
     setCategoriesDyn(catsData || [])
-    setListeIngredients(liste || [])
+
+    const sousFichesFormatees = (sousFiches || []).map(sf => ({
+      id: sf.id,
+      nom: sf.nom,
+      prix_kg: sf.cout_portion,
+      unite: 'portion',
+      est_sous_fiche: true
+    }))
+    setListeIngredients([...(liste || []), ...sousFichesFormatees])
 
     setNom(ficheData.nom)
     setCategoriePlat(ficheData.categorie_plat_id || '')
@@ -94,7 +101,6 @@ export default function ModifierFiche() {
     setInstructions(ficheData.instructions || '')
     setSaison(ficheData.saison || 'Printemps 2026')
     setAllergenes(ficheData.allergenes || [])
-    if (ficheData.photo_url) { setPhotoExistante(ficheData.photo_url); setPhotoPreview(ficheData.photo_url) }
 
     const { data: ingsData } = await supabase
       .from('fiche_ingredients')
@@ -131,23 +137,6 @@ export default function ModifierFiche() {
 
   const toggleAllergene = (id) => {
     setAllergenes(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id])
-  }
-
-  const handlePhoto = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setPhoto(file)
-    setPhotoPreview(URL.createObjectURL(file))
-  }
-
-  const supprimerPhoto = async () => {
-    if (photoExistante) {
-      const path = photoExistante.split('/').pop()
-      await supabase.storage.from('fiches-photos').remove([path])
-      const clientId = await getClientId()
-      if (clientId) await supabase.from('fiches').update({ photo_url: null }).eq('id', params_route.id).eq('client_id', clientId)
-    }
-    setPhoto(null); setPhotoPreview(null); setPhotoExistante(null)
   }
 
   const ajouterIngredient = () => {
@@ -207,26 +196,6 @@ export default function ModifierFiche() {
 
     const cout = calculerCoutAvecPerte()
     const coutPortion = nbPortions ? (cout / parseFloat(nbPortions)) : null
-    let photoUrl = photoExistante
-
-    if (photo) {
-      const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
-      if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setSaving(false); return }
-      const ext = photo.name.split('.').pop()
-      const path = `${clientId}/${params_route.id}.${ext}`
-      const { error: errPhoto } = await supabase.storage
-        .from('fiches-photos').upload(path, fileToUpload, {
-          upsert: true,
-          contentType: fileToUpload.type || `image/${ext}`,
-          cacheControl: '3600'
-        })
-      if (!errPhoto) {
-        const { data: urlData } = supabase.storage.from('fiches-photos').getPublicUrl(path)
-        photoUrl = urlData.publicUrl
-        console.log('[photo upload cuisine] public URL generated:', photoUrl)
-      }
-    }
-
     await supabase.from('fiches').update({
       nom,
       categorie: catSelectionnee?.nom || '',
@@ -238,15 +207,11 @@ export default function ModifierFiche() {
       prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),
       description,
       instructions: instructions || null,
-      saison, allergenes, photo_url: photoUrl,
+      saison, allergenes,
       cout_portion: coutPortion,
       perte: perte ? parseFloat(perte) : 0,
       updated_at: new Date().toISOString()
     }).eq('id', params_route.id).eq('client_id', clientId)
-    if (photoUrl) {
-      console.log('[photo upload cuisine] photo_url saved for fiche:', params_route.id)
-    }
-
     await supabase.from('fiche_ingredients').delete().eq('fiche_id', params_route.id).eq('client_id', clientId)
 
     const ingredientsAInserer = ingredients
@@ -341,31 +306,6 @@ export default function ModifierFiche() {
         )}
 
         {error && <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
-
-        {/* Photo */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Photo du plat</div>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            {photoPreview ? (
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <img src={photoPreview} alt="Aperçu" style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }} />
-                <button onClick={supprimerPhoto} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
-              </div>
-            ) : (
-              <div style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', borderRadius: '8px', border: `1px dashed ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                <span style={{ fontSize: '20px' }}>📷</span>
-                <span style={{ fontSize: '10px', color: c.texteMuted }}>Aucune photo</span>
-              </div>
-            )}
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>{photoPreview ? 'Changer la photo' : 'Ajouter une photo'}</label>
-              <input type="file" accept="image/*" onChange={handlePhoto}
-                style={{ width: '100%', padding: '10px 12px', border: `0.5px solid ${c.accent}`, borderRadius: '8px', fontSize: '13px', background: c.accentClair, cursor: 'pointer', color: c.texte }}
-              />
-              <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '6px' }}>JPG, PNG, WEBP — Max 5MB</div>
-            </div>
-          </div>
-        </div>
 
         {/* Informations générales */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
