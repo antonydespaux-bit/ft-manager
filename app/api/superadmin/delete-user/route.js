@@ -1,53 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
-import { isSuperadminEmail } from '../../../../lib/superadmin'
 import { z } from 'zod'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRole = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+import { supabaseServiceRole, requireSuperAdmin } from '../../../../lib/apiGuards'
 
 const deleteUserSchema = z.object({
   user_id: z.string().uuid()
 })
-
-
-async function requireSuperAdmin(request) {
-  const authHeader = request.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { response: Response.json({ error: 'Non authentifié.' }, { status: 401 }) }
-  }
-
-  const jwt = authHeader.slice(7).trim()
-  if (!jwt) {
-    return { response: Response.json({ error: 'Non authentifié.' }, { status: 401 }) }
-  }
-
-  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey)
-  const { data: { user }, error: userErr } = await supabaseAuth.auth.getUser(jwt)
-  if (userErr || !user) {
-    return { response: Response.json({ error: 'Session invalide.' }, { status: 401 }) }
-  }
-
-  const userEmail = (user.email || '').toLowerCase().trim()
-  if (isSuperadminEmail(userEmail)) {
-    return { user }
-  }
-
-  const { data: profil, error: profilErr } = await supabaseServiceRole
-    .from('profils')
-    .select('is_superadmin')
-    .eq('id', user.id)
-    .single()
-
-  if (profilErr || !profil?.is_superadmin) {
-    return { response: Response.json({ error: 'Accès refusé : super admin requis.' }, { status: 403 }) }
-  }
-
-  return { user }
-}
 
 export async function POST(request) {
   try {
