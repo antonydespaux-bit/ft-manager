@@ -227,12 +227,12 @@ export default function ModifierFiche() {
       const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
       if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setSaving(false); return }
       const ext = photo.name.split('.').pop()
+      const mimeType = ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif' })[ext.toLowerCase()] || 'image/jpeg'
       const path = `${clientId}/${params_route.id}.${ext}`
       await supabase.storage.from('fiches-photos').remove([path])
       const { error: errPhoto } = await supabase.storage
-        .from('fiches-photos').upload(path, fileToUpload, {
+        .from('fiches-photos').upload(path, fileToUpload.slice(0, fileToUpload.size, mimeType), {
           upsert: false,
-          contentType: ({ jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif' })[ext.toLowerCase()] || 'image/jpeg',
           cacheControl: '3600'
         })
       if (!errPhoto) {
