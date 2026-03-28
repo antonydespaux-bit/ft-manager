@@ -95,7 +95,7 @@ export default function ModifierFiche() {
     setNom(ficheData.nom)
     setCategoriePlat(ficheData.categorie_plat_id || '')
     setLieuId(ficheData.lieu_id || '')
-    setNbPortions(ficheData.nb_portions || '')
+    setNbPortions(ficheData.nb_portions != null ? String(ficheData.nb_portions) : '')
     setPrixTTC(ficheData.prix_ttc || '')
     if (ficheData.is_sub_fiche) {
       const { data: ingMiroir } = await supabase
@@ -211,7 +211,8 @@ export default function ModifierFiche() {
       categorie: catSelectionnee?.nom || '',
       categorie_plat_id: categoriePlat || null,
       lieu_id: lieuId || null,
-      nb_portions: nbPortions ? parseInt(nbPortions) : null,
+      nb_portions: nbPortions !== '' ? parseFloat(nbPortions) : null,
+      unite_production: isSousFiche ? unitePortions : (nbPortions !== '' ? 'portions' : null),
       // Même logique que dans la création : la catégorie "Sous-fiche" pilote `is_sub_fiche`.
       is_sub_fiche: isSousFiche,
       prix_ttc: isSousFiche ? null : (prixTTC ? parseFloat(prixTTC) : null),

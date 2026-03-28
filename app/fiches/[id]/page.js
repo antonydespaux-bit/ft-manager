@@ -206,7 +206,7 @@ export default function FicheDetail() {
             </div>
             <div style={{ background: c.principal, color: c.accent, borderRadius: '10px', padding: '8px 14px', textAlign: 'center', flexShrink: 0, marginLeft: '12px', minWidth: '70px' }}>
               <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{uniteLabel}</div>
-              <div style={{ fontSize: '20px', fontWeight: '500' }}>{fiche.nb_portions || '—'}</div>
+              <div style={{ fontSize: '20px', fontWeight: '500' }}>{fiche.nb_portions != null ? fiche.nb_portions : '—'}</div>
             </div>
           </div>
           {fiche.description && (
