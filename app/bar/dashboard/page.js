@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
+import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../../lib/foodCost'
 import NavbarBar from '../../../components/NavbarBar'
 
 export default function BarDashboardPage() {
@@ -51,13 +52,8 @@ export default function BarDashboardPage() {
     setLoading(false)
   }
 
-  const seuilVert = parseFloat(params['seuil_vert_boissons'] || 22)
-  const seuilOrange = parseFloat(params['seuil_orange_boissons'] || 28)
-
-  const foodCostFiche = (fiche) => {
-    if (!fiche.prix_ttc || !fiche.cout_portion) return null
-    return (fiche.cout_portion / (fiche.prix_ttc / 1.10) * 100)
-  }
+  const { seuilVert, seuilOrange, tva } = getSeuilsFromParams(params, 'bar')
+  const foodCostFiche = (fiche) => calculerFoodCost(fiche.cout_portion, fiche.prix_ttc, tva)
 
   const fichesAvecFC = fiches.filter(f => f.cout_portion && f.prix_ttc)
   const foodCostMoyen = fichesAvecFC.length > 0
@@ -68,11 +64,7 @@ export default function BarDashboardPage() {
     .filter(f => { const fc = foodCostFiche(f); return fc && fc > seuilOrange })
     .sort((a, b) => foodCostFiche(b) - foodCostFiche(a))
 
-  const fichesFCColor = (fc) => {
-    if (fc < seuilVert) return { bg: '#EAF3DE', color: '#3B6D11' }
-    if (fc < seuilOrange) return { bg: '#FAEEDA', color: '#854F0B' }
-    return { bg: '#FCEBEB', color: '#A32D2D' }
-  }
+  const fichesFCColor = (fc) => foodCostColor(fc, seuilVert, seuilOrange)
 
   const fichesByCategorie = [...new Set(fiches.map(f => f.categorie).filter(Boolean))].map(cat => ({
     cat, nb: fiches.filter(f => f.categorie === cat).length

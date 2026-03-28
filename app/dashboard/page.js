@@ -7,6 +7,7 @@ import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { ALLERGENES } from '../../lib/allergenes'
+import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../lib/foodCost'
 import NavbarCuisine from '../../components/NavbarCuisine'
 import * as XLSX from 'xlsx'
 
@@ -59,13 +60,8 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
-  const seuilOrange = parseFloat(params['seuil_orange_cuisine'] || 35)
-
-  const foodCostFiche = (fiche) => {
-    if (!fiche.prix_ttc || !fiche.cout_portion) return null
-    return (fiche.cout_portion / (fiche.prix_ttc / 1.10) * 100)
-  }
+  const { seuilVert, seuilOrange, tva } = getSeuilsFromParams(params, 'cuisine')
+  const foodCostFiche = (fiche) => calculerFoodCost(fiche.cout_portion, fiche.prix_ttc, tva)
 
   const fichesAvecFC = fiches.filter(f => f.cout_portion && f.prix_ttc)
   const foodCostMoyen = fichesAvecFC.length > 0
@@ -76,11 +72,7 @@ export default function DashboardPage() {
     .filter(f => { const fc = foodCostFiche(f); return fc && fc > seuilOrange })
     .sort((a, b) => foodCostFiche(b) - foodCostFiche(a))
 
-  const fichesFCColor = (fc) => {
-    if (fc < seuilVert) return { bg: '#EAF3DE', color: '#3B6D11' }
-    if (fc < seuilOrange) return { bg: '#FAEEDA', color: '#854F0B' }
-    return { bg: '#FCEBEB', color: '#A32D2D' }
-  }
+  const fichesFCColor = (fc) => foodCostColor(fc, seuilVert, seuilOrange)
 
   const fichesByCategorie = theme.categories.map(cat => ({
     cat, nb: fiches.filter(f => f.categorie === cat).length

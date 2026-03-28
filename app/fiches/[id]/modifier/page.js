@@ -10,7 +10,8 @@ import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
 
-const isIngredientPossible = (nom) => nom === 'Sous-fiches' || nom === 'Sous-fiche' || nom === 'Accompagnements'
+import { isIngredientPossible } from '../../../../lib/foodCost'
+import { UNITES_PRODUCTION } from '../../../../lib/constants'
 
 export default function ModifierFiche() {
   const [nom, setNom] = useState('')
@@ -368,7 +369,7 @@ export default function ModifierFiche() {
                   {isSousFiche && (
                     <select value={unitePortions} onChange={e => setUnitePortions(e.target.value)}
                       style={{ padding: '12px 8px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte }}>
-                      {['portions', 'kg', 'g', 'L', 'cl', 'ml', 'u'].map(u => <option key={u}>{u}</option>)}
+                      {UNITES_PRODUCTION.map(u => <option key={u}>{u}</option>)}
                     </select>
                   )}
                 </div>
