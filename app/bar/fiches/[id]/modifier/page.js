@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase, getParametres, getClientId } from '../../../../../lib/supabase'
-import { uploadFichePhoto } from '../../../../../lib/uploadPhoto'
 import { useRouter, useParams } from 'next/navigation'
 import { theme, Logo } from '../../../../../lib/theme.jsx'
 import { useIsMobile } from '../../../../../lib/useIsMobile'
@@ -24,9 +23,6 @@ export default function ModifierBarFiche() {
   const [instructions, setInstructions] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [allergenes, setAllergenes] = useState([])
-  const [photo, setPhoto] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
-  const [photoExistante, setPhotoExistante] = useState(null)
   const [ingredients, setIngredients] = useState([])
   const [listeIngredients, setListeIngredients] = useState([])
   const [lieux, setLieux] = useState([])
@@ -98,7 +94,6 @@ export default function ModifierBarFiche() {
       setInstructions(ficheData.instructions || '')
       setSaison(ficheData.saison || 'Printemps 2026')
       setAllergenes(ficheData.allergenes || [])
-      if (ficheData.photo_url) { setPhotoExistante(ficheData.photo_url); setPhotoPreview(ficheData.photo_url) }
 
       // Requête ingrédients en deux temps
       const { data: liens } = await supabase
@@ -161,26 +156,6 @@ export default function ModifierBarFiche() {
     setAllergenes(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id])
   }
 
-  const handlePhoto = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setPhoto(file)
-    setPhotoPreview(URL.createObjectURL(file))
-  }
-
-  const supprimerPhoto = async () => {
-    if (photoExistante) {
-      const bucketBase = '/storage/v1/object/public/fiches-photos/'
-      const path = photoExistante.includes(bucketBase)
-        ? photoExistante.split(bucketBase)[1]
-        : photoExistante.split('/').slice(-2).join('/')
-      await supabase.storage.from('fiches-photos').remove([path])
-      const clientId = await getClientId()
-      if (clientId) await supabase.from('fiches_bar').update({ photo_url: null }).eq('id', params_route.id).eq('client_id', clientId)
-    }
-    setPhoto(null); setPhotoPreview(null); setPhotoExistante(null)
-  }
-
   const ajouterIngredient = () => {
     setIngredients([...ingredients, { ingredient_id: '', nom: '', quantite: '', unite: 'cl' }])
   }
@@ -241,20 +216,6 @@ export default function ModifierBarFiche() {
 
     const cout = calculerCoutAvecPerte()
     const coutPortion = nbPortions ? (cout / parseFloat(nbPortions)) : null
-    let photoUrl = photoExistante
-
-    if (photo) {
-      const fileToUpload = (photo instanceof File || photo instanceof Blob) ? photo : null
-      if (!fileToUpload) { setError('Photo invalide (fichier non reconnu).'); setSaving(false); return }
-      try {
-        photoUrl = await uploadFichePhoto(supabase, { clientId, ficheId: params_route.id, file: fileToUpload, isBar: true })
-      } catch (err) {
-        setError('Erreur upload photo : ' + err.message)
-        setSaving(false)
-        return
-      }
-    }
-
     await supabase.from('fiches_bar').update({
       nom,
       categorie: nomCat,
@@ -264,15 +225,11 @@ export default function ModifierBarFiche() {
       prix_ttc: prixTTC ? parseFloat(prixTTC) : null,
       description,
       instructions: instructions || null,
-      saison, allergenes, photo_url: photoUrl,
+      saison, allergenes,
       cout_portion: coutPortion,
       perte: perte ? parseFloat(perte) : 0,
       updated_at: new Date().toISOString()
     }).eq('id', params_route.id).eq('client_id', clientId)
-    if (photoUrl) {
-      console.log('[photo upload bar] photo_url saved for fiche_bar:', params_route.id)
-    }
-
     await supabase.from('fiche_bar_ingredients').delete().eq('fiche_bar_id', params_route.id).eq('client_id', clientId)
 
     const ingredientsAInserer = ingredients
@@ -356,31 +313,6 @@ export default function ModifierBarFiche() {
 
         <div style={{ background: isAlcool ? '#FCEBEB' : '#EAF3DE', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', marginBottom: '16px', border: `0.5px solid ${isAlcool ? '#F09595' : '#4A7B6F40'}`, color: isAlcool ? '#A32D2D' : '#3B6D11' }}>
           {isAlcool ? '🍷 TVA Alcool : 20%' : '🥤 TVA Sans alcool : 10%'}
-        </div>
-
-        {/* Photo */}
-        <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-          <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Photo</div>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            {photoPreview ? (
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <img src={photoPreview} alt="Aperçu" style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', objectFit: 'cover', borderRadius: '8px', border: `0.5px solid ${c.bordure}` }} />
-                <button onClick={supprimerPhoto} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#A32D2D', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>×</button>
-              </div>
-            ) : (
-              <div style={{ width: isMobile ? '100px' : '160px', height: isMobile ? '80px' : '120px', borderRadius: '8px', border: `1px dashed ${c.bordure}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond, flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
-                <span style={{ fontSize: '20px' }}>📷</span>
-                <span style={{ fontSize: '10px', color: c.texteMuted }}>Aucune photo</span>
-              </div>
-            )}
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '8px' }}>{photoPreview ? 'Changer la photo' : 'Ajouter une photo'}</label>
-              <input type="file" accept="image/*" onChange={handlePhoto}
-                style={{ width: '100%', padding: '10px 12px', border: '0.5px solid #7F77DD', borderRadius: '8px', fontSize: '13px', background: '#EEEDFE', cursor: 'pointer', color: c.texte }}
-              />
-              <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '6px' }}>JPG, PNG, WEBP — Max 5MB</div>
-            </div>
-          </div>
         </div>
 
         {/* Infos générales */}

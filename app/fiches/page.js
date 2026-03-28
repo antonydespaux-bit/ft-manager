@@ -333,14 +333,6 @@ export default function FichesPage() {
                       />
                     </div>
                   )}
-                  {fiche.photo_url && (
-                    <img src={fiche.photo_url} alt={fiche.nom} style={{
-                      width: isMobile ? '100px' : '100%',
-                      height: isMobile ? '100px' : '160px',
-                      objectFit: 'cover', flexShrink: 0,
-                      opacity: modeArchive && !isSelected ? 0.6 : 1
-                    }} />
-                  )}
                   <div style={{ padding: isMobile ? '12px' : '16px', flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                       <div style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: '500', color: c.texte, paddingRight: modeArchive ? '24px' : '0' }}>
