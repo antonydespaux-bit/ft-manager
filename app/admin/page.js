@@ -7,7 +7,7 @@ import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { isSuperadminEmail } from '../../lib/superadmin'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 import ChefLoader from '../../components/ChefLoader'
 
 export default function AdminPage() {
@@ -177,7 +177,7 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '800px', margin: '0 auto' }}>
 

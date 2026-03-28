@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase, getClientId } from '../../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../lib/useTheme'
-import NavbarCuisine from '../../../components/NavbarCuisine'
+import Navbar from '../../../components/Navbar'
 import ChefLoader from '../../../components/ChefLoader'
 
 export const dynamic = 'force-dynamic'
@@ -119,7 +119,7 @@ export default function ArdoisePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
 

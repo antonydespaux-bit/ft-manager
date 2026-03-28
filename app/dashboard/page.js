@@ -8,7 +8,7 @@ import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { ALLERGENES } from '../../lib/allergenes'
 import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../lib/foodCost'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 import * as XLSX from 'xlsx'
 
 export default function DashboardPage() {
@@ -108,7 +108,7 @@ export default function DashboardPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       {/* Vue écran */}
       <div className="no-print" style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>

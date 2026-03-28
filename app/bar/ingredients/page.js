@@ -7,7 +7,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
-import NavbarBar from '../../../components/NavbarBar'
+import Navbar from '../../../components/Navbar'
 
 export default function BarIngredientsPage() {
   const [ingredients, setIngredients] = useState([])
@@ -135,7 +135,7 @@ export default function BarIngredientsPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarBar />
+      <Navbar section="bar" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 

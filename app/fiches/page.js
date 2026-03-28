@@ -7,7 +7,7 @@ import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { log } from '../../lib/useLog'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 import Pagination from '../../components/Pagination'
 
 const FICHES_PAGE_SIZE = 24
@@ -135,7 +135,7 @@ export default function FichesPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 

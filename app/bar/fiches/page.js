@@ -7,7 +7,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
-import NavbarBar from '../../../components/NavbarBar'
+import Navbar from '../../../components/Navbar'
 
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
@@ -125,7 +125,7 @@ export default function BarFichesPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarBar />
+      <Navbar section="bar" />
 
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 

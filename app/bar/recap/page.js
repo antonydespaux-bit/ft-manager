@@ -8,7 +8,7 @@ import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import * as XLSX from 'xlsx'
-import NavbarBar from '../../../components/NavbarBar'
+import Navbar from '../../../components/Navbar'
 
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
@@ -476,7 +476,7 @@ export default function BarRecapPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarBar />
+      <Navbar section="bar" />
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1200px', margin: '0 auto' }}>
 
         {/* Barre d'outils */}

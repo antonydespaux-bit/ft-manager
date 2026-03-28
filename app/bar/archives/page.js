@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
-import NavbarBar from '../../../components/NavbarBar'
+import Navbar from '../../../components/Navbar'
 
 export default function BarArchivesPage() {
   const [fiches, setFiches] = useState([])
@@ -51,7 +51,7 @@ export default function BarArchivesPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarBar />
+      <Navbar section="bar" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 

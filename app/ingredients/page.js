@@ -6,7 +6,7 @@ import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { log } from '../../lib/useLog'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 import Pagination from '../../components/Pagination'
 
 const PAGE_SIZE = 30
@@ -248,7 +248,7 @@ export default function IngredientsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 

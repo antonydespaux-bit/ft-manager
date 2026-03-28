@@ -5,7 +5,7 @@ import { supabase, getClientId } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 
 const EMOJIS_LIEUX = ['🍽', '🌅', '🍷', '🛎', '🏨', '🌿', '🎭', '☕', '🍸', '🌊', '🏔', '🌃']
 const EMOJIS_CATS = ['🥗', '🍖', '🍮', '🥪', '⚙️', '🍹', '🍷', '🍺', '🥤', '🥃', '🍾', '🧃', '🥩', '🐟', '🧀', '🍰', '🫕', '🥘']
@@ -291,14 +291,14 @@ export default function SettingsPage() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
     </div>
   )
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
 

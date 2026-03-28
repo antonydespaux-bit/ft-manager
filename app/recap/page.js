@@ -8,7 +8,7 @@ import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { log } from '../../lib/useLog'
 import * as XLSX from 'xlsx'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 
 export default function RecapPage() {
   const [fiches, setFiches] = useState([])
@@ -530,7 +530,7 @@ export default function RecapPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1200px', margin: '0 auto' }}>
 
         {/* Barre d'outils */}

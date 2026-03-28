@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { theme, Logo } from '../../lib/theme.jsx'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { useTheme } from '../../lib/useTheme'
-import NavbarCuisine from '../../components/NavbarCuisine'
+import Navbar from '../../components/Navbar'
 
 export default function ArchivesPage() {
   const [fiches, setFiches] = useState([])
@@ -60,7 +60,7 @@ export default function ArchivesPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 

@@ -7,7 +7,7 @@ import { theme, Logo } from '../../../lib/theme.jsx'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
-import NavbarCuisine from '../../../components/NavbarCuisine'
+import Navbar from '../../../components/Navbar'
 import ChefLoader from '../../../components/ChefLoader'
 
 export default function LogsPage() {
@@ -96,7 +96,7 @@ export default function LogsPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarCuisine />
+      <Navbar section="cuisine" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 

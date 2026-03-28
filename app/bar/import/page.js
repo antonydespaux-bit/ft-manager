@@ -7,7 +7,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { log } from '../../../lib/useLog'
 import * as XLSX from 'xlsx'
-import NavbarBar from '../../../components/NavbarBar'
+import Navbar from '../../../components/Navbar'
 import ChefLoader from '../../../components/ChefLoader'
 
 export default function BarImportPage() {
@@ -186,7 +186,7 @@ export default function BarImportPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarBar />
+      <Navbar section="bar" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '700px', margin: '0 auto' }}>
 

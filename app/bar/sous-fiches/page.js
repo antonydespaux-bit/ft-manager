@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
-import NavbarBar from '../../../components/NavbarBar'
+import Navbar from '../../../components/Navbar'
 
 export default function BarSousFichesPage() {
   const [fiches, setFiches] = useState([])
@@ -52,7 +52,7 @@ export default function BarSousFichesPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
-      <NavbarBar />
+      <Navbar section="bar" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1000px', margin: '0 auto' }}>
 
