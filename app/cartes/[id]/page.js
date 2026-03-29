@@ -127,7 +127,7 @@ export default function CarteDetailPage() {
     return (carte.carte_sections || []).flatMap(s => s.carte_items || [])
   }
 
-  const calculs = (src) => {
+  const calculs = (src, baseOnly = false) => {
     const isSrc = src === 'edit'
     const secs = isSrc ? sections : (carte?.carte_sections || []).sort((a, b) => a.ordre - b.ordre)
 
@@ -137,7 +137,7 @@ export default function CarteDetailPage() {
       const items = isSrc ? section.items : (section.carte_items || []).sort((a, b) => a.ordre - b.ordre)
       let groups = [], current = null
       for (const item of items) {
-        const r = isSrc ? (item.relation || 'et') : (item.relation || 'et')
+        const r = item.relation || 'et'
         if (r === 'et') {
           if (current) groups.push(current)
           current = { et: item, ous: [] }
@@ -154,9 +154,14 @@ export default function CarteDetailPage() {
         } else {
           const ouAvecSup = g.ous.find(o => Number(o.supplement) > 0)
           if (ouAvecSup) {
-            // ou avec supplément : on retient le coût du plat ou
-            coutMatiere += isSrc ? (getFiche(ouAvecSup.ficheId)?.cout_portion || 0) : (ouAvecSup.fiches?.cout_portion || 0)
-            totalSupp += Number(ouAvecSup.supplement)
+            if (baseOnly) {
+              // Vue base : client ne prend pas le suppl. → coût du plat "et"
+              coutMatiere += etCost
+            } else {
+              // Vue complète : on retient le coût du plat ou + supplément
+              coutMatiere += isSrc ? (getFiche(ouAvecSup.ficheId)?.cout_portion || 0) : (ouAvecSup.fiches?.cout_portion || 0)
+              totalSupp += Number(ouAvecSup.supplement)
+            }
           } else {
             // ou sans supplément : moyenne des plats liés
             const costs = [etCost, ...g.ous.map(o => isSrc ? (getFiche(o.ficheId)?.cout_portion || 0) : (o.fiches?.cout_portion || 0))]
@@ -266,7 +271,11 @@ export default function CarteDetailPage() {
     </div>
   )
 
-  const calc = calculs(editing ? 'edit' : 'view')
+  const calcViewBase = calculs('view', true)
+  const calcViewFull = calculs('view', false)
+  const calcEditBase = calculs('edit', true)
+  const calcEditFull = calculs('edit', false)
+  const calc = editing ? calcEditFull : (vueSupp ? calcViewFull : calcViewBase)
   const allergenesIds = collectAllergenes()
   const today = new Date().toLocaleDateString('fr-FR')
 
@@ -381,7 +390,7 @@ export default function CarteDetailPage() {
                       <div style={{
                         marginBottom: '6px', paddingBottom: '6px',
                         borderBottom: `0.5px solid ${c.bordure}`,
-                        opacity: isOu && !vueSupp ? 0.45 : 1
+                        opacity: isOu && hasSup && !vueSupp ? 0.45 : 1
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ fontSize: '14px', fontWeight: isOu ? '400' : '500', color: c.texte }}>
@@ -517,9 +526,16 @@ export default function CarteDetailPage() {
             <div style={{ background: 'white', borderRadius: '12px', padding: '20px', border: `0.5px solid ${c.bordure}`, display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Co&ucirc;t mati&egrave;re</div>
-                <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calc.coutMatiere.toFixed(2)} &euro;</div>
+                <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{calcEditFull.coutMatiere.toFixed(2)} &euro;</div>
               </div>
-              {calc.ratio && (() => { const s = fcColor(calc.ratio); return (<div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}><div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio</div><div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{calc.ratio} %</div></div>) })()}
+              {calcEditFull.totalSupp > 0 ? (
+                <>
+                  {calcEditBase.ratio && (() => { const s = fcColor(calcEditBase.ratio); return (<div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}><div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio base</div><div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{calcEditBase.ratio} %</div></div>) })()}
+                  {calcEditFull.ratio && (() => { const s = fcColor(calcEditFull.ratio); return (<div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}><div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio + suppl.</div><div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{calcEditFull.ratio} %</div></div>) })()}
+                </>
+              ) : (
+                calcEditFull.ratio && (() => { const s = fcColor(calcEditFull.ratio); return (<div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}><div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio</div><div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{calcEditFull.ratio} %</div></div>) })()
+              )}
             </div>
           </>
         )}

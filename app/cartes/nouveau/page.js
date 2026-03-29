@@ -95,7 +95,7 @@ export default function NouvelleCarte() {
 
   const getFiche = (ficheId) => fiches.find(f => f.id === ficheId)
 
-  const calculerCouts = () => {
+  const calculerCouts = (baseOnly = false) => {
     let coutMatiere = 0, totalSuppPrix = 0
     for (const section of sections) {
       let groups = [], current = null
@@ -115,9 +115,14 @@ export default function NouvelleCarte() {
         } else {
           const ouAvecSup = g.ous.find(o => Number(o.supplement) > 0)
           if (ouAvecSup) {
-            // ou avec supplément : on retient le coût du plat ou
-            coutMatiere += (getFiche(ouAvecSup.ficheId)?.cout_portion || 0)
-            totalSuppPrix += Number(ouAvecSup.supplement)
+            if (baseOnly) {
+              // Vue base : client ne prend pas le suppl. → coût du plat "et"
+              coutMatiere += etCost
+            } else {
+              // Vue complète : on retient le coût du plat ou + supplément
+              coutMatiere += (getFiche(ouAvecSup.ficheId)?.cout_portion || 0)
+              totalSuppPrix += Number(ouAvecSup.supplement)
+            }
           } else {
             // ou sans supplément : moyenne des plats liés
             const costs = [etCost, ...g.ous.map(o => getFiche(o.ficheId)?.cout_portion || 0)]
@@ -129,13 +134,18 @@ export default function NouvelleCarte() {
     return { coutMatiere, totalSuppPrix }
   }
 
-  const { coutMatiere, totalSuppPrix: totalSupplements } = calculerCouts()
+  const { coutMatiere, totalSuppPrix: totalSupplements } = calculerCouts(false)
+  const { coutMatiere: coutBase } = calculerCouts(true)
 
   const prix = parseFloat(prixBase) || 0
   const prixTotal = prix + totalSupplements
 
   const ratio = prixTotal > 0 && coutMatiere > 0
     ? (coutMatiere / (prixTotal / 1.10) * 100).toFixed(1)
+    : null
+
+  const ratioBase = prix > 0 && coutBase > 0
+    ? (coutBase / (prix / 1.10) * 100).toFixed(1)
     : null
 
   const seuilVert = parseFloat(params['seuil_vert_cuisine'] || 28)
@@ -417,15 +427,32 @@ export default function NouvelleCarte() {
               <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: '#D97706' }}>+{totalSupplements.toFixed(0)} &euro;</div>
             </div>
           )}
-          {ratio && (() => {
-            const s = fcColor(ratio)
-            return (
-              <div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio</div>
-                <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{ratio} %</div>
-              </div>
-            )
-          })()}
+          {totalSupplements > 0 ? (
+            <>
+              {ratioBase && (() => { const s = fcColor(ratioBase); return (
+                <div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio base</div>
+                  <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{ratioBase} %</div>
+                </div>
+              )})()}
+              {ratio && (() => { const s = fcColor(ratio); return (
+                <div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio + suppl.</div>
+                  <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{ratio} %</div>
+                </div>
+              )})()}
+            </>
+          ) : (
+            ratio && (() => {
+              const s = fcColor(ratio)
+              return (
+                <div style={{ background: s.bg, borderRadius: '8px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', color: s.color }}>Ratio</div>
+                  <div style={{ fontSize: '22px', fontWeight: '500', marginTop: '4px', color: s.color }}>{ratio} %</div>
+                </div>
+              )
+            })()
+          )}
           {prixIndicatif && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '14px' }}>
               <div style={{ fontSize: '11px', color: c.vert, fontWeight: '500', textTransform: 'uppercase' }}>Prix indicatif TTC</div>
