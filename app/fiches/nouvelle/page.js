@@ -9,8 +9,14 @@ import { useAutosave } from '../../../lib/useAutosave'
 import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
 import IngredientSearch from '../../../components/IngredientSearch'
-
+import FreemiumLimitModal from '../../../components/FreemiumLimitModal'
+import QuickIngredientModal from '../../../components/QuickIngredientModal'
 import { isIngredientPossible } from '../../../lib/foodCost'
+import {
+  getSubscriptionPlan,
+  countAllSheetsForFreemium,
+  isFreemiumFicheLimitReached,
+} from '../../../lib/subscription'
 import { UNITES_PRODUCTION } from '../../../lib/constants'
 
 export default function NouvelleFiche() {
@@ -34,6 +40,10 @@ export default function NouvelleFiche() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
+  const [freemiumModalOpen, setFreemiumModalOpen] = useState(false)
+  const [quickIngOpen, setQuickIngOpen] = useState(false)
+  const [quickIngRowIndex, setQuickIngRowIndex] = useState(null)
+  const [clientIdForQuick, setClientIdForQuick] = useState(null)
   const router = useRouter()
   const { c, nomEtablissement } = useTheme()
   const saisons = theme.saisons
@@ -66,6 +76,7 @@ export default function NouvelleFiche() {
   const loadIngredients = async () => {
     const clientId = await getClientId()
     if (!clientId) return
+    setClientIdForQuick(clientId)
     const { data } = await supabase.from('ingredients').select('*').eq('client_id', clientId).order('nom').limit(5000)
     setListeIngredients(data || [])
   }
@@ -121,6 +132,27 @@ export default function NouvelleFiche() {
     setIngredients(nouveaux)
   }
 
+  const apresCreationIngredient = (row, rowIndex) => {
+    setListeIngredients((prev) => {
+      if (prev.some((i) => i.id === row.id)) return prev
+      return [...prev, row].sort((a, b) => (a.nom || '').localeCompare(b.nom || ''))
+    })
+    if (rowIndex != null && rowIndex >= 0) {
+      setIngredients((prev) => {
+        const copy = [...prev]
+        if (copy[rowIndex]) {
+          copy[rowIndex] = {
+            ...copy[rowIndex],
+            ingredient_id: row.id,
+            nom: row.nom,
+            unite: row.unite || 'kg',
+          }
+        }
+        return copy
+      })
+    }
+  }
+
   const calculerCout = () => {
     return ingredients.reduce((total, ing) => {
       const ingData = listeIngredients.find(i => i.id === ing.ingredient_id)
@@ -163,6 +195,15 @@ export default function NouvelleFiche() {
 
     const clientId = await getClientId()
     if (!clientId) { setError('Erreur : session expirée'); setLoading(false); return }
+
+    const { data: { session: sessLimit } } = await supabase.auth.getSession()
+    const plan = await getSubscriptionPlan(sessLimit?.user?.id)
+    const { count: totalSheets } = await countAllSheetsForFreemium(clientId)
+    if (isFreemiumFicheLimitReached(plan, totalSheets)) {
+      setFreemiumModalOpen(true)
+      setLoading(false)
+      return
+    }
 
     const coutPortion = calculerCoutPortion()
 
@@ -237,6 +278,17 @@ export default function NouvelleFiche() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
+      <FreemiumLimitModal open={freemiumModalOpen} onClose={() => setFreemiumModalOpen(false)} />
+      <QuickIngredientModal
+        open={quickIngOpen}
+        onClose={() => { setQuickIngOpen(false); setQuickIngRowIndex(null) }}
+        clientId={clientIdForQuick}
+        onCreated={(row) => {
+          apresCreationIngredient(row, quickIngRowIndex)
+          setQuickIngOpen(false)
+          setQuickIngRowIndex(null)
+        }}
+      />
 
       <div style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
@@ -398,8 +450,20 @@ export default function NouvelleFiche() {
                     <span style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500' }}>Ingrédient {index + 1}</span>
                     <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '16px' }}>×</button>
                   </div>
-                  <div style={{ marginBottom: '8px' }}>
-                    <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                  <div style={{ marginBottom: '8px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                    </div>
+                    <button
+                      type="button"
+                      title="Ajouter un ingrédient"
+                      onClick={() => { setQuickIngRowIndex(index); setQuickIngOpen(true) }}
+                      style={{
+                        flexShrink: 0, width: '40px', height: '40px', borderRadius: '8px',
+                        border: `0.5px solid ${c.accent}`, background: c.accentClair, color: c.accent,
+                        fontSize: '20px', fontWeight: '600', cursor: 'pointer', lineHeight: 1,
+                      }}
+                    >+</button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="Quantité"
@@ -422,7 +486,21 @@ export default function NouvelleFiche() {
               </div>
               {ingredients.map((ing, index) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
-                  <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                    </div>
+                    <button
+                      type="button"
+                      title="Ajouter un ingrédient"
+                      onClick={() => { setQuickIngRowIndex(index); setQuickIngOpen(true) }}
+                      style={{
+                        flexShrink: 0, width: '36px', height: '36px', borderRadius: '8px',
+                        border: `0.5px solid ${c.accent}`, background: c.accentClair, color: c.accent,
+                        fontSize: '18px', fontWeight: '600', cursor: 'pointer', lineHeight: 1,
+                      }}
+                    >+</button>
+                  </div>
                   <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="0"
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />

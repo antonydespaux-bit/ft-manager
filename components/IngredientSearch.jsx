@@ -13,12 +13,13 @@ export default function IngredientSearch({ ingredients, value, onChange, placeho
   const ingSelectione = ingredients.find(i => i.id === value)
 
   useEffect(() => {
-    if (ingSelectione) {
-      setRecherche(ingSelectione.nom)
+    const sel = ingredients.find((i) => i.id === value)
+    if (sel) {
+      setRecherche(sel.nom)
     } else {
       setRecherche('')
     }
-  }, [value])
+  }, [value, ingredients])
 
   const ingredientsFiltres = recherche.length > 0
     ? ingredients.filter(i => {

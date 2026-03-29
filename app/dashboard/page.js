@@ -10,6 +10,8 @@ import { ALLERGENES } from '../../lib/allergenes'
 import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../lib/foodCost'
 import Navbar from '../../components/Navbar'
 import * as XLSX from 'xlsx'
+import { seedUserIngredients } from '../../lib/starterKit'
+import { getSubscriptionPlan, countAllSheetsForFreemium } from '../../lib/subscription'
 
 export default function DashboardPage() {
   const [fiches, setFiches] = useState([])
@@ -19,6 +21,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [filtreCategorie, setFiltreCategorie] = useState('toutes')
   const [isPrixExpanded, setIsPrixExpanded] = useState(false)
+  const [subscriptionPlan, setSubscriptionPlan] = useState('free')
+  const [freemiumFicheCount, setFreemiumFicheCount] = useState(0)
   const router = useRouter()
   const isMobile = useIsMobile()
   const { c } = useTheme()
@@ -43,6 +47,13 @@ export default function DashboardPage() {
   const loadData = async () => {
     const clientId = await getClientId()
     if (!clientId) { setLoading(false); return }
+
+    const { data: sessionWrap } = await supabase.auth.getSession()
+    const uid = sessionWrap?.session?.user?.id
+    if (uid) {
+      await seedUserIngredients(uid, clientId)
+    }
+
     const p = await getParametres()
     setParams(p)
     const { data: fichesData } = await supabase
@@ -57,6 +68,14 @@ export default function DashboardPage() {
     setFiches(fichesData || [])
     setMenus(menusData || [])
     setIngredientsPrixHausse(prixData || [])
+
+    if (uid) {
+      const plan = await getSubscriptionPlan(uid)
+      setSubscriptionPlan(plan || 'free')
+      const { count } = await countAllSheetsForFreemium(clientId)
+      setFreemiumFicheCount(count)
+    }
+
     setLoading(false)
   }
 
@@ -130,6 +149,25 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {subscriptionPlan === 'free' && (
+          <div className="mb-5 rounded-xl border border-zinc-200/90 bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-600">
+              <span>
+                Usage : <strong className="text-zinc-900">{freemiumFicheCount}</strong> / 5 fiches gratuites
+              </span>
+              {freemiumFicheCount >= 5 && (
+                <span className="font-medium text-amber-700">Limite atteinte</span>
+              )}
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+                style={{ width: `${Math.min(100, (freemiumFicheCount / 5) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* KPIs */}
         <div style={{

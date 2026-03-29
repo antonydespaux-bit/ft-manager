@@ -6,6 +6,12 @@ import { theme, Logo } from '../../../lib/theme.jsx'
 import { useTheme } from '../../../lib/useTheme'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import { log } from '../../../lib/useLog'
+import FreemiumLimitModal from '../../../components/FreemiumLimitModal'
+import {
+  getSubscriptionPlan,
+  countAllSheetsForFreemium,
+  isFreemiumFicheLimitReached,
+} from '../../../lib/subscription'
 
 const genId = () => crypto.randomUUID()
 
@@ -21,6 +27,7 @@ export default function NouvelleCarte() {
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [freemiumModalOpen, setFreemiumModalOpen] = useState(false)
   const router = useRouter()
   const c = theme.couleurs
   const saisons = theme.saisons
@@ -174,6 +181,15 @@ export default function NouvelleCarte() {
     const clientId = await getClientId()
     if (!clientId) { setError('Session expirée'); setLoading(false); return }
 
+    const { data: { session: sessLimit } } = await supabase.auth.getSession()
+    const plan = await getSubscriptionPlan(sessLimit?.user?.id)
+    const { count: totalSheets } = await countAllSheetsForFreemium(clientId)
+    if (isFreemiumFicheLimitReached(plan, totalSheets)) {
+      setFreemiumModalOpen(true)
+      setLoading(false)
+      return
+    }
+
     const { data: carte, error: errCarte } = await supabase
       .from('cartes')
       .insert([{
@@ -229,6 +245,7 @@ export default function NouvelleCarte() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
+      <FreemiumLimitModal open={freemiumModalOpen} onClose={() => setFreemiumModalOpen(false)} />
 
       {/* Header — responsive (wrap, pas de débordement iPhone) */}
       <div style={{

@@ -9,6 +9,12 @@ import { useAutosave } from '../../../../lib/useAutosave'
 import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
+import FreemiumLimitModal from '../../../../components/FreemiumLimitModal'
+import {
+  getSubscriptionPlan,
+  countAllSheetsForFreemium,
+  isFreemiumFicheLimitReached,
+} from '../../../../lib/subscription'
 
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
@@ -33,6 +39,7 @@ export default function NouvelleBarFiche() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
+  const [freemiumModalOpen, setFreemiumModalOpen] = useState(false)
   const router = useRouter()
   const { c, nomEtablissement } = useTheme()
   const isMobile = useIsMobile()
@@ -189,6 +196,15 @@ export default function NouvelleBarFiche() {
     const clientId = await getClientId()
     if (!clientId) { setError('Erreur : session expirée'); setLoading(false); return }
 
+    const { data: { session: sessLimit } } = await supabase.auth.getSession()
+    const plan = await getSubscriptionPlan(sessLimit?.user?.id)
+    const { count: totalSheets } = await countAllSheetsForFreemium(clientId)
+    if (isFreemiumFicheLimitReached(plan, totalSheets)) {
+      setFreemiumModalOpen(true)
+      setLoading(false)
+      return
+    }
+
     const coutPortion = calculerCoutPortion()
     const uniteProduction = isSousFiche ? (ingredients[0]?.unite === 'g' || ingredients[0]?.unite === 'kg' ? 'kg' : 'L') : 'portion'
 
@@ -246,6 +262,7 @@ export default function NouvelleBarFiche() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
+      <FreemiumLimitModal open={freemiumModalOpen} onClose={() => setFreemiumModalOpen(false)} />
       <div style={{
         background: '#3C3489', borderBottom: '0.5px solid #7F77DD40',
         padding: '0 16px', display: 'flex', alignItems: 'center',

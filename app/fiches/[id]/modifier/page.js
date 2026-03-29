@@ -9,6 +9,7 @@ import { useAutosave } from '../../../../lib/useAutosave'
 import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
+import QuickIngredientModal from '../../../../components/QuickIngredientModal'
 
 import { isIngredientPossible } from '../../../../lib/foodCost'
 import { UNITES_PRODUCTION } from '../../../../lib/constants'
@@ -34,6 +35,9 @@ export default function ModifierFiche() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
+  const [quickIngOpen, setQuickIngOpen] = useState(false)
+  const [quickIngRowIndex, setQuickIngRowIndex] = useState(null)
+  const [clientIdForQuick, setClientIdForQuick] = useState(null)
   const router = useRouter()
   const params_route = useParams()
   const { c, nomEtablissement } = useTheme()
@@ -81,6 +85,7 @@ export default function ModifierFiche() {
 
     if (!ficheData) { router.push('/fiches'); return }
 
+    setClientIdForQuick(clientId)
     setLieux(lieuxData || [])
     setCategoriesDyn(catsData || [])
 
@@ -166,6 +171,27 @@ export default function ModifierFiche() {
       if (ing) { nouveaux[index].nom = ing.nom; nouveaux[index].unite = ing.unite || 'kg' }
     }
     setIngredients(nouveaux)
+  }
+
+  const apresCreationIngredient = (row, rowIndex) => {
+    setListeIngredients((prev) => {
+      if (prev.some((i) => i.id === row.id)) return prev
+      return [...prev, row].sort((a, b) => (a.nom || '').localeCompare(b.nom || ''))
+    })
+    if (rowIndex != null && rowIndex >= 0) {
+      setIngredients((prev) => {
+        const copy = [...prev]
+        if (copy[rowIndex]) {
+          copy[rowIndex] = {
+            ...copy[rowIndex],
+            ingredient_id: row.id,
+            nom: row.nom,
+            unite: row.unite || 'kg',
+          }
+        }
+        return copy
+      })
+    }
   }
 
   const calculerCout = () => {
@@ -281,6 +307,16 @@ export default function ModifierFiche() {
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
+      <QuickIngredientModal
+        open={quickIngOpen}
+        onClose={() => { setQuickIngOpen(false); setQuickIngRowIndex(null) }}
+        clientId={clientIdForQuick}
+        onCreated={(row) => {
+          apresCreationIngredient(row, quickIngRowIndex)
+          setQuickIngOpen(false)
+          setQuickIngRowIndex(null)
+        }}
+      />
       <div style={{
         background: c.principal, borderBottom: `0.5px solid ${c.accent}40`,
         padding: '0 16px', display: 'flex', alignItems: 'center',
@@ -424,8 +460,20 @@ export default function ModifierFiche() {
                     <span style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500' }}>Ingrédient {index + 1}</span>
                     <button onClick={() => supprimerIngredient(index)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '16px' }}>×</button>
                   </div>
-                  <div style={{ marginBottom: '8px' }}>
-                    <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                  <div style={{ marginBottom: '8px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                    </div>
+                    <button
+                      type="button"
+                      title="Ajouter un ingrédient"
+                      onClick={() => { setQuickIngRowIndex(index); setQuickIngOpen(true) }}
+                      style={{
+                        flexShrink: 0, width: '40px', height: '40px', borderRadius: '8px',
+                        border: `0.5px solid ${c.accent}`, background: c.accentClair, color: c.accent,
+                        fontSize: '20px', fontWeight: '600', cursor: 'pointer', lineHeight: 1,
+                      }}
+                    >+</button>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)} placeholder="Quantité"
@@ -448,7 +496,21 @@ export default function ModifierFiche() {
               </div>
               {ingredients.map((ing, index) => (
                 <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 80px) auto', gap: '8px', marginBottom: '8px' }}>
-                  <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <IngredientSearch ingredients={listeIngredients} value={ing.ingredient_id} onChange={val => modifierIngredient(index, 'ingredient_id', val)} />
+                    </div>
+                    <button
+                      type="button"
+                      title="Ajouter un ingrédient"
+                      onClick={() => { setQuickIngRowIndex(index); setQuickIngOpen(true) }}
+                      style={{
+                        flexShrink: 0, width: '36px', height: '36px', borderRadius: '8px',
+                        border: `0.5px solid ${c.accent}`, background: c.accentClair, color: c.accent,
+                        fontSize: '18px', fontWeight: '600', cursor: 'pointer', lineHeight: 1,
+                      }}
+                    >+</button>
+                  </div>
                   <input type="number" value={ing.quantite} step="0.01" onChange={e => modifierIngredient(index, 'quantite', e.target.value)}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', outline: 'none', color: c.texte, background: c.blanc, width: '100%', minWidth: 0 }}
                   />
