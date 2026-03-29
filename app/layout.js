@@ -2,6 +2,7 @@ import './globals.css'
 import './landing.css'
 import Script from 'next/script'
 import Providers from '../components/Providers'
+import AnalyticsWrapper from '../components/AnalyticsWrapper'
 
 export const metadata = {
   icons: {
@@ -44,9 +45,8 @@ window.axeptioSettings = {
           src="https://static.axept.io/sdk.js"
           strategy="beforeInteractive"
         />
-        <Providers>
-          {children}
-        </Providers>
+        <AnalyticsWrapper />
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
