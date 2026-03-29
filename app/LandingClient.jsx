@@ -16,6 +16,10 @@ const translations = {
     nav_foodcost: 'Food cost',
     nav_contact: 'Contact',
     nav_cta: 'Se connecter',
+    nav_login: 'Connexion',
+    nav_signup: "S'inscrire",
+    hero_signup_free: "S'inscrire gratuitement",
+    cta_signup_free: "S'inscrire gratuitement",
     hero_eyebrow: 'Gestion professionnelle',
     hero_title: 'Les fiches techniques qui',
     hero_title_em: 'font la différence',
@@ -127,6 +131,10 @@ const translations = {
     nav_foodcost: 'Food cost',
     nav_contact: 'Contact',
     nav_cta: 'Sign in',
+    nav_login: 'Sign in',
+    nav_signup: 'Sign up',
+    hero_signup_free: 'Sign up free',
+    cta_signup_free: 'Sign up free',
     hero_eyebrow: 'Professional management',
     hero_title: 'Recipe sheets that',
     hero_title_em: 'make the difference',
@@ -238,6 +246,10 @@ const translations = {
     nav_foodcost: 'Food cost',
     nav_contact: 'Contacto',
     nav_cta: 'Iniciar sesión',
+    nav_login: 'Iniciar sesión',
+    nav_signup: 'Registrarse',
+    hero_signup_free: 'Registrarse gratis',
+    cta_signup_free: 'Registrarse gratis',
     hero_eyebrow: 'Gestión profesional',
     hero_title: 'Las fichas técnicas que',
     hero_title_em: 'marcan la diferencia',
@@ -349,6 +361,10 @@ const translations = {
     nav_foodcost: 'Food cost',
     nav_contact: 'Contatto',
     nav_cta: 'Accedi',
+    nav_login: 'Accedi',
+    nav_signup: 'Iscriviti',
+    hero_signup_free: 'Iscriviti gratis',
+    cta_signup_free: 'Iscriviti gratis',
     hero_eyebrow: 'Gestione professionale',
     hero_title: 'Le schede tecniche che',
     hero_title_em: 'fanno la differenza',
@@ -484,17 +500,35 @@ export default function LandingClient({ markup }) {
         else if (el.parentElement && el.parentElement.tagName === 'A') el.parentElement.setAttribute('href', target)
       }
 
-      // nav: <a class="nav-cta" data-i18n="nav_cta">...</a>
-      setLink('a[data-i18n="nav_cta"]')
+      const setAllAnchors = (sel, href) => {
+        document.querySelectorAll(sel).forEach((el) => {
+          if (el.tagName === 'A') el.setAttribute('href', href)
+        })
+      }
+
+      const setAllText = (sel, text) => {
+        document.querySelectorAll(sel).forEach((el) => {
+          el.textContent = text
+        })
+      }
+
       // cta: <span data-i18n="cta_login">...</span> (wrapped in an <a>)
       setLink('span[data-i18n="cta_login"]')
       // footer: <a class="footer-link" data-i18n="footer_login">...</a>
       setLink('a[data-i18n="footer_login"]')
 
-      // Texte (toujours en FR comme demandé dans les étapes précédentes)
+      // Inscription + connexion → même cible dashboard si déjà connecté
+      setAllAnchors('[data-landing="signup-hero"]', target)
+      setAllAnchors('[data-landing="signup-cta"]', target)
+      setAllAnchors('[data-landing="nav-signup"]', target)
+      setAllAnchors('[data-landing="nav-login"]', target)
+
       const label = 'Aller au Dashboard'
-      const navCta = document.querySelector('a[data-i18n="nav_cta"]')
-      if (navCta) navCta.textContent = label
+      setAllText('[data-landing="signup-hero"]', label)
+      setAllText('[data-landing="signup-cta"]', label)
+      setAllText('[data-landing="nav-signup"]', label)
+      setAllText('[data-landing="nav-login"]', label)
+
       const ctaLogin = document.querySelector('span[data-i18n="cta_login"]')
       if (ctaLogin) ctaLogin.textContent = label
       const footerLogin = document.querySelector('a[data-i18n="footer_login"]')
