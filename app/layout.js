@@ -1,5 +1,6 @@
 import './globals.css'
 import './landing.css'
+import Script from 'next/script'
 import Providers from '../components/Providers'
 
 export const metadata = {
@@ -21,6 +22,28 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        <Script id="axeptio-settings" strategy="beforeInteractive">
+          {`
+window.axeptioSettings = {
+  clientId: "69c93192a77e258463cb2f3b",
+  cookiesVersion: "45afdbc3-f61f-46f5-aba6-c3d4070f538a",
+  googleConsentMode: {
+    default: {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      wait_for_update: 500
+    }
+  }
+};
+          `}
+        </Script>
+        <Script
+          id="axeptio-sdk"
+          src="https://static.axept.io/sdk.js"
+          strategy="beforeInteractive"
+        />
         <Providers>
           {children}
         </Providers>
