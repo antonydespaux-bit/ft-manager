@@ -23,7 +23,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <Script id="axeptio-settings" strategy="beforeInteractive">
+        <Script id="axeptio-settings" strategy="afterInteractive">
           {`
 window.axeptioSettings = {
   clientId: "69c93192a77e258463cb2f3b",
@@ -43,7 +43,7 @@ window.axeptioSettings = {
         <Script
           id="axeptio-sdk"
           src="https://static.axept.io/sdk.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <AnalyticsWrapper />
         <Providers>{children}</Providers>
