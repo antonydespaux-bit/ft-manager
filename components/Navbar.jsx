@@ -171,7 +171,7 @@ export default function Navbar({ section = 'cuisine' }) {
         padding: isMobile ? '0 12px' : '0 20px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', height: '56px',
         position: 'sticky', top: 0, zIndex: 100,
-        maxWidth: '100%', boxSizing: 'border-box', minWidth: 0, overflowX: 'hidden',
+        maxWidth: '100%', boxSizing: 'border-box', minWidth: 0,
       }}
         onClick={() => groupeOuvert && setGroupeOuvert(null)}
       >
