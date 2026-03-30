@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 const BUCKET = 'fiches-photos'
 const MAX_WIDTH = 1200
 const MAX_HEIGHT = 900
-const SIGNED_URL_TTL = 3600 // 1h — suffisant pour affichage + impression
 
 /**
  * Extrait le chemin relatif depuis une URL complète Supabase Storage.
@@ -32,6 +31,15 @@ function extractStoragePath(raw) {
 function normalizePath(path) {
   if (!path) return null
   return path.startsWith('cuisine/') ? path : `cuisine/${path}`
+}
+
+/**
+ * Retourne l'URL publique d'un fichier dans le bucket public fiches-photos.
+ */
+function getPublicImageUrl(path) {
+  if (!path) return null
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return data?.publicUrl || null
 }
 
 /**
@@ -78,23 +86,12 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
   const [error, setError] = useState('')
   const inputRef = useRef(null)
 
-  // Génère l'URL signée quand le chemin change
+  // Résout l'URL publique quand le chemin change
   useEffect(() => {
     const path = normalizePath(extractStoragePath(photoPath))
-    if (!path) {
-      setSignedUrl(null)
-      onSignedUrlChange?.(null)
-      return
-    }
-    let cancelled = false
-    supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL)
-      .then(({ data }) => {
-        if (!cancelled && data?.signedUrl) {
-          setSignedUrl(data.signedUrl)
-          onSignedUrlChange?.(data.signedUrl)
-        }
-      })
-    return () => { cancelled = true }
+    const url = getPublicImageUrl(path)
+    setSignedUrl(url)
+    onSignedUrlChange?.(url)
   }, [photoPath])
 
   const handleFileChange = async (e) => {
