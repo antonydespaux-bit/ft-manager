@@ -9,6 +9,7 @@ import { useAutosave } from '../../../../lib/useAutosave'
 import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
+import FichePhoto from '../../../../components/FichePhoto'
 
 import { isIngredientPossible } from '../../../../lib/foodCost'
 import { UNITES_PRODUCTION } from '../../../../lib/constants'
@@ -34,6 +35,8 @@ export default function ModifierFiche() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
+  const [clientId, setClientId] = useState(null)
+  const [photoPath, setPhotoPath] = useState(null)
   const router = useRouter()
   const params_route = useParams()
   const { c, nomEtablissement } = useTheme()
@@ -64,6 +67,7 @@ export default function ModifierFiche() {
   const loadData = async () => {
     const clientId = await getClientId()
     if (!clientId) { router.push('/'); return }
+    setClientId(clientId)
 
     const [
       { data: ficheData },
@@ -93,6 +97,7 @@ export default function ModifierFiche() {
     }))
     setListeIngredients([...(liste || []), ...sousFichesFormatees])
 
+    setPhotoPath(ficheData.photo_url || null)
     setNom(ficheData.nom)
     setCategoriePlat(ficheData.categorie_plat_id || '')
     setLieuId(ficheData.lieu_id || '')
@@ -412,6 +417,21 @@ export default function ModifierFiche() {
             </div>
           </div>
         </div>
+
+        {/* Photo */}
+        {clientId && (
+          <div style={{ background: c.blanc, borderRadius: '12px', padding: '16px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '12px' }}>Photo</div>
+            <FichePhoto
+              ficheId={params_route.id}
+              clientId={clientId}
+              photoPath={photoPath}
+              peutModifier={true}
+              onPhotoChange={setPhotoPath}
+              c={c}
+            />
+          </div>
+        )}
 
         {/* Ingrédients */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>

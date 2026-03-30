@@ -48,6 +48,15 @@ body {
     page: landscape-page;
   }
 
+  .fiche-photo {
+    max-height: 280px !important;
+    width: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
   table {
     page-break-inside: auto;
   }

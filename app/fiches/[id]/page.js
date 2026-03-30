@@ -8,12 +8,16 @@ import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
+import FichePhoto from '../../../components/FichePhoto'
 
 export default function FicheDetail() {
   const [fiche, setFiche] = useState(null)
   const [ingredients, setIngredients] = useState([])
   const [params, setParams] = useState({})
   const [loading, setLoading] = useState(true)
+  const [clientId, setClientId] = useState(null)
+  const [photoPath, setPhotoPath] = useState(null)
+  const [signedUrl, setSignedUrl] = useState(null)
   const router = useRouter()
   const params_route = useParams()
   const isMobile = useIsMobile()
@@ -59,26 +63,28 @@ export default function FicheDetail() {
 
   const loadFiche = async () => {
     try {
-      const clientId = await getClientId()
-      if (!clientId) { router.push('/'); return }
+      const cId = await getClientId()
+      if (!cId) { router.push('/'); return }
+      setClientId(cId)
 
       const { data: ficheData, error } = await supabase
         .from('fiches')
         .select('*')
         .eq('id', params_route.id)
-        .eq('client_id', clientId)
+        .eq('client_id', cId)
         .single()
 
       if (error || !ficheData) { router.push('/fiches'); return }
 
       setFiche(ficheData)
+      setPhotoPath(ficheData.photo_url || null)
 
       // Chargement ingrédients SANS filtre client_id sur la table de jointure
       const { data: ingsData, error: errIngs } = await supabase
         .from('fiche_ingredients')
         .select(`quantite, unite, ingredients (id, nom, prix_kg, unite)`)
         .eq('fiche_id', params_route.id)
-        .eq('client_id', clientId)
+        .eq('client_id', cId)
 
       if (errIngs) console.error('Ingrédients error:', errIngs)
       setIngredients(ingsData || [])
@@ -118,17 +124,16 @@ export default function FicheDetail() {
   const handleDelete = async () => {
     if (!confirm('Supprimer définitivement cette fiche ?')) return
     try {
-      const clientId = await getClientId()
+      const cId = await getClientId()
       await log({
         action: 'SUPPRESSION', entite: 'fiche', entite_id: params_route.id,
         entite_nom: fiche.nom, section: 'cuisine',
         details: `Catégorie: ${fiche.categorie}, Saison: ${fiche.saison}`
       })
-      if (fiche.photo_url) {
-        const path = fiche.photo_url.split('/').pop()
-        await supabase.storage.from('fiches-photos').remove([path])
+      if (photoPath) {
+        await supabase.storage.from('fiche-photos').remove([photoPath])
       }
-      await supabase.from('fiches').delete().eq('id', params_route.id).eq('client_id', clientId)
+      await supabase.from('fiches').delete().eq('id', params_route.id).eq('client_id', cId)
       router.push('/fiches')
     } catch (err) { console.error('Delete error:', err) }
   }
@@ -235,6 +240,21 @@ export default function FicheDetail() {
             </button>
           )}
         </div>
+
+        {/* Photo — écran */}
+        {(photoPath || peutModifier) && clientId && (
+          <div style={{ background: c.blanc, borderRadius: '12px', padding: '16px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
+            <FichePhoto
+              ficheId={params_route.id}
+              clientId={clientId}
+              photoPath={photoPath}
+              peutModifier={peutModifier}
+              onPhotoChange={setPhotoPath}
+              onSignedUrlChange={setSignedUrl}
+              c={c}
+            />
+          </div>
+        )}
 
         {/* Ingrédients */}
         <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden' }}>
@@ -357,6 +377,19 @@ export default function FicheDetail() {
             }
           </div>
         </div>
+
+        {/* Photo — impression */}
+        {signedUrl && (
+          <div style={{ marginBottom: '20px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={signedUrl}
+              alt="Photo de la fiche"
+              className="fiche-photo"
+              style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '6px', display: 'block', border: '0.5px solid #e8e4dc' }}
+            />
+          </div>
+        )}
 
         {/* Description */}
         {fiche.description && (
