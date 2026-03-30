@@ -104,12 +104,6 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
     setError('')
     setUploading(true)
     try {
-      const blob = await resizeImage(file)
-
-      if (!(blob instanceof Blob) || blob.size === 0) {
-        throw new Error('Le redimensionnement a produit un fichier invalide.')
-      }
-
       const storagePath = `cuisine/${clientId}/${ficheId}.jpg`.replace(/\/+/g, '/')
 
       // Supprime l'ancienne photo si elle existe
@@ -120,7 +114,7 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
 
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
-        .upload(storagePath, blob, { contentType: blob.type || 'image/jpeg', upsert: true })
+        .upload(storagePath, file, { contentType: file.type, upsert: true })
 
       if (uploadErr) throw uploadErr
 
