@@ -2,10 +2,28 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
-const BUCKET = 'fiche-photos'
+const BUCKET = 'fiches-photos'
 const MAX_WIDTH = 1200
 const MAX_HEIGHT = 900
 const SIGNED_URL_TTL = 3600 // 1h — suffisant pour affichage + impression
+
+/**
+ * Extrait le chemin relatif depuis une URL complète Supabase Storage.
+ * Si la valeur est déjà un chemin relatif, elle est retournée telle quelle.
+ */
+function extractStoragePath(raw) {
+  if (!raw) return null
+  if (!raw.startsWith('http')) return raw
+  // Format URL publique : .../storage/v1/object/public/<bucket>/...
+  const pub = `/storage/v1/object/public/${BUCKET}/`
+  const iPub = raw.indexOf(pub)
+  if (iPub !== -1) return decodeURIComponent(raw.slice(iPub + pub.length))
+  // Format URL signée : .../storage/v1/object/sign/<bucket>/...?token=...
+  const sign = `/storage/v1/object/sign/${BUCKET}/`
+  const iSign = raw.indexOf(sign)
+  if (iSign !== -1) return decodeURIComponent(raw.slice(iSign + sign.length).split('?')[0])
+  return raw
+}
 
 /**
  * Redimensionne un fichier image côté client via <canvas> avant upload.
@@ -53,13 +71,14 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
 
   // Génère l'URL signée quand le chemin change
   useEffect(() => {
-    if (!photoPath) {
+    const path = extractStoragePath(photoPath)
+    if (!path) {
       setSignedUrl(null)
       onSignedUrlChange?.(null)
       return
     }
     let cancelled = false
-    supabase.storage.from(BUCKET).createSignedUrl(photoPath, SIGNED_URL_TTL)
+    supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL)
       .then(({ data }) => {
         if (!cancelled && data?.signedUrl) {
           setSignedUrl(data.signedUrl)
@@ -78,16 +97,22 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
     setUploading(true)
     try {
       const blob = await resizeImage(file)
+
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        throw new Error('Le redimensionnement a produit un fichier invalide.')
+      }
+
       const storagePath = `${clientId}/${ficheId}.jpg`
 
       // Supprime l'ancienne photo si elle existe
-      if (photoPath) {
-        await supabase.storage.from(BUCKET).remove([photoPath])
+      const oldPath = extractStoragePath(photoPath)
+      if (oldPath) {
+        await supabase.storage.from(BUCKET).remove([oldPath])
       }
 
       const { error: uploadErr } = await supabase.storage
         .from(BUCKET)
-        .upload(storagePath, blob, { contentType: 'image/jpeg', upsert: true })
+        .upload(storagePath, blob, { contentType: blob.type || 'image/jpeg', upsert: true })
 
       if (uploadErr) throw uploadErr
 
@@ -115,7 +140,8 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
     if (!confirm('Supprimer la photo de cette fiche ?')) return
     setUploading(true)
     try {
-      await supabase.storage.from(BUCKET).remove([photoPath])
+      const path = extractStoragePath(photoPath)
+      if (path) await supabase.storage.from(BUCKET).remove([path])
       await supabase.from('fiches').update({ photo_url: null }).eq('id', ficheId).eq('client_id', clientId)
       setSignedUrl(null)
       onPhotoChange?.(null)

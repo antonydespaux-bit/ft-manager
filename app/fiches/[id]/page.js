@@ -131,7 +131,7 @@ export default function FicheDetail() {
         details: `Catégorie: ${fiche.categorie}, Saison: ${fiche.saison}`
       })
       if (photoPath) {
-        await supabase.storage.from('fiche-photos').remove([photoPath])
+        await supabase.storage.from('fiches-photos').remove([photoPath])
       }
       await supabase.from('fiches').delete().eq('id', params_route.id).eq('client_id', cId)
       router.push('/fiches')
