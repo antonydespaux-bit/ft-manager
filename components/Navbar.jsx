@@ -1,6 +1,6 @@
 'use client'
 import { useRouter, usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase, getClientId } from '../lib/supabase'
 import { isSuperadminEmail } from '../lib/superadmin'
 import { useTheme } from '../lib/useTheme'
@@ -30,8 +30,20 @@ export default function Navbar({ section = 'cuisine' }) {
   const isMobile = useIsMobile()
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [groupeOuvert, setGroupeOuvert] = useState(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 56, left: 0 })
   const [showReturnSuperAdmin, setShowReturnSuperAdmin] = useState(false)
   const [navClientId, setNavClientId] = useState(null)
+
+  const toggleGroupe = useCallback((e, label) => {
+    e.stopPropagation()
+    if (groupeOuvert === label) {
+      setGroupeOuvert(null)
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect()
+      setDropdownPos({ top: rect.bottom + 8, left: rect.left })
+      setGroupeOuvert(label)
+    }
+  }, [groupeOuvert])
 
   useEffect(() => {
     let alive = true
@@ -75,6 +87,13 @@ export default function Navbar({ section = 'cuisine' }) {
     await supabase.auth.signOut()
     router.push('/')
   }
+
+  useEffect(() => {
+    if (!groupeOuvert) return
+    const handler = () => setGroupeOuvert(null)
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [groupeOuvert])
 
   useEffect(() => {
     let alive = true
@@ -149,10 +168,10 @@ export default function Navbar({ section = 'cuisine' }) {
 
   // ─── Styles réutilisés ───────────────────────────────────────────────────────
   const dropdownStyle = {
-    position: 'absolute', top: '100%', left: 0, marginTop: '8px',
+    position: 'fixed', top: dropdownPos.top, left: dropdownPos.left,
     background: '#FFFFFF', border: '0.5px solid #E4E4E7',
     borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-    minWidth: '180px', zIndex: 200, overflow: 'hidden', padding: '4px',
+    minWidth: '180px', zIndex: 9999, overflow: 'hidden', padding: '4px',
   }
 
   const mobileItemStyle = (active) => ({
@@ -173,7 +192,6 @@ export default function Navbar({ section = 'cuisine' }) {
         position: 'sticky', top: 0, zIndex: 100,
         maxWidth: '100%', boxSizing: 'border-box', minWidth: 0,
       }}
-        onClick={() => groupeOuvert && setGroupeOuvert(null)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
 
@@ -231,7 +249,7 @@ export default function Navbar({ section = 'cuisine' }) {
             return (
               <div key={groupe.label} style={{ position: 'relative' }}>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setGroupeOuvert(ouvert ? null : groupe.label) }}
+                  onClick={(e) => toggleGroupe(e, groupe.label)}
                   style={{
                     background: ouvert ? 'rgba(255,255,255,0.06)' : 'transparent',
                     border: 'none',
