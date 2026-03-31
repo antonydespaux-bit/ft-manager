@@ -8,7 +8,7 @@ import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
-import FichePhoto from '../../../components/FichePhoto'
+import FichePhoto, { FicheHeaderInfo, FicheHeaderInfoStyles } from '../../../components/FichePhoto'
 
 export default function FicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -157,8 +157,12 @@ export default function FicheDetail() {
   const today = new Date().toLocaleDateString('fr-FR')
   const uniteLabel = getUniteLabel()
 
+  const showHeaderInfoBlock =
+    Boolean(fiche.description) || Boolean(photoPath) || peutModifier
+
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
+      <FicheHeaderInfoStyles />
 
       {/* ── NAVBAR ── */}
       <div className="no-print" style={{
@@ -202,22 +206,43 @@ export default function FicheDetail() {
 
         {/* Infos générales */}
         <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-            <div style={{ flex: 1 }}>
-              <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {fiche.categorie && <span style={{ background: c.accentClair, color: c.accent, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{fiche.categorie}</span>}
-                {fiche.saison && <span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>{fiche.saison}</span>}
-              </div>
+          <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '500', marginBottom: '10px', color: c.texte, width: '100%' }}>{fiche.nom}</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0 }}>
+              {fiche.categorie && <span style={{ background: c.accentClair, color: c.accent, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{fiche.categorie}</span>}
+              {fiche.saison && <span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>{fiche.saison}</span>}
             </div>
-            <div style={{ background: c.principal, color: c.accent, borderRadius: '10px', padding: '8px 14px', textAlign: 'center', flexShrink: 0, marginLeft: '12px', minWidth: '70px' }}>
+            <div style={{ background: c.principal, color: c.accent, borderRadius: '10px', padding: '8px 14px', textAlign: 'center', flexShrink: 0, minWidth: '70px' }}>
               <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{uniteLabel}</div>
               <div style={{ fontSize: '20px', fontWeight: '500' }}>{fiche.nb_portions != null ? fiche.nb_portions : '—'}</div>
             </div>
           </div>
-          {fiche.description && (
-            <div style={{ background: c.fond, borderRadius: '8px', padding: '12px', fontSize: '13px', color: c.texteMuted, lineHeight: '1.6' }}>{fiche.description}</div>
+
+          {showHeaderInfoBlock && clientId && (
+            <FicheHeaderInfo
+              description={
+                fiche.description ? (
+                  <div style={{ background: c.fond, borderRadius: '8px', padding: '12px', fontSize: '13px', color: c.texteMuted, lineHeight: '1.6' }}>
+                    {fiche.description}
+                  </div>
+                ) : null
+              }
+            >
+              {(photoPath || peutModifier) && (
+                <FichePhoto
+                  ficheId={params_route.id}
+                  clientId={clientId}
+                  photoPath={photoPath}
+                  peutModifier={peutModifier}
+                  onPhotoChange={setPhotoPath}
+                  onSignedUrlChange={setSignedUrl}
+                  c={c}
+                  embeddedInHeader
+                />
+              )}
+            </FicheHeaderInfo>
           )}
+
           {fiche.allergenes && fiche.allergenes.length > 0 && (
             <div style={{ background: '#FCEBEB', borderRadius: '8px', padding: '12px', marginTop: '12px', border: '0.5px solid #F09595' }}>
               <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Allergènes présents</div>
@@ -241,23 +266,8 @@ export default function FicheDetail() {
           )}
         </div>
 
-        {/* Photo — écran */}
-        {(photoPath || peutModifier) && clientId && (
-          <div style={{ background: c.blanc, borderRadius: '12px', padding: '16px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px' }}>
-            <FichePhoto
-              ficheId={params_route.id}
-              clientId={clientId}
-              photoPath={photoPath}
-              peutModifier={peutModifier}
-              onPhotoChange={setPhotoPath}
-              onSignedUrlChange={setSignedUrl}
-              c={c}
-            />
-          </div>
-        )}
-
         {/* Ingrédients */}
-        <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden' }}>
+        <div className="fiche-ingredients-after-header" style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '14px 16px', borderBottom: `0.5px solid ${c.bordure}`, fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ingrédients</div>
           {isMobile ? (
             <div style={{ padding: '12px' }}>
@@ -361,10 +371,10 @@ export default function FicheDetail() {
       <div className="print-only" style={{ fontFamily: 'Georgia, serif', color: '#1a1a1a', background: 'white', padding: '0', width: '100%' }}>
 
         {/* En-tête */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #2C1810', paddingBottom: '16px', marginBottom: '20px' }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #2C1810', paddingBottom: '16px', marginBottom: '16px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8B7355', marginBottom: '6px', fontFamily: 'sans-serif' }}>Fiche technique — {fiche.categorie || ''}</div>
-            <h1 style={{ fontSize: '28px', fontWeight: '400', color: '#2C1810', marginBottom: '8px', letterSpacing: '1px' }}>{fiche.nom}</h1>
+            <h1 style={{ fontSize: '28px', fontWeight: '400', color: '#2C1810', marginBottom: '10px', letterSpacing: '1px', width: '100%' }}>{fiche.nom}</h1>
             <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#8B7355', fontFamily: 'sans-serif' }}>
               {fiche.saison && <span>Saison : {fiche.saison}</span>}
               {fiche.nb_portions && <span>{uniteLabel} : {fiche.nb_portions}</span>}
@@ -378,28 +388,30 @@ export default function FicheDetail() {
           </div>
         </div>
 
-        {/* Photo — impression */}
-        {signedUrl && (
-          <div style={{ marginBottom: '20px' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={signedUrl}
-              alt="Photo de la fiche"
-              className="fiche-photo"
-              style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', borderRadius: '6px', display: 'block', border: '0.5px solid #e8e4dc' }}
-            />
-          </div>
-        )}
-
-        {/* Description */}
-        {fiche.description && (
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '12px', color: '#555', lineHeight: '1.8', fontStyle: 'italic' }}>{fiche.description}</div>
-          </div>
+        {(fiche.description || signedUrl) && (
+          <FicheHeaderInfo
+            description={
+              fiche.description ? (
+                <div style={{ fontSize: '12px', color: '#555', lineHeight: '1.8', fontStyle: 'italic' }}>{fiche.description}</div>
+              ) : null
+            }
+          >
+            {signedUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={signedUrl}
+                  alt="Photo de la fiche"
+                  className="fiche-photo"
+                  style={{ display: 'block', border: '0.5px solid #e8e4dc' }}
+                />
+              </>
+            ) : null}
+          </FicheHeaderInfo>
         )}
 
         {/* Ingrédients */}
-        <div style={{ marginBottom: '20px' }}>
+        <div className="fiche-ingredients-after-header" style={{ marginBottom: '20px' }}>
           <div style={{ fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8B7355', marginBottom: '10px', fontFamily: 'sans-serif', fontWeight: '600' }}>Ingrédients</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', fontFamily: 'sans-serif' }}>
             <thead>

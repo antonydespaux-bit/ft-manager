@@ -3,6 +3,7 @@ import './landing.css'
 import Script from 'next/script'
 import Providers from '../components/Providers'
 import AnalyticsWrapper from '../components/AnalyticsWrapper'
+import AxeptioPrintHide from '../components/AxeptioPrintHide'
 
 export const metadata = {
   icons: {
@@ -46,6 +47,7 @@ window.axeptioSettings = {
           strategy="afterInteractive"
         />
         <AnalyticsWrapper />
+        <AxeptioPrintHide />
         <Providers>{children}</Providers>
       </body>
     </html>

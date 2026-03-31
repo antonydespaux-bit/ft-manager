@@ -26,6 +26,18 @@ body {
     display: none !important;
   }
 
+  /* Axeptio (cookies + shadow DOM) — ne pas imprimer le widget */
+  #axeptio_overlay,
+  .axeptio_mount,
+  .axeptio-badge,
+  [id^='axeptio'],
+  [id*='axeptio' i],
+  [class*='axeptio'],
+  iframe[src*='axept.io'] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
   .print-only {
     display: block !important;
   }

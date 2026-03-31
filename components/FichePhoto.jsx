@@ -2,6 +2,107 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
+/** Styles écran + impression pour le bloc titre / description + photo */
+export const FICHE_HEADER_INFO_CSS = `
+.fiche-header-info {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fiche-header-info__desc {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.fiche-header-info__photo {
+  flex: 0 0 auto;
+  width: min(280px, 38vw);
+  max-width: 300px;
+  flex-shrink: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+@media screen and (max-width: 640px) {
+  .fiche-header-info {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .fiche-header-info__photo {
+    width: 100%;
+    max-width: none;
+  }
+}
+.fiche-header-info .fiche-photo {
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+@media print {
+  .fiche-header-info {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 14px !important;
+    clear: both;
+    width: 100% !important;
+  }
+  .fiche-header-info__desc {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  .fiche-header-info__photo {
+    width: 6cm !important;
+    max-width: 6cm !important;
+    min-width: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  .fiche-header-info .fiche-photo,
+  .fiche-header-info img.fiche-photo {
+    width: 6cm !important;
+    max-width: 6cm !important;
+    max-height: 5.5cm !important;
+    height: auto !important;
+    object-fit: contain !important;
+    border-radius: 4px !important;
+  }
+  .fiche-ingredients-after-header {
+    margin-top: 10px !important;
+    clear: both !important;
+  }
+}
+`
+
+export function FicheHeaderInfoStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: FICHE_HEADER_INFO_CSS }} />
+}
+
+/**
+ * Bloc sous le titre : photo (gauche) + description (droite, flex-grow).
+ * @param {React.ReactNode} description
+ * @param {React.ReactNode} children — colonne photo (ex. &lt;FichePhoto embeddedInHeader /&gt;)
+ */
+export function FicheHeaderInfo({ description, children }) {
+  const hasDesc = description != null && description !== ''
+  return (
+    <div className="fiche-header-info">
+      {children != null && children !== false ? (
+        <div className="fiche-header-info__photo">{children}</div>
+      ) : null}
+      <div className="fiche-header-info__desc">
+        {hasDesc ? description : null}
+      </div>
+    </div>
+  )
+}
+
 const BUCKET = 'fiches-photos'
 const MAX_WIDTH = 1200
 const MAX_HEIGHT = 900
@@ -81,8 +182,9 @@ async function resizeImage(file) {
  * @param {boolean}  peutModifier  - Affiche les contrôles d'upload/suppression
  * @param {function} onPhotoChange - Callback(newPath|null) après upload ou suppression
  * @param {object}   c             - Couleurs du thème
+ * @param {boolean}  embeddedInHeader — dans {@link FicheHeaderInfo} : image compacte (écran + print gérés par le CSS global)
  */
-export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier, onPhotoChange, onSignedUrlChange, c = {} }) {
+export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier, onPhotoChange, onSignedUrlChange, c = {}, embeddedInHeader = false }) {
   const [signedUrl, setSignedUrl] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -167,6 +269,25 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
   const bordure = c.bordure || '#E4E4E7'
   const texteMuted = c.texteMuted || '#888'
 
+  const imgStyle = embeddedInHeader
+    ? {
+        width: '100%',
+        height: 'auto',
+        maxHeight: '240px',
+        objectFit: 'contain',
+        borderRadius: '10px',
+        display: 'block',
+        border: `0.5px solid ${bordure}`,
+      }
+    : {
+        width: '100%',
+        maxHeight: '320px',
+        objectFit: 'cover',
+        borderRadius: '10px',
+        display: 'block',
+        border: `0.5px solid ${bordure}`,
+      }
+
   return (
     <div>
       {/* ── Photo existante ── */}
@@ -177,14 +298,7 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
             src={signedUrl}
             alt="Photo de la fiche"
             className="fiche-photo"
-            style={{
-              width: '100%',
-              maxHeight: '320px',
-              objectFit: 'cover',
-              borderRadius: '10px',
-              display: 'block',
-              border: `0.5px solid ${bordure}`,
-            }}
+            style={imgStyle}
           />
           {peutModifier && (
             <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '6px' }}>
@@ -216,10 +330,13 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
             style={{
-              width: '100%', padding: '20px', border: `1.5px dashed ${bordure}`,
+              width: '100%',
+              maxWidth: embeddedInHeader ? '280px' : 'none',
+              padding: embeddedInHeader ? '14px' : '20px',
+              border: `1.5px dashed ${bordure}`,
               borderRadius: '10px', background: fond, cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-              marginBottom: '10px', color: texteMuted, fontSize: '13px',
+              marginBottom: '10px', color: texteMuted, fontSize: embeddedInHeader ? '12px' : '13px',
             }}
           >
             <span style={{ fontSize: '28px' }}>📷</span>
