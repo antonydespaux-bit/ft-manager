@@ -104,6 +104,10 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
     setError('')
     setUploading(true)
     try {
+      if (!(file instanceof Blob)) {
+        throw new Error(`Type de fichier invalide : attendu File/Blob, reçu ${typeof file}`)
+      }
+
       const storagePath = `cuisine/${clientId}/${ficheId}.jpg`.replace(/\/+/g, '/')
 
       // Supprime l'ancienne photo si elle existe
@@ -112,24 +116,13 @@ export default function FichePhoto({ ficheId, clientId, photoPath, peutModifier,
         await supabase.storage.from(BUCKET).remove([oldPath])
       }
 
-      console.log('Fichier envoyé:', file)
-      let { data, error: uploadErr } = await supabase.storage
+      console.log('Fichier envoyé:', file, 'type:', file.type, 'taille:', file.size)
+      const { data, error: uploadErr } = await supabase.storage
         .from('fiches-photos')
         .upload(storagePath, file, {
-          contentType: 'image/jpeg',
-          upsert: false,
+          contentType: file.type, // Force le type MIME de l'image
+          upsert: true,
         })
-
-      // Si le fichier existe déjà, on le supprime puis on réessaie
-      if (uploadErr?.statusCode === '409' || uploadErr?.message?.includes('already exists')) {
-        await supabase.storage.from('fiches-photos').remove([storagePath])
-        ;({ data, error: uploadErr } = await supabase.storage
-          .from('fiches-photos')
-          .upload(storagePath, file, {
-            contentType: 'image/jpeg',
-            upsert: false,
-          }))
-      }
 
       if (uploadErr) throw uploadErr
 
