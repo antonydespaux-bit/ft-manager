@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 console.log('--- VERSION MODIFIEE ---')
+azertyuiop // ERREUR VOLONTAIRE — à supprimer après test
 
 const BUCKET = 'fiches-photos'
 const MAX_WIDTH = 1200
