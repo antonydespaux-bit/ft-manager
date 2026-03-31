@@ -52,6 +52,29 @@ export default function CarteDetailPage() {
           background: white !important;
           min-height: auto !important;
         }
+        .carte-print-body {
+          padding-bottom: 30mm !important;
+          box-sizing: border-box;
+        }
+        .carte-print-allergenes {
+          margin-bottom: 8px !important;
+        }
+        .carte-print-footer {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          margin: 0 !important;
+          background: #fff !important;
+          border-top: 1px solid #e8e4dc !important;
+          padding: 10px 15mm 12mm !important;
+          box-sizing: border-box !important;
+          display: flex !important;
+          justify-content: space-between !important;
+          font-size: 9px !important;
+          color: #8B7355 !important;
+          font-family: sans-serif !important;
+        }
         @page { margin: 15mm 15mm 15mm 15mm; }
       }
       @media screen {
@@ -287,7 +310,6 @@ export default function CarteDetailPage() {
   const calcEditFull = calculs('edit', false)
   const calc = editing ? calcEditFull : (vueSupp ? calcViewFull : calcViewBase)
   const allergenesIds = collectAllergenes()
-  const today = new Date().toLocaleDateString('fr-FR')
 
   return (
     <div className="carte-detail-print-root" style={{ minHeight: '100vh', background: c.fond }}>
@@ -569,6 +591,7 @@ export default function CarteDetailPage() {
       {/* ── VERSION IMPRESSION ── */}
       <div className="print-only" style={{ fontFamily: 'Georgia, serif', color: '#2C1810', background: 'white', padding: '0', width: '100%' }}>
 
+        <div className="carte-print-body">
         {/* En-tête */}
         <div style={{ textAlign: 'center', borderBottom: '1px solid #e8e4dc', paddingBottom: '20px', marginBottom: '24px' }}>
           {logoUrl
@@ -615,17 +638,18 @@ export default function CarteDetailPage() {
           </div>
         </div>
 
-        {/* Allergènes */}
+        {/* Allergènes (flux : juste au-dessus du trait du pied de page fixe à l’impression) */}
         {allergenesIds.length > 0 && (
-          <div style={{ marginTop: '20px', fontSize: '9px', color: '#8B7355', textAlign: 'center', fontFamily: 'sans-serif' }}>
+          <div className="carte-print-allergenes" style={{ marginTop: '20px', fontSize: '9px', color: '#8B7355', textAlign: 'center', fontFamily: 'sans-serif' }}>
             Allergènes présents : {allergenesIds.map(id => { const a = ALLERGENES.find(a => a.id === id); return a ? a.label : null }).filter(Boolean).join(', ')}
           </div>
         )}
+        </div>
 
-        {/* Footer */}
-        <div style={{ borderTop: '1px solid #e8e4dc', paddingTop: '12px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#8B7355', fontFamily: 'sans-serif' }}>
+        {/* Pied de page : fixe en bas de page à l’impression uniquement (styles dans @media print) */}
+        <div className="carte-print-footer">
           <span>{nomEtablissement}</span>
-          <span>{carte.nom} — Imprimé le {today}</span>
+          <span>{carte.nom}</span>
         </div>
       </div>
     </div>
