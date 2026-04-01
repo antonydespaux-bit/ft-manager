@@ -100,5 +100,9 @@ export async function POST(request) {
 
 function normDesig(s) {
   if (!s) return ''
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  return s
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 }

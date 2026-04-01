@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, getClientId } from '../../../../lib/supabase'
 import { useIsMobile } from '../../../../lib/useIsMobile'
@@ -9,10 +9,18 @@ import Navbar from '../../../../components/Navbar'
 
 // ─── Helpers purs ────────────────────────────────────────────────────────────
 
-/** Normalise une désignation pour la réconciliation (lowercase, espaces uniquement). */
+/**
+ * Normalise une désignation pour la réconciliation.
+ * - Supprime les accents (NFD + strip combining marks)
+ * - Lowercase, garde uniquement lettres/chiffres et espaces
+ */
 function normDesig(s) {
   if (!s) return ''
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  return s
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 }
 
 function todayIso() {
@@ -91,6 +99,14 @@ export default function AchatsImportPage() {
   const [fournisseurMapping, setFournisseurMapping] = useState({}) // norm → { ingredient_id }
   const [ingredientsById, setIngredientsById] = useState({})       // id   → { nom, prix_kg, unite }
 
+  // Index nom normalisé → ingrédient (recalculé quand ingredientsById change)
+  const ingredientsByNorm = useMemo(
+    () => Object.fromEntries(
+      Object.values(ingredientsById).map(i => [normDesig(i.nom), i])
+    ),
+    [ingredientsById]
+  )
+
   // ── UX ────────────────────────────────────────────────────────────────────
   const [error, setError] = useState('')
   const [extractError, setExtractError] = useState('')
@@ -149,9 +165,27 @@ export default function AchatsImportPage() {
 
   const enrichLigne = useCallback((ligne) => {
     const norm = normDesig(ligne.designation)
+
+    // Niveau 1 : mapping appris depuis les factures précédentes (exact)
+    let ing = null
     const mapping = fournisseurMapping[norm]
-    const ingId = mapping?.ingredient_id ?? null
-    const ing = ingId ? ingredientsById[ingId] : null
+    if (mapping?.ingredient_id) ing = ingredientsById[mapping.ingredient_id] ?? null
+
+    // Niveau 2 : nom d'ingrédient exact après normalisation (accents, casse)
+    if (!ing) ing = ingredientsByNorm[norm] ?? null
+
+    // Niveau 3 : le nom de l'ingrédient est contenu dans la désignation facture
+    // ex. "aloe vera" ⊂ "aloe vera bq 280 gr piece"  (min 3 caractères pour éviter les faux positifs)
+    if (!ing) {
+      for (const [ingNorm, candidate] of Object.entries(ingredientsByNorm)) {
+        if (ingNorm.length >= 3 && norm.includes(ingNorm)) {
+          ing = candidate
+          break
+        }
+      }
+    }
+
+    const ingId = ing?.id ?? null
     const prixActuel = ing ? Number(ing.prix_kg) : null
     const delta =
       prixActuel != null && prixActuel > 0
@@ -166,7 +200,7 @@ export default function AchatsImportPage() {
       reconnu:         !!ingId,
       updatePrice:     !!ingId,
     }
-  }, [fournisseurMapping, ingredientsById])
+  }, [fournisseurMapping, ingredientsById, ingredientsByNorm])
 
   // ─── Extraction IA ────────────────────────────────────────────────────────
 
