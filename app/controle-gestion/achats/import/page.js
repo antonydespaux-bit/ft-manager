@@ -291,77 +291,19 @@ export default function AchatsImportPage() {
     setStep('saving')
 
     try {
-      const totalHt = lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0), 0)
-
-      // a) Insertion achats_factures
-      const { data: facture, error: fErr } = await supabase
-        .from('achats_factures')
-        .insert({
-          client_id:      clientId,
-          fournisseur:    fournisseur.trim(),
-          numero_facture: numeroFacture.trim() || null,
-          date_facture:   dateFacture,
-          total_ht:       totalHt,
-        })
-        .select()
-        .single()
-      if (fErr) throw fErr
-
-      // b) Insertion achats_lignes
-      const { error: lErr } = await supabase
-        .from('achats_lignes')
-        .insert(
-          lignes.map(l => ({
-            facture_id:        facture.id,
-            client_id:         clientId,
-            designation:       l.designation,
-            ingredient_id:     l.ingredient_id || null,
-            quantite:          Number(l.quantite) || 0,
-            unite:             l.unite || null,
-            prix_unitaire_ht:  Number(l.prix_unitaire_ht) || 0,
-            montant_ht:        (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),
-          }))
-        )
-      if (lErr) throw lErr
-
-      // c) Mise à jour ingredients.prix_kg pour les lignes cochées
-      const toUpdate = lignes.filter(l => l.updatePrice && l.ingredient_id)
-      for (const l of toUpdate) {
-        const { error: uErr } = await supabase
-          .from('ingredients')
-          .update({ prix_kg: Number(l.prix_unitaire_ht) })
-          .eq('id', l.ingredient_id)
-          .eq('client_id', clientId)
-        if (uErr) console.warn('Mise à jour prix échouée pour', l.designation, ':', uErr.message)
-      }
-
-      // d) Journal transactions_api
-      const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('transactions_api').insert({
-        client_id:    clientId,
-        type:         'achats_import',
-        source:       'facture_upload',
-        payload_json: { facture_id: facture.id, lignes_count: lignes.length, prix_maj: toUpdate.length },
-        user_id:      user?.id ?? null,
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/achats/save-facture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ clientId, fournisseur, numeroFacture, dateFacture, lignes }),
       })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Erreur lors de l\'enregistrement.')
 
-      // e) Upsert fournisseur_mapping pour les lignes avec ingredient_id
-      const newMappings = lignes
-        .filter(l => l.ingredient_id)
-        .map(l => ({
-          client_id:                clientId,
-          designation_fournisseur:  l.designation,
-          designation_norm:         normDesig(l.designation),
-          ingredient_id:            l.ingredient_id,
-          fournisseur:              fournisseur.trim(),
-        }))
-      if (newMappings.length > 0) {
-        await supabase
-          .from('fournisseur_mapping')
-          .upsert(newMappings, { onConflict: 'client_id,designation_norm' })
-      }
-
-      setPrixMajCount(toUpdate.length)
+      setPrixMajCount(result.prix_maj ?? 0)
       setStep('done')
     } catch (err) {
       console.error('handleSave error:', err)

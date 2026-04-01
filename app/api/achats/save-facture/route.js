@@ -1,0 +1,104 @@
+import { requireAdminOrSuperadmin, getServiceClient } from '../../../../lib/apiGuards'
+
+export async function POST(request) {
+  try {
+    const body = await request.json()
+    const { clientId, fournisseur, numeroFacture, dateFacture, lignes } = body ?? {}
+
+    if (!clientId || !fournisseur || !dateFacture || !Array.isArray(lignes)) {
+      return Response.json(
+        { error: 'Paramètres manquants : clientId, fournisseur, dateFacture, lignes requis.' },
+        { status: 400 }
+      )
+    }
+
+    const { user, response: authError } = await requireAdminOrSuperadmin(request, clientId)
+    if (authError) return authError
+
+    const db = getServiceClient()
+
+    // a) Insertion achats_factures
+    const totalHt = lignes.reduce(
+      (s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),
+      0
+    )
+    const { data: facture, error: fErr } = await db
+      .from('achats_factures')
+      .insert({
+        client_id:      clientId,
+        fournisseur:    fournisseur.trim(),
+        numero_facture: numeroFacture?.trim() || null,
+        date_facture:   dateFacture,
+        total_ht:       totalHt,
+      })
+      .select()
+      .single()
+    if (fErr) throw new Error(fErr.message)
+
+    // b) Insertion achats_lignes
+    const { error: lErr } = await db
+      .from('achats_lignes')
+      .insert(
+        lignes.map(l => ({
+          facture_id:       facture.id,
+          client_id:        clientId,
+          designation:      l.designation,
+          ingredient_id:    l.ingredient_id || null,
+          quantite:         Number(l.quantite) || 0,
+          unite:            l.unite || null,
+          prix_unitaire_ht: Number(l.prix_unitaire_ht) || 0,
+          montant_ht:       (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),
+        }))
+      )
+    if (lErr) throw new Error(lErr.message)
+
+    // c) Mise à jour ingredients.prix_kg pour les lignes cochées
+    const toUpdate = lignes.filter(l => l.updatePrice && l.ingredient_id)
+    for (const l of toUpdate) {
+      const { error: uErr } = await db
+        .from('ingredients')
+        .update({ prix_kg: Number(l.prix_unitaire_ht) })
+        .eq('id', l.ingredient_id)
+        .eq('client_id', clientId)
+      if (uErr) console.warn('MAJ prix échouée pour', l.designation, ':', uErr.message)
+    }
+
+    // d) Journal transactions_api
+    await db.from('transactions_api').insert({
+      client_id:    clientId,
+      type:         'achats_import',
+      source:       'facture_upload',
+      payload_json: { facture_id: facture.id, lignes_count: lignes.length, prix_maj: toUpdate.length },
+      user_id:      user.id,
+    })
+
+    // e) Upsert fournisseur_mapping pour les lignes reconnues
+    const newMappings = lignes
+      .filter(l => l.ingredient_id)
+      .map(l => ({
+        client_id:               clientId,
+        designation_fournisseur: l.designation,
+        designation_norm:        normDesig(l.designation),
+        ingredient_id:           l.ingredient_id,
+        fournisseur:             fournisseur.trim(),
+      }))
+    if (newMappings.length > 0) {
+      await db
+        .from('fournisseur_mapping')
+        .upsert(newMappings, { onConflict: 'client_id,designation_norm' })
+    }
+
+    return Response.json({ facture_id: facture.id, prix_maj: toUpdate.length })
+  } catch (err) {
+    console.error('save-facture error:', err)
+    return Response.json(
+      { error: err.message || 'Erreur lors de l\'enregistrement.' },
+      { status: 500 }
+    )
+  }
+}
+
+function normDesig(s) {
+  if (!s) return ''
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
