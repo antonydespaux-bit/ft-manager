@@ -114,6 +114,9 @@ export default function AchatsImportPage() {
   const [prixMajCount, setPrixMajCount] = useState(0)
   // { id, date_facture, fournisseur, total_ht, created_at } | null
   const [duplicateWarning, setDuplicateWarning] = useState(null)
+  // Création d'ingrédient inline : _id de la ligne en cours | null
+  const [creatingIngFor, setCreatingIngFor] = useState(null)
+  const [newIngNom, setNewIngNom] = useState('')
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef(null)
@@ -317,6 +320,48 @@ export default function AchatsImportPage() {
   }, [])
 
   // ─── Sauvegarde ───────────────────────────────────────────────────────────
+
+  const handleCreateIngredient = useCallback(async (ligne) => {
+    if (!newIngNom.trim()) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/achats/create-ingredient', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          clientId,
+          nom:     newIngNom.trim(),
+          unite:   ligne.unite || null,
+          prix_kg: ligne.prix_unitaire_ht || null,
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Erreur création ingrédient')
+
+      const ing = result.ingredient
+      // Met à jour le cache local
+      setIngredientsById(prev => ({ ...prev, [ing.id]: ing }))
+      // Enrichit la ligne avec le nouvel ingrédient
+      setLignes(prev => prev.map(l =>
+        l._id !== ligne._id ? l : {
+          ...l,
+          ingredient_id:   ing.id,
+          ingredient_nom:  ing.nom,
+          prix_actuel:     ing.prix_kg ? Number(ing.prix_kg) : null,
+          deltaPrix:       null,
+          reconnu:         true,
+          updatePrice:     false,
+        }
+      ))
+      setCreatingIngFor(null)
+      setNewIngNom('')
+    } catch (err) {
+      setError(err.message)
+    }
+  }, [clientId, newIngNom])
 
   const handleSave = useCallback(async (forceInsert = false) => {
     if (!fournisseur.trim()) { setError('Le nom du fournisseur est requis.'); return }
@@ -681,7 +726,32 @@ export default function AchatsImportPage() {
                                 {fmtPrix(totalLigne)}
                               </td>
                               <td style={{ ...td, textAlign: 'center' }}>
-                                {l.reconnu ? <span style={badgeVert}>✓ Reconnu</span> : <span style={badgeGris}>Inconnu</span>}
+                                {l.reconnu ? (
+                                  <span style={badgeVert}>✓ Reconnu</span>
+                                ) : creatingIngFor === l._id ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160 }}>
+                                    <input
+                                      autoFocus
+                                      style={{ ...inputS, fontSize: 12, padding: '3px 6px' }}
+                                      value={newIngNom}
+                                      placeholder="Nom de l'ingrédient"
+                                      onChange={e => setNewIngNom(e.target.value)}
+                                      onKeyDown={e => { if (e.key === 'Enter') handleCreateIngredient(l); if (e.key === 'Escape') { setCreatingIngFor(null); setNewIngNom('') } }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                      <button onClick={() => handleCreateIngredient(l)} style={{ flex: 1, padding: '2px 6px', fontSize: 11, background: c.vert, color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Créer</button>
+                                      <button onClick={() => { setCreatingIngFor(null); setNewIngNom('') }} style={{ padding: '2px 6px', fontSize: 11, background: 'transparent', border: `1px solid ${c.bordure}`, borderRadius: 4, cursor: 'pointer' }}>✕</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                    <span style={badgeGris}>Inconnu</span>
+                                    <button
+                                      onClick={() => { setCreatingIngFor(l._id); setNewIngNom(l.designation) }}
+                                      style={{ fontSize: 10, padding: '2px 6px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                    >＋ Créer l'ingrédient</button>
+                                  </div>
+                                )}
                               </td>
                               <td style={{ ...td, textAlign: 'center' }}>
                                 {delta ? (
@@ -736,6 +806,25 @@ export default function AchatsImportPage() {
                           {l.ingredient_nom && (
                             <p style={{ margin: '0 0 8px', fontSize: 12, color: c.texteMuted }}>→ {l.ingredient_nom}</p>
                           )}
+                          {!l.reconnu && creatingIngFor === l._id ? (
+                            <div style={{ display: 'flex', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+                              <input
+                                autoFocus
+                                style={{ ...inputS, flex: 1, fontSize: 13 }}
+                                value={newIngNom}
+                                placeholder="Nom de l'ingrédient"
+                                onChange={e => setNewIngNom(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleCreateIngredient(l); if (e.key === 'Escape') { setCreatingIngFor(null); setNewIngNom('') } }}
+                              />
+                              <button onClick={() => handleCreateIngredient(l)} style={{ padding: '6px 10px', background: c.vert, color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>Créer</button>
+                              <button onClick={() => { setCreatingIngFor(null); setNewIngNom('') }} style={{ padding: '6px 8px', background: 'transparent', border: `1px solid ${c.bordure}`, borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>✕</button>
+                            </div>
+                          ) : !l.reconnu ? (
+                            <button
+                              onClick={() => { setCreatingIngFor(l._id); setNewIngNom(l.designation) }}
+                              style={{ fontSize: 12, padding: '5px 10px', background: 'transparent', border: `1px solid ${c.accent}`, color: c.accent, borderRadius: 6, cursor: 'pointer', marginBottom: 8 }}
+                            >＋ Créer l'ingrédient</button>
+                          ) : null}
                           {/* Ligne 2 : Qté / Unité / Prix */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
                             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: c.texteMuted }}>
