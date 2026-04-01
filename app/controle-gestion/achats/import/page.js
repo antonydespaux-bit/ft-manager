@@ -223,13 +223,9 @@ export default function AchatsImportPage() {
     setExtractError('')
     setLignes([])
 
-    if (selectedFile.type === 'application/pdf') {
-      // PDF : aperçu uniquement, saisie manuelle
-      setStep('review')
-    } else {
-      setStep('extracting')
-      await extractFromImage(selectedFile)
-    }
+    // PDF et images : extraction IA (l'API Anthropic supporte les PDFs via type 'document')
+    setStep('extracting')
+    await extractFromImage(selectedFile)
   }, [extractFromImage])
 
   // ─── Drag & drop (desktop) ───────────────────────────────────────────────

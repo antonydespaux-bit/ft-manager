@@ -57,10 +57,10 @@ export async function POST(request) {
       )
     }
 
-    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
     if (!supportedTypes.includes(mimeType)) {
       return Response.json(
-        { error: `Type MIME non supporté : ${mimeType}. Utilisez JPEG, PNG ou WebP.` },
+        { error: `Type MIME non supporté : ${mimeType}. Utilisez JPEG, PNG, WebP ou PDF.` },
         { status: 400 }
       )
     }
@@ -85,14 +85,9 @@ export async function POST(request) {
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mimeType,
-                data: fileBase64,
-              },
-            },
+            mimeType === 'application/pdf'
+              ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } }
+              : { type: 'image', source: { type: 'base64', media_type: mimeType, data: fileBase64 } },
             {
               type: 'text',
               text: PROMPT_EXTRACTION,
