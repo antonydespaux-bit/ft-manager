@@ -17,6 +17,33 @@ export async function POST(request) {
 
     const db = getServiceClient()
 
+    // ── Détection doublon sur numéro de facture ──────────────────────────────
+    const numTrimmed = numeroFacture?.trim() || null
+    if (numTrimmed && !body.forceInsert) {
+      const { data: existing } = await db
+        .from('achats_factures')
+        .select('id, date_facture, fournisseur, total_ht, created_at')
+        .eq('client_id', clientId)
+        .ilike('numero_facture', numTrimmed)
+        .maybeSingle()
+
+      if (existing) {
+        return Response.json(
+          {
+            error:    'DUPLICATE_FACTURE',
+            existing: {
+              id:           existing.id,
+              date_facture: existing.date_facture,
+              fournisseur:  existing.fournisseur,
+              total_ht:     existing.total_ht,
+              created_at:   existing.created_at,
+            },
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     // a) Insertion achats_factures
     const totalHt = lignes.reduce(
       (s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),

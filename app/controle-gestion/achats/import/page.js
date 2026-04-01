@@ -112,6 +112,8 @@ export default function AchatsImportPage() {
   const [extractError, setExtractError] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const [prixMajCount, setPrixMajCount] = useState(0)
+  // { id, date_facture, fournisseur, total_ht, created_at } | null
+  const [duplicateWarning, setDuplicateWarning] = useState(null)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef(null)
@@ -317,11 +319,12 @@ export default function AchatsImportPage() {
 
   // ─── Sauvegarde ───────────────────────────────────────────────────────────
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (forceInsert = false) => {
     if (!fournisseur.trim()) { setError('Le nom du fournisseur est requis.'); return }
     if (!dateFacture)        { setError('La date de la facture est requise.'); return }
     if (lignes.length === 0) { setError('Ajoutez au moins une ligne avant d\'enregistrer.'); return }
     setError('')
+    setDuplicateWarning(null)
     setStep('saving')
 
     try {
@@ -332,9 +335,16 @@ export default function AchatsImportPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ clientId, fournisseur, numeroFacture, dateFacture, lignes }),
+        body: JSON.stringify({ clientId, fournisseur, numeroFacture, dateFacture, lignes, forceInsert }),
       })
       const result = await res.json()
+
+      if (res.status === 409 && result.error === 'DUPLICATE_FACTURE') {
+        setDuplicateWarning(result.existing)
+        setStep('review')
+        return
+      }
+
       if (!res.ok) throw new Error(result.error || 'Erreur lors de l\'enregistrement.')
 
       setPrixMajCount(result.prix_maj ?? 0)
@@ -413,6 +423,38 @@ export default function AchatsImportPage() {
         {error && (
           <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#B91C1C' }}>
             {error}
+          </div>
+        )}
+
+        {/* Avertissement doublon */}
+        {duplicateWarning && (
+          <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 14, color: '#92400E' }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              ⚠️ Cette facture a déjà été importée
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              N° <strong>{numeroFacture}</strong> — {duplicateWarning.fournisseur} —{' '}
+              {new Date(duplicateWarning.date_facture).toLocaleDateString('fr-FR')} —{' '}
+              {Number(duplicateWarning.total_ht).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} € HT
+              <br />
+              <span style={{ fontSize: 12, opacity: 0.8 }}>
+                Importée le {new Date(duplicateWarning.created_at).toLocaleDateString('fr-FR')}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setDuplicateWarning(null)}
+                style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #D97706', background: 'transparent', color: '#92400E', cursor: 'pointer', fontSize: 13 }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleSave(true)}
+                style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#D97706', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+              >
+                Importer quand même
+              </button>
+            </div>
           </div>
         )}
 
@@ -555,7 +597,7 @@ export default function AchatsImportPage() {
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted, gridColumn: isMobile ? 'auto' : 'span 2' }}>
                     N° de facture
-                    <input style={inputS} value={numeroFacture} onChange={e => setNumeroFacture(e.target.value)} placeholder="Référence optionnelle" />
+                    <input style={inputS} value={numeroFacture} onChange={e => { setNumeroFacture(e.target.value); setDuplicateWarning(null) }} placeholder="Référence optionnelle" />
                   </label>
                 </div>
               </div>
