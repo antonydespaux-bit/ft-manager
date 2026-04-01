@@ -19,6 +19,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [filtreCategorie, setFiltreCategorie] = useState('toutes')
   const [filtreSaison, setFiltreSaison] = useState('toutes')
+  const [filtreLieu, setFiltreLieu] = useState('tous')
+  const [lieux, setLieux] = useState([])
   const [isPrixExpanded, setIsPrixExpanded] = useState(false)
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -48,6 +50,8 @@ export default function DashboardPage() {
     setParams(p)
     const { data: fichesData } = await supabase
       .from('fiches').select('*').eq('client_id', clientId).neq('categorie', 'Sous-fiche').eq('archive', false)
+    const { data: lieuxData } = await supabase
+      .from('lieux').select('id, nom, emoji').eq('client_id', clientId).eq('section', 'cuisine').order('ordre')
     const { data: menusData } = await supabase
       .from('menus').select('*').eq('client_id', clientId).eq('archive', false)
     const { data: prixData } = await supabase
@@ -56,6 +60,7 @@ export default function DashboardPage() {
       .order('prix_updated_at', { ascending: false })
       .limit(20)
     setFiches(fichesData || [])
+    setLieux(lieuxData || [])
     setMenus(menusData || [])
     setIngredientsPrixHausse(prixData || [])
     setLoading(false)
@@ -85,6 +90,7 @@ export default function DashboardPage() {
   const fichesFiltreesAllergenes = fichesAvecAllergenes
     .filter(f => filtreCategorie === 'toutes' || f.categorie === filtreCategorie)
     .filter(f => filtreSaison === 'toutes' || f.saison === filtreSaison)
+    .filter(f => filtreLieu === 'tous' || f.lieu_id === filtreLieu)
 
   const exportAllergenesExcel = () => {
     const wb = XLSX.utils.book_new()
@@ -294,6 +300,15 @@ export default function DashboardPage() {
                 <option value="toutes">Toutes les saisons</option>
                 {theme.saisons.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
+              {lieux.length > 0 && (
+                <select value={filtreLieu} onChange={e => setFiltreLieu(e.target.value)} style={{
+                  padding: '6px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`,
+                  fontSize: '12px', background: c.blanc, outline: 'none', color: c.texte, cursor: 'pointer'
+                }}>
+                  <option value="tous">Tous les lieux</option>
+                  {lieux.map(l => <option key={l.id} value={l.id}>{l.emoji ? `${l.emoji} ${l.nom}` : l.nom}</option>)}
+                </select>
+              )}
               <button onClick={exportAllergenesExcel} style={{ padding: '6px 12px', background: c.vert, color: 'white', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>📊 Excel</button>
               <button onClick={() => window.print()} style={{ padding: '6px 12px', background: c.accent, color: c.principal, border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>🖨️ Imprimer</button>
             </div>
