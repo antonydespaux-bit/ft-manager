@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
-import { supabaseServiceRole } from '../../../../lib/apiGuards'
+import { requireAdminOrSuperadmin } from '../../../../lib/apiGuards'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -30,22 +29,6 @@ Règles :
 
 export async function POST(request) {
   try {
-    // ── Auth ────────────────────────────────────────────────────────────────
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return Response.json({ error: 'Non authentifié.' }, { status: 401 })
-    }
-    const jwt = authHeader.slice(7).trim()
-
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    )
-    const { data: { user }, error: userErr } = await supabaseAuth.auth.getUser(jwt)
-    if (userErr || !user) {
-      return Response.json({ error: 'Session invalide.' }, { status: 401 })
-    }
-
     // ── Validation du body ───────────────────────────────────────────────────
     const body = await request.json()
     const { fileBase64, mimeType, clientId } = body ?? {}
@@ -65,19 +48,11 @@ export async function POST(request) {
       )
     }
 
-    // ── Vérification d'accès au client ───────────────────────────────────────
-    const { data: access } = await supabaseServiceRole
-      .from('acces_clients')
-      .select('client_id')
-      .eq('user_id', user.id)
-      .eq('client_id', clientId)
-      .maybeSingle()
+    // ── Auth : utilisateur connecté OU superadmin ────────────────────────────
+    const { user, response: authError } = await requireAdminOrSuperadmin(request, clientId)
+    if (authError) return authError
 
-    if (!access) {
-      return Response.json({ error: 'Accès refusé à cet établissement.' }, { status: 403 })
-    }
-
-    // ── Appel Claude Vision ──────────────────────────────────────────────────
+    // ── Appel Claude Vision / Document ──────────────────────────────────────
     const message = await anthropic.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 2048,
@@ -102,7 +77,6 @@ export async function POST(request) {
     // ── Parsing du JSON retourné ─────────────────────────────────────────────
     let parsed
     try {
-      // Tenter d'extraire le JSON même si Claude a ajouté du texte malgré la consigne
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Aucun JSON trouvé dans la réponse')
       parsed = JSON.parse(jsonMatch[0])

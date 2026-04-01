@@ -136,6 +136,7 @@ export function middleware(req) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://fonts.axept.io https://*.axept.io",
       "font-src 'self' https://fonts.gstatic.com https://fonts.axept.io",
       "img-src 'self' data: blob: https:",
+      "frame-src 'self' blob:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://static.axept.io https://axept.io https://*.axept.io https://cdn.jsdelivr.net https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://www.googletagmanager.com",
       "frame-ancestors 'none'",
     ].join('; ')
