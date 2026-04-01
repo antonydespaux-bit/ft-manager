@@ -1,0 +1,824 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase, getClientId } from '../../../../lib/supabase'
+import { useIsMobile } from '../../../../lib/useIsMobile'
+import { useTheme } from '../../../../lib/useTheme'
+import Navbar from '../../../../components/Navbar'
+
+// ─── Helpers purs ────────────────────────────────────────────────────────────
+
+/** Normalise une désignation pour la réconciliation (lowercase, espaces uniquement). */
+function normDesig(s) {
+  if (!s) return ''
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function yesterdayIso() {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function fmtPrix(n) {
+  if (n == null || Number.isNaN(n)) return '—'
+  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+}
+
+/** Retourne un string +X,X% ou -X,X%, null si non calculable. */
+function fmtDelta(n) {
+  if (n == null || Number.isNaN(n)) return null
+  const sign = n >= 0 ? '+' : ''
+  return `${sign}${Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`
+}
+
+/** Lit un File et retourne son contenu base64 (sans le préfixe data:…;base64,). */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') { reject(new Error('Lecture échouée')); return }
+      resolve(result.split(',')[1] ?? result)
+    }
+    reader.onerror = () => reject(new Error('Erreur de lecture du fichier'))
+    reader.readAsDataURL(file)
+  })
+}
+
+/** Génère un identifiant local temporaire pour les lignes (React key uniquement). */
+function makeLigneId() {
+  return Math.random().toString(36).slice(2)
+}
+
+// ─── Composant principal ─────────────────────────────────────────────────────
+
+export default function AchatsImportPage() {
+  const router = useRouter()
+  const { c } = useTheme()
+  const isMobile = useIsMobile()
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const [authReady, setAuthReady] = useState(false)
+  const [clientId, setClientId] = useState(null)
+
+  // ── Machine d'état ────────────────────────────────────────────────────────
+  // 'upload' | 'extracting' | 'review' | 'saving' | 'done'
+  const [step, setStep] = useState('upload')
+
+  // ── Fichier ───────────────────────────────────────────────────────────────
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [isPdf, setIsPdf] = useState(false)
+
+  // ── Métadonnées facture ───────────────────────────────────────────────────
+  const [fournisseur, setFournisseur] = useState('')
+  const [dateFacture, setDateFacture] = useState(yesterdayIso())
+  const [numeroFacture, setNumeroFacture] = useState('')
+
+  // ── Lignes enrichies ──────────────────────────────────────────────────────
+  // Chaque ligne : { _id, designation, quantite, unite, prix_unitaire_ht,
+  //                 ingredient_id|null, ingredient_nom|null,
+  //                 prix_actuel|null, deltaPrix|null, reconnu, updatePrice }
+  const [lignes, setLignes] = useState([])
+
+  // ── Caches de réconciliation ──────────────────────────────────────────────
+  const [fournisseurMapping, setFournisseurMapping] = useState({}) // norm → { ingredient_id }
+  const [ingredientsById, setIngredientsById] = useState({})       // id   → { nom, prix_kg, unite }
+
+  // ── UX ────────────────────────────────────────────────────────────────────
+  const [error, setError] = useState('')
+  const [extractError, setExtractError] = useState('')
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [prixMajCount, setPrixMajCount] = useState(0)
+
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const fileInputRef = useRef(null)
+
+  // ─── Effets ───────────────────────────────────────────────────────────────
+
+  // Auth : vérification de session, redirect si non connecté
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (cancelled) return
+        if (!session) { router.replace('/'); return }
+        const cid = await getClientId()
+        if (!cancelled) { setClientId(cid); setAuthReady(true) }
+      } catch {
+        if (!cancelled) router.replace('/')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [router])
+
+  // Chargement mapping fournisseur + ingrédients une fois authentifié
+  const loadReconciliation = useCallback(async () => {
+    if (!clientId) return
+    const [{ data: mappings }, { data: ings }] = await Promise.all([
+      supabase
+        .from('fournisseur_mapping')
+        .select('designation_norm, ingredient_id, fournisseur')
+        .eq('client_id', clientId),
+      supabase
+        .from('ingredients')
+        .select('id, nom, prix_kg, unite')
+        .eq('client_id', clientId)
+        .eq('est_sous_fiche', false),
+    ])
+    setFournisseurMapping(
+      Object.fromEntries((mappings || []).map(m => [m.designation_norm, m]))
+    )
+    setIngredientsById(
+      Object.fromEntries((ings || []).map(i => [i.id, i]))
+    )
+  }, [clientId])
+
+  useEffect(() => {
+    if (authReady && clientId) loadReconciliation()
+  }, [authReady, clientId, loadReconciliation])
+
+  // ─── Réconciliation d'une ligne ───────────────────────────────────────────
+
+  const enrichLigne = useCallback((ligne) => {
+    const norm = normDesig(ligne.designation)
+    const mapping = fournisseurMapping[norm]
+    const ingId = mapping?.ingredient_id ?? null
+    const ing = ingId ? ingredientsById[ingId] : null
+    const prixActuel = ing ? Number(ing.prix_kg) : null
+    const delta =
+      prixActuel != null && prixActuel > 0
+        ? ((Number(ligne.prix_unitaire_ht) - prixActuel) / prixActuel) * 100
+        : null
+    return {
+      ...ligne,
+      ingredient_id:   ingId,
+      ingredient_nom:  ing?.nom ?? null,
+      prix_actuel:     prixActuel,
+      deltaPrix:       delta,
+      reconnu:         !!ingId,
+      updatePrice:     !!ingId,
+    }
+  }, [fournisseurMapping, ingredientsById])
+
+  // ─── Extraction IA ────────────────────────────────────────────────────────
+
+  const extractFromImage = useCallback(async (file) => {
+    try {
+      const base64 = await fileToBase64(file)
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/achats/parse-facture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ fileBase64: base64, mimeType: file.type, clientId }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Erreur extraction')
+
+      setFournisseur(result.fournisseur || '')
+      setDateFacture(result.date_facture || yesterdayIso())
+      setNumeroFacture(result.numero_facture || '')
+      const enriched = (result.lignes || []).map(l =>
+        enrichLigne({
+          _id:              makeLigneId(),
+          designation:      l.designation || '',
+          quantite:         Number(l.quantite) || 1,
+          unite:            l.unite || '',
+          prix_unitaire_ht: Number(l.prix_unitaire_ht) || 0,
+        })
+      )
+      setLignes(enriched)
+      setStep('review')
+    } catch (err) {
+      console.error('Extraction IA échouée :', err)
+      setExtractError(err.message || 'Extraction échouée')
+      setLignes([])
+      setStep('review')
+    }
+  }, [clientId, enrichLigne])
+
+  // ─── Sélection de fichier (mobile input + desktop drop partagé) ───────────
+
+  const handleFileSelected = useCallback(async (selectedFile) => {
+    if (!selectedFile) return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    if (!allowed.includes(selectedFile.type)) {
+      setError('Format non supporté. Utilisez JPG, PNG, WebP ou PDF.')
+      return
+    }
+    // Libérer l'ancienne URL objet si elle existe
+    setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(selectedFile) })
+    setIsPdf(selectedFile.type === 'application/pdf')
+    setError('')
+    setExtractError('')
+    setLignes([])
+
+    if (selectedFile.type === 'application/pdf') {
+      // PDF : aperçu uniquement, saisie manuelle
+      setStep('review')
+    } else {
+      setStep('extracting')
+      await extractFromImage(selectedFile)
+    }
+  }, [extractFromImage])
+
+  // ─── Drag & drop (desktop) ───────────────────────────────────────────────
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback(() => setIsDragOver(false), [])
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const f = e.dataTransfer.files?.[0]
+    if (f) handleFileSelected(f)
+  }, [handleFileSelected])
+
+  // ─── Édition des lignes ───────────────────────────────────────────────────
+
+  const updateLigne = useCallback((id, field, value) => {
+    setLignes(prev => prev.map(l =>
+      l._id !== id ? l : enrichLigne({ ...l, [field]: value })
+    ))
+  }, [enrichLigne])
+
+  const addLigne = useCallback(() => {
+    setLignes(prev => [...prev, enrichLigne({
+      _id: makeLigneId(),
+      designation: '',
+      quantite: 1,
+      unite: 'kg',
+      prix_unitaire_ht: 0,
+    })])
+  }, [enrichLigne])
+
+  const removeLigne = useCallback((id) => {
+    setLignes(prev => prev.filter(l => l._id !== id))
+  }, [])
+
+  // ─── Réinitialisation ─────────────────────────────────────────────────────
+
+  const resetForm = useCallback(() => {
+    setStep('upload')
+    setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    setIsPdf(false)
+    setFournisseur('')
+    setDateFacture(yesterdayIso())
+    setNumeroFacture('')
+    setLignes([])
+    setError('')
+    setExtractError('')
+    setPrixMajCount(0)
+  }, [])
+
+  // ─── Sauvegarde ───────────────────────────────────────────────────────────
+
+  const handleSave = useCallback(async () => {
+    if (!fournisseur.trim()) { setError('Le nom du fournisseur est requis.'); return }
+    if (!dateFacture)        { setError('La date de la facture est requise.'); return }
+    if (lignes.length === 0) { setError('Ajoutez au moins une ligne avant d\'enregistrer.'); return }
+    setError('')
+    setStep('saving')
+
+    try {
+      const totalHt = lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0), 0)
+
+      // a) Insertion achats_factures
+      const { data: facture, error: fErr } = await supabase
+        .from('achats_factures')
+        .insert({
+          client_id:      clientId,
+          fournisseur:    fournisseur.trim(),
+          numero_facture: numeroFacture.trim() || null,
+          date_facture:   dateFacture,
+          total_ht:       totalHt,
+        })
+        .select()
+        .single()
+      if (fErr) throw fErr
+
+      // b) Insertion achats_lignes
+      const { error: lErr } = await supabase
+        .from('achats_lignes')
+        .insert(
+          lignes.map(l => ({
+            facture_id:        facture.id,
+            client_id:         clientId,
+            designation:       l.designation,
+            ingredient_id:     l.ingredient_id || null,
+            quantite:          Number(l.quantite) || 0,
+            unite:             l.unite || null,
+            prix_unitaire_ht:  Number(l.prix_unitaire_ht) || 0,
+            montant_ht:        (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),
+          }))
+        )
+      if (lErr) throw lErr
+
+      // c) Mise à jour ingredients.prix_kg pour les lignes cochées
+      const toUpdate = lignes.filter(l => l.updatePrice && l.ingredient_id)
+      for (const l of toUpdate) {
+        const { error: uErr } = await supabase
+          .from('ingredients')
+          .update({ prix_kg: Number(l.prix_unitaire_ht) })
+          .eq('id', l.ingredient_id)
+          .eq('client_id', clientId)
+        if (uErr) console.warn('Mise à jour prix échouée pour', l.designation, ':', uErr.message)
+      }
+
+      // d) Journal transactions_api
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('transactions_api').insert({
+        client_id:    clientId,
+        type:         'achats_import',
+        source:       'facture_upload',
+        payload_json: { facture_id: facture.id, lignes_count: lignes.length, prix_maj: toUpdate.length },
+        user_id:      user?.id ?? null,
+      })
+
+      // e) Upsert fournisseur_mapping pour les lignes avec ingredient_id
+      const newMappings = lignes
+        .filter(l => l.ingredient_id)
+        .map(l => ({
+          client_id:                clientId,
+          designation_fournisseur:  l.designation,
+          designation_norm:         normDesig(l.designation),
+          ingredient_id:            l.ingredient_id,
+          fournisseur:              fournisseur.trim(),
+        }))
+      if (newMappings.length > 0) {
+        await supabase
+          .from('fournisseur_mapping')
+          .upsert(newMappings, { onConflict: 'client_id,designation_norm' })
+      }
+
+      setPrixMajCount(toUpdate.length)
+      setStep('done')
+    } catch (err) {
+      console.error('handleSave error:', err)
+      setError(err.message || 'Erreur lors de l\'enregistrement.')
+      setStep('review')
+    }
+  }, [clientId, fournisseur, numeroFacture, dateFacture, lignes])
+
+  // ─── Styles partagés ─────────────────────────────────────────────────────
+
+  if (!authReady) {
+    return (
+      <div style={{ minHeight: '100vh', background: c.fond, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.texteMuted, fontSize: 14 }}>
+        Chargement…
+      </div>
+    )
+  }
+
+  const pad = isMobile ? 16 : 24
+  const inputS = {
+    padding: '7px 10px', borderRadius: 8,
+    border: `1px solid ${c.bordure}`, background: c.blanc,
+    color: c.texte, fontSize: 14, width: '100%', boxSizing: 'border-box',
+  }
+  const th = {
+    padding: isMobile ? '8px 6px' : '10px 12px', textAlign: 'left',
+    fontWeight: 600, fontSize: 11, color: c.texteMuted,
+    borderBottom: `1px solid ${c.bordure}`, whiteSpace: 'nowrap',
+  }
+  const td = {
+    padding: isMobile ? '8px 6px' : '10px 12px',
+    fontSize: 13, color: c.texte, borderBottom: `1px solid ${c.bordure}`,
+    verticalAlign: 'middle',
+  }
+  const badgeVert = {
+    display: 'inline-block', background: c.vertClair, color: c.vert,
+    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+  }
+  const badgeGris = {
+    display: 'inline-block', background: c.fond, color: c.texteMuted,
+    fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+  }
+  const btnPrimary = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    padding: isMobile ? '13px 20px' : '10px 20px',
+    background: c.accent, color: '#fff', border: 'none', borderRadius: 8,
+    fontSize: 14, fontWeight: 600, cursor: 'pointer', width: isMobile ? '100%' : 'auto',
+  }
+  const btnSecondary = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    padding: isMobile ? '13px 20px' : '10px 16px',
+    background: c.blanc, color: c.texte,
+    border: `1px solid ${c.bordure}`, borderRadius: 8,
+    fontSize: 14, cursor: 'pointer', width: isMobile ? '100%' : 'auto',
+  }
+
+  // ─── Rendu ────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ minHeight: '100vh', background: c.fond }}>
+      <Navbar section="cuisine" />
+      <div style={{ padding: pad, maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* En-tête */}
+        <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? 22 : 26, fontWeight: 700, color: c.texte }}>
+          Importation de factures
+        </h1>
+        <p style={{ margin: '0 0 28px', fontSize: 14, color: c.texteMuted }}>
+          Photographiez ou déposez une facture fournisseur — les lignes sont extraites automatiquement.
+        </p>
+
+        {/* Erreur globale */}
+        {error && (
+          <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 14, color: '#B91C1C' }}>
+            {error}
+          </div>
+        )}
+
+        {/* ══ STEP : UPLOAD ══════════════════════════════════════════════════ */}
+        {step === 'upload' && (
+          <div style={{ maxWidth: 560 }}>
+            {isMobile ? (
+              /* Mobile : bouton déclenchant l'appareil photo */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  onChange={e => handleFileSelected(e.target.files?.[0])}
+                />
+                <button style={btnPrimary} onClick={() => fileInputRef.current?.click()}>
+                  📷 Prendre une photo de la facture
+                </button>
+                {/* Fallback sans capture pour la galerie */}
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  style={{ display: 'none' }}
+                  id="file-gallery"
+                  onChange={e => handleFileSelected(e.target.files?.[0])}
+                />
+                <button style={btnSecondary} onClick={() => document.getElementById('file-gallery').click()}>
+                  Choisir depuis la galerie / PDF
+                </button>
+              </div>
+            ) : (
+              /* Desktop : zone drag & drop */
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${isDragOver ? c.accent : c.bordure}`,
+                  borderRadius: 12, padding: '48px 32px',
+                  textAlign: 'center', cursor: 'pointer',
+                  background: isDragOver ? c.accentClair : c.blanc,
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  style={{ display: 'none' }}
+                  onChange={e => handleFileSelected(e.target.files?.[0])}
+                />
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
+                <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: 15, color: c.texte }}>
+                  Glissez une facture ici
+                </p>
+                <p style={{ margin: '0 0 16px', fontSize: 13, color: c.texteMuted }}>
+                  ou cliquez pour parcourir
+                </p>
+                <p style={{ margin: 0, fontSize: 12, color: c.texteMuted }}>
+                  Formats acceptés : JPG · PNG · WebP · PDF
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ STEP : EXTRACTING ══════════════════════════════════════════════ */}
+        {step === 'extracting' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '48px 0' }}>
+            {previewUrl && !isPdf && (
+              <img src={previewUrl} alt="Aperçu" style={{ maxHeight: 180, maxWidth: '100%', borderRadius: 8, objectFit: 'contain', border: `1px solid ${c.bordure}` }} />
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: c.texteMuted, fontSize: 15 }}>
+              <span style={{ display: 'inline-block', width: 20, height: 20, border: `3px solid ${c.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              Analyse de la facture par IA…
+            </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
+
+        {/* ══ STEP : REVIEW ══════════════════════════════════════════════════ */}
+        {(step === 'review' || step === 'saving') && (
+          <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: 20 } : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, alignItems: 'start' }}>
+
+            {/* ── Colonne gauche : aperçu du fichier ── */}
+            <div style={{ position: isMobile ? 'static' : 'sticky', top: 80 }}>
+              {previewUrl && (
+                isPdf ? (
+                  <iframe
+                    src={previewUrl}
+                    title="Aperçu facture PDF"
+                    style={{ width: '100%', height: isMobile ? 220 : 600, borderRadius: 10, border: `1px solid ${c.bordure}` }}
+                  />
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="Aperçu facture"
+                    style={{ width: '100%', maxHeight: isMobile ? 200 : 600, objectFit: 'contain', borderRadius: 10, border: `1px solid ${c.bordure}`, background: c.blanc }}
+                  />
+                )
+              )}
+              {!previewUrl && (
+                <div style={{ background: c.blanc, border: `1px solid ${c.bordure}`, borderRadius: 10, padding: 32, textAlign: 'center', color: c.texteMuted, fontSize: 14 }}>
+                  Aucun fichier sélectionné
+                </div>
+              )}
+              {/* Bouton changer fichier */}
+              <button
+                style={{ ...btnSecondary, marginTop: 10, width: '100%' }}
+                onClick={resetForm}
+              >
+                ↩ Changer de fichier
+              </button>
+            </div>
+
+            {/* ── Colonne droite : métadonnées + lignes ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* Bandeau extraction échouée */}
+              {extractError && (
+                <div style={{ background: c.orangeClair, border: `1px solid ${c.orange}`, borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400E' }}>
+                  ⚠️ Extraction IA échouée ({extractError}). Saisissez les lignes manuellement.
+                </div>
+              )}
+
+              {/* Métadonnées de la facture */}
+              <div style={{ background: c.blanc, border: `1px solid ${c.bordure}`, borderRadius: 12, padding: 16 }}>
+                <p style={{ margin: '0 0 12px', fontWeight: 600, fontSize: 14, color: c.texte }}>Informations de la facture</p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    Fournisseur *
+                    <input style={inputS} value={fournisseur} onChange={e => setFournisseur(e.target.value)} placeholder="Nom du fournisseur" />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    Date de la facture *
+                    <input style={inputS} type="date" value={dateFacture} onChange={e => setDateFacture(e.target.value)} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted, gridColumn: isMobile ? 'auto' : 'span 2' }}>
+                    N° de facture
+                    <input style={inputS} value={numeroFacture} onChange={e => setNumeroFacture(e.target.value)} placeholder="Référence optionnelle" />
+                  </label>
+                </div>
+              </div>
+
+              {/* ── Lignes : Desktop tableau / Mobile cards ── */}
+              <div style={{ background: c.blanc, border: `1px solid ${c.bordure}`, borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.bordure}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: c.texte }}>
+                    Lignes de la facture{lignes.length > 0 && ` (${lignes.length})`}
+                  </p>
+                  <button style={{ ...btnSecondary, padding: '6px 12px', fontSize: 13, width: 'auto' }} onClick={addLigne}>
+                    + Ajouter une ligne
+                  </button>
+                </div>
+
+                {lignes.length === 0 && (
+                  <p style={{ padding: 20, margin: 0, fontSize: 13, color: c.texteMuted, textAlign: 'center' }}>
+                    Aucune ligne. Cliquez sur "+ Ajouter une ligne" pour commencer.
+                  </p>
+                )}
+
+                {lignes.length > 0 && !isMobile && (
+                  /* ── Tableau desktop ── */
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+                      <thead>
+                        <tr style={{ background: c.fond }}>
+                          <th style={{ ...th, width: '28%' }}>Désignation</th>
+                          <th style={{ ...th, width: '8%', textAlign: 'right' }}>Qté</th>
+                          <th style={{ ...th, width: '7%' }}>Unité</th>
+                          <th style={{ ...th, width: '10%', textAlign: 'right' }}>Prix HT/u</th>
+                          <th style={{ ...th, width: '10%', textAlign: 'right' }}>Total HT</th>
+                          <th style={{ ...th, width: '10%', textAlign: 'center' }}>Reconnu</th>
+                          <th style={{ ...th, width: '9%', textAlign: 'center' }}>Δ Prix</th>
+                          <th style={{ ...th, width: '10%', textAlign: 'center' }}>MAJ prix</th>
+                          <th style={{ ...th, width: '8%' }} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lignes.map(l => {
+                          const delta = fmtDelta(l.deltaPrix)
+                          const deltaColor = l.deltaPrix == null ? c.texteMuted : l.deltaPrix > 0 ? c.orange : c.vert
+                          const totalLigne = (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0)
+                          return (
+                            <tr key={l._id}>
+                              <td style={td}>
+                                <input
+                                  style={{ ...inputS, fontSize: 13 }}
+                                  value={l.designation}
+                                  placeholder="Nom du produit"
+                                  onChange={e => updateLigne(l._id, 'designation', e.target.value)}
+                                />
+                                {l.ingredient_nom && (
+                                  <div style={{ fontSize: 11, color: c.texteMuted, marginTop: 2 }}>→ {l.ingredient_nom}</div>
+                                )}
+                              </td>
+                              <td style={{ ...td, textAlign: 'right' }}>
+                                <input
+                                  style={{ ...inputS, textAlign: 'right', width: 70 }}
+                                  type="number" min="0" step="0.001"
+                                  value={l.quantite}
+                                  onChange={e => updateLigne(l._id, 'quantite', e.target.value)}
+                                />
+                              </td>
+                              <td style={td}>
+                                <input
+                                  style={{ ...inputS, width: 60, fontSize: 13 }}
+                                  value={l.unite}
+                                  placeholder="kg"
+                                  onChange={e => updateLigne(l._id, 'unite', e.target.value)}
+                                />
+                              </td>
+                              <td style={{ ...td, textAlign: 'right' }}>
+                                <input
+                                  style={{ ...inputS, textAlign: 'right', width: 80 }}
+                                  type="number" min="0" step="0.01"
+                                  value={l.prix_unitaire_ht}
+                                  onChange={e => updateLigne(l._id, 'prix_unitaire_ht', e.target.value)}
+                                />
+                              </td>
+                              <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {fmtPrix(totalLigne)}
+                              </td>
+                              <td style={{ ...td, textAlign: 'center' }}>
+                                {l.reconnu ? <span style={badgeVert}>✓ Reconnu</span> : <span style={badgeGris}>Inconnu</span>}
+                              </td>
+                              <td style={{ ...td, textAlign: 'center' }}>
+                                {delta ? (
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: deltaColor }}>{delta}</span>
+                                ) : (
+                                  <span style={{ color: c.texteMuted, fontSize: 12 }}>—</span>
+                                )}
+                              </td>
+                              <td style={{ ...td, textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!l.updatePrice}
+                                  disabled={!l.ingredient_id}
+                                  onChange={e => updateLigne(l._id, 'updatePrice', e.target.checked)}
+                                  style={{ width: 16, height: 16, cursor: l.ingredient_id ? 'pointer' : 'not-allowed' }}
+                                />
+                              </td>
+                              <td style={{ ...td, textAlign: 'center' }}>
+                                <button
+                                  onClick={() => removeLigne(l._id)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.texteMuted, fontSize: 16, padding: 4, lineHeight: 1 }}
+                                  title="Supprimer"
+                                >×</button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {lignes.length > 0 && isMobile && (
+                  /* ── Cards mobile ── */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {lignes.map((l, idx) => {
+                      const delta = fmtDelta(l.deltaPrix)
+                      const deltaColor = l.deltaPrix == null ? c.texteMuted : l.deltaPrix > 0 ? c.orange : c.vert
+                      const totalLigne = (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0)
+                      return (
+                        <div key={l._id} style={{ padding: '14px 16px', borderBottom: idx < lignes.length - 1 ? `1px solid ${c.bordure}` : 'none' }}>
+                          {/* Ligne 1 : désignation + badge */}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                            <input
+                              style={{ ...inputS, fontSize: 15, fontWeight: 500, flex: 1 }}
+                              value={l.designation}
+                              placeholder="Nom du produit"
+                              onChange={e => updateLigne(l._id, 'designation', e.target.value)}
+                            />
+                            {l.reconnu ? <span style={badgeVert}>✓</span> : <span style={badgeGris}>?</span>}
+                          </div>
+                          {l.ingredient_nom && (
+                            <p style={{ margin: '0 0 8px', fontSize: 12, color: c.texteMuted }}>→ {l.ingredient_nom}</p>
+                          )}
+                          {/* Ligne 2 : Qté / Unité / Prix */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: c.texteMuted }}>
+                              Quantité
+                              <input style={inputS} type="number" min="0" step="0.001" value={l.quantite}
+                                onChange={e => updateLigne(l._id, 'quantite', e.target.value)} />
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: c.texteMuted }}>
+                              Unité
+                              <input style={inputS} value={l.unite} placeholder="kg"
+                                onChange={e => updateLigne(l._id, 'unite', e.target.value)} />
+                            </label>
+                            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: c.texteMuted }}>
+                              Prix HT/u
+                              <input style={inputS} type="number" min="0" step="0.01" value={l.prix_unitaire_ht}
+                                onChange={e => updateLigne(l._id, 'prix_unitaire_ht', e.target.value)} />
+                            </label>
+                          </div>
+                          {/* Ligne 3 : total + delta + actions */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: c.texte }}>{fmtPrix(totalLigne)}</span>
+                              {delta && <span style={{ fontSize: 12, fontWeight: 700, color: deltaColor }}>{delta}</span>}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              {/* Checkbox MAJ prix — grand touch target */}
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: l.ingredient_id ? c.texte : c.texteMuted, cursor: l.ingredient_id ? 'pointer' : 'not-allowed', minHeight: 44 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!l.updatePrice}
+                                  disabled={!l.ingredient_id}
+                                  onChange={e => updateLigne(l._id, 'updatePrice', e.target.checked)}
+                                  style={{ width: 18, height: 18 }}
+                                />
+                                MAJ prix
+                              </label>
+                              <button
+                                onClick={() => removeLigne(l._id)}
+                                style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: `1px solid ${c.bordure}`, borderRadius: 8, cursor: 'pointer', color: c.texteMuted, fontSize: 18 }}
+                              >×</button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Récapitulatif total */}
+              {lignes.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, fontSize: 14, color: c.texteMuted }}>
+                  <span>Total HT :</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: c.texte }}>
+                    {fmtPrix(lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0), 0))}
+                  </span>
+                </div>
+              )}
+
+              {/* Bouton enregistrer */}
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  style={{ ...btnPrimary, opacity: step === 'saving' ? 0.6 : 1 }}
+                  disabled={step === 'saving'}
+                  onClick={handleSave}
+                >
+                  {step === 'saving' ? 'Enregistrement…' : '💾 Enregistrer les achats et mettre à jour les prix'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ STEP : DONE ════════════════════════════════════════════════════ */}
+        {step === 'done' && (
+          <div style={{ maxWidth: 480, margin: '0 auto', textAlign: 'center', paddingTop: 40 }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
+            <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: c.texte }}>
+              Facture enregistrée
+            </h2>
+            <p style={{ margin: '0 0 6px', fontSize: 15, color: c.texteMuted }}>
+              {lignes.length} ligne{lignes.length > 1 ? 's' : ''} importée{lignes.length > 1 ? 's' : ''}.
+            </p>
+            {prixMajCount > 0 && (
+              <p style={{ margin: '0 0 28px', fontSize: 14, color: c.vert, fontWeight: 600 }}>
+                {prixMajCount} prix d&apos;ingrédient{prixMajCount > 1 ? 's' : ''} mis à jour.
+              </p>
+            )}
+            {prixMajCount === 0 && <div style={{ marginBottom: 28 }} />}
+            <button style={{ ...btnPrimary, margin: '0 auto' }} onClick={resetForm}>
+              Importer une autre facture
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
