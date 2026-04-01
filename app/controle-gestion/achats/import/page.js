@@ -801,7 +801,7 @@ export default function AchatsImportPage() {
                 <button
                   style={{ ...btnPrimary, opacity: step === 'saving' ? 0.6 : 1 }}
                   disabled={step === 'saving'}
-                  onClick={handleSave}
+                  onClick={() => handleSave()}
                 >
                   {step === 'saving' ? 'Enregistrement…' : '💾 Enregistrer les achats et mettre à jour les prix'}
                 </button>
