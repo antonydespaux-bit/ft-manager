@@ -41,7 +41,7 @@ export async function POST(request) {
     // Charger les ingrédients
     const { data: ingredients } = await db
       .from(ingredientTable)
-      .select('id, nom, unite, prix_kg, categorie_ingredient_id')
+      .select('id, nom, unite, prix_kg')
       .eq('client_id', client_id)
 
     if (!ingredients) continue

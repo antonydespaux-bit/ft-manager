@@ -99,7 +99,7 @@ export async function GET(request) {
 
   const { data: ingredients } = await db
     .from(ingredientTable)
-    .select('id, nom, unite, prix_kg, categorie_ingredient_id')
+    .select('id, nom, unite, prix_kg, categorie_id')
     .in('id', allIds)
 
   const ingMap = Object.fromEntries((ingredients || []).map(i => [i.id, i]))

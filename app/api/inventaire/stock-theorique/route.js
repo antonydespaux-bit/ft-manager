@@ -30,7 +30,7 @@ export async function GET(request) {
   // 1) Charger tous les ingrédients actifs
   const { data: ingredients, error: iErr } = await db
     .from(ingredientTable)
-    .select('id, nom, unite, prix_kg, categorie_ingredient_id')
+    .select('id, nom, unite, prix_kg, categorie_id')
     .eq('client_id', clientId)
 
   if (iErr) return Response.json({ error: iErr.message }, { status: 500 })
@@ -178,7 +178,7 @@ export async function GET(request) {
       nom: ing.nom,
       unite: ing.unite,
       prix_kg: ing.prix_kg,
-      categorie_ingredient_id: ing.categorie_ingredient_id,
+      categorie_id: ing.categorie_id,
       stock_depart: Math.round(sd * 1000) / 1000,
       achats: Math.round(achats * 1000) / 1000,
       consommation: Math.round(conso * 1000) / 1000,

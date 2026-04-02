@@ -66,11 +66,11 @@ export default function SaisieInventairePage() {
       const table = sec === 'bar' ? 'ingredients_bar' : 'ingredients'
       const { data: ings } = await supabase
         .from(table)
-        .select('id, categorie_ingredient_id')
+        .select('id, categorie_id')
         .eq('client_id', clientId)
 
       if (ings) {
-        const catMap = Object.fromEntries(ings.map(i => [i.id, i.categorie_ingredient_id]))
+        const catMap = Object.fromEntries(ings.map(i => [i.id, i.categorie_id]))
         setLignes(prev => prev.map(l => ({
           ...l,
           _categorie_id: catMap[l.ingredient_id] || l._categorie_id
