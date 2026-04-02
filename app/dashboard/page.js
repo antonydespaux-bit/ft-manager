@@ -9,6 +9,7 @@ import { useRole } from '../../lib/useRole'
 import { ALLERGENES } from '../../lib/allergenes'
 import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../lib/foodCost'
 import Navbar from '../../components/Navbar'
+import InventaireBanner from '../../components/InventaireBanner'
 import * as XLSX from 'xlsx'
 
 export default function DashboardPage() {
@@ -116,6 +117,7 @@ export default function DashboardPage() {
     <div style={{ minHeight: '100vh', background: c.fond }}>
 
       <Navbar section="cuisine" />
+      <InventaireBanner />
 
       {/* Vue écran */}
       <div className="no-print" style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>

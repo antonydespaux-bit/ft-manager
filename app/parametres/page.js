@@ -5,6 +5,7 @@ import { supabase, getClientId } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
+import { INVENTAIRE_FREQUENCES, JOURS_SEMAINE } from '../../lib/constants'
 import Navbar from '../../components/Navbar'
 
 const EMOJIS_LIEUX = ['🍽', '🌅', '🍷', '🛎', '🏨', '🌿', '🎭', '☕', '🍸', '🌊', '🏔', '🌃']
@@ -75,6 +76,11 @@ export default function SettingsPage() {
           seuil_vert_boissons: clientData.seuil_vert_boissons || 22,
           seuil_orange_boissons: clientData.seuil_orange_boissons || 28,
           tva_restauration: clientData.tva_restauration || 10,
+          inventaire_tournant_actif: clientData.inventaire_tournant_actif ?? true,
+          inventaire_tournant_frequence: clientData.inventaire_tournant_frequence || 'weekly',
+          inventaire_tournant_jour_semaine: clientData.inventaire_tournant_jour_semaine ?? 1,
+          inventaire_tournant_heure: clientData.inventaire_tournant_heure ?? 8,
+          inventaire_tournant_dernier: clientData.inventaire_tournant_dernier || null,
         })
       }
     } catch (err) {
@@ -208,6 +214,10 @@ export default function SettingsPage() {
         seuil_vert_boissons: parseFloat(params.seuil_vert_boissons),
         seuil_orange_boissons: parseFloat(params.seuil_orange_boissons),
         tva_restauration: parseFloat(params.tva_restauration),
+        inventaire_tournant_actif: !!params.inventaire_tournant_actif,
+        inventaire_tournant_frequence: params.inventaire_tournant_frequence,
+        inventaire_tournant_jour_semaine: parseInt(params.inventaire_tournant_jour_semaine),
+        inventaire_tournant_heure: parseInt(params.inventaire_tournant_heure),
       }).eq('id', clientId)
       if (error) throw error
       showMessage('Paramètres sauvegardés !')
@@ -523,6 +533,81 @@ export default function SettingsPage() {
                 />
                 <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '4px' }}>Note : alcool toujours à 20%</div>
               </div>
+            </div>
+
+            {/* Inventaire tournant */}
+            <div style={{ background: c.blanc, borderRadius: '12px', padding: '20px', border: `0.5px solid ${c.bordure}` }}>
+              <div style={{ fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '16px' }}>📋 Inventaire tournant (Flash)</div>
+
+              {/* Toggle actif */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <button
+                  onClick={() => setParams({ ...params, inventaire_tournant_actif: !params.inventaire_tournant_actif })}
+                  style={{
+                    width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                    background: params.inventaire_tournant_actif ? '#16A34A' : '#D1D5DB',
+                    position: 'relative', transition: 'background 0.2s'
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: '2px',
+                    left: params.inventaire_tournant_actif ? '22px' : '2px',
+                    width: '20px', height: '20px', borderRadius: '50%',
+                    background: 'white', transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </button>
+                <span style={{ fontSize: '14px', color: c.texte }}>
+                  {params.inventaire_tournant_actif ? 'Notifications activées' : 'Notifications désactivées'}
+                </span>
+              </div>
+
+              {params.inventaire_tournant_actif && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Fréquence</label>
+                    <select
+                      value={params.inventaire_tournant_frequence || 'weekly'}
+                      onChange={e => setParams({ ...params, inventaire_tournant_frequence: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte }}
+                    >
+                      {INVENTAIRE_FREQUENCES.map(f => (
+                        <option key={f.value} value={f.value}>{f.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Jour</label>
+                    <select
+                      value={params.inventaire_tournant_jour_semaine ?? 1}
+                      onChange={e => setParams({ ...params, inventaire_tournant_jour_semaine: parseInt(e.target.value) })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte }}
+                    >
+                      {JOURS_SEMAINE.map(j => (
+                        <option key={j.value} value={j.value}>{j.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '12px', color: c.texteMuted, fontWeight: '500', display: 'block', marginBottom: '6px' }}>Heure</label>
+                    <select
+                      value={params.inventaire_tournant_heure ?? 8}
+                      onChange={e => setParams({ ...params, inventaire_tournant_heure: parseInt(e.target.value) })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '13px', background: c.blanc, outline: 'none', color: c.texte }}
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>{String(i).padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {params.inventaire_tournant_dernier && (
+                <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '12px' }}>
+                  Dernier inventaire tournant : {new Date(params.inventaire_tournant_dernier).toLocaleDateString('fr-FR')}
+                </div>
+              )}
             </div>
 
             <button onClick={sauvegarderParams} disabled={saving} style={{
