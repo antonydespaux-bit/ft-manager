@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useTheme } from '../../../../lib/useTheme'
 import { useIsMobile } from '../../../../lib/useIsMobile'
 import Navbar from '../../../../components/Navbar'
+import IngredientSearch from '../../../../components/IngredientSearch'
 
 export default function SaisieInventairePage() {
   const params = useParams()
@@ -16,10 +17,13 @@ export default function SaisieInventairePage() {
   const [inventaire, setInventaire] = useState(null)
   const [lignes, setLignes] = useState([])
   const [categories, setCategories] = useState([])
+  const [allIngredients, setAllIngredients] = useState([]) // pool pour IngredientSearch
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState({})
   const [recherche, setRecherche] = useState('')
   const [catFiltre, setCatFiltre] = useState('tous')
+  const [showAddPanel, setShowAddPanel] = useState(false)
+  const [addingIngredient, setAddingIngredient] = useState(false)
   const debounceTimers = useRef({})
 
   useEffect(() => { loadData() }, [])
@@ -61,12 +65,13 @@ export default function SaisieInventairePage() {
 
     setCategories(cats || [])
 
-    // Charger les mappings ingrédient → catégorie
+    // Charger les mappings ingrédient → catégorie + pool pour IngredientSearch
+    const pool = []
     for (const sec of sections) {
       const table = sec === 'bar' ? 'ingredients_bar' : 'ingredients'
       const { data: ings } = await supabase
         .from(table)
-        .select('id, categorie_id')
+        .select('id, nom, unite, prix_kg, categorie_id, est_sous_fiche')
         .eq('client_id', clientId)
 
       if (ings) {
@@ -75,8 +80,13 @@ export default function SaisieInventairePage() {
           ...l,
           _categorie_id: catMap[l.ingredient_id] || l._categorie_id
         })))
+        // Enrichir le pool avec la section pour pouvoir retrouver le catMap plus tard
+        for (const ing of ings) {
+          pool.push({ ...ing, _section: sec })
+        }
       }
     }
+    setAllIngredients(pool)
 
     setLoading(false)
   }
@@ -103,12 +113,10 @@ export default function SaisieInventairePage() {
   }, [])
 
   const handleQuantiteChange = (ligneId, value) => {
-    // Mise à jour locale immédiate
     setLignes(prev => prev.map(l =>
       l.id === ligneId ? { ...l, quantite_reelle: value === '' ? null : Number(value) } : l
     ))
 
-    // Debounce la sauvegarde serveur (500ms)
     if (debounceTimers.current[ligneId]) {
       clearTimeout(debounceTimers.current[ligneId])
     }
@@ -117,12 +125,41 @@ export default function SaisieInventairePage() {
     }, 500)
   }
 
+  const handleAddIngredient = async (ingredientId) => {
+    if (!ingredientId || addingIngredient) return
+    setAddingIngredient(true)
+    try {
+      const clientId = await getClientId()
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/inventaire/add-ligne', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ inventaire_id: inventaireId, ingredient_id: ingredientId, client_id: clientId })
+      })
+      const json = await res.json()
+      if (json.ligne) {
+        const ingMeta = allIngredients.find(i => i.id === ingredientId)
+        setLignes(prev => [...prev, { ...json.ligne, _categorie_id: ingMeta?.categorie_id || null }])
+        setShowAddPanel(false)
+      }
+    } finally {
+      setAddingIngredient(false)
+    }
+  }
+
   // Filtrer les lignes
   const filteredLignes = lignes.filter(l => {
     if (recherche && !l.nom_ingredient.toLowerCase().includes(recherche.toLowerCase())) return false
     if (catFiltre !== 'tous' && l._categorie_id !== catFiltre) return false
     return true
   })
+
+  // Pool pour le dropdown (exclure ceux déjà dans l'inventaire)
+  const alreadyPresentIds = new Set(lignes.map(l => l.ingredient_id).filter(Boolean))
+  const availableToAdd = allIngredients.filter(i => !alreadyPresentIds.has(i.id))
 
   const nbSaisis = lignes.filter(l => l.quantite_reelle != null).length
   const nbTotal = lignes.length
@@ -292,11 +329,52 @@ export default function SaisieInventairePage() {
           })}
         </div>
 
-        {filteredLignes.length === 0 && (
+        {filteredLignes.length === 0 && !showAddPanel && (
           <div style={{ padding: '30px', textAlign: 'center', color: c.texteMuted, fontSize: '13px' }}>
             {recherche ? 'Aucun ingrédient trouvé.' : 'Aucune ligne dans cet inventaire.'}
           </div>
         )}
+
+        {/* Ajouter un ingrédient manquant */}
+        <div style={{ marginTop: '12px' }}>
+          {!showAddPanel ? (
+            <button
+              onClick={() => setShowAddPanel(true)}
+              style={{
+                width: '100%', padding: '12px',
+                border: `1px dashed ${c.bordure}`, borderRadius: '12px',
+                background: 'transparent', color: c.texteMuted,
+                fontSize: '13px', cursor: 'pointer',
+              }}
+            >
+              + Ajouter un ingrédient manquant
+            </button>
+          ) : (
+            <div style={{
+              padding: '14px 16px', background: c.blanc,
+              border: `0.5px solid ${c.accent}`, borderRadius: '12px',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte, marginBottom: '8px' }}>
+                Ajouter un ingrédient
+              </div>
+              <IngredientSearch
+                ingredients={availableToAdd}
+                value={null}
+                onChange={handleAddIngredient}
+                placeholder="Rechercher un ingrédient à ajouter..."
+              />
+              {addingIngredient && (
+                <div style={{ fontSize: '12px', color: c.texteMuted, marginTop: '6px' }}>Ajout en cours...</div>
+              )}
+              <button
+                onClick={() => setShowAddPanel(false)}
+                style={{ marginTop: '8px', background: 'none', border: 'none', color: c.texteMuted, fontSize: '12px', cursor: 'pointer', padding: 0 }}
+              >
+                Annuler
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Bouton récap */}
         {nbSaisis > 0 && (

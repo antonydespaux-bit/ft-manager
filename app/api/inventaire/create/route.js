@@ -203,15 +203,31 @@ export async function POST(request) {
       }
     }
 
+    // Fallback 1 : aucun historique d'achats → classer par prix_kg (ingrédients les plus chers)
+    if (criticalIds.size === 0) {
+      const sortedByPrix = allIngredients
+        .filter(ing => (ing.prix_kg || 0) > 0)
+        .sort((a, b) => (b.prix_kg || 0) - (a.prix_kg || 0))
+
+      if (sortedByPrix.length > 0) {
+        const grandTotal = sortedByPrix.reduce((s, r) => s + (r.prix_kg || 0), 0)
+        let cumul = 0
+        for (const ing of sortedByPrix) {
+          if (grandTotal > 0 && (cumul / grandTotal) >= 0.80) break
+          criticalIds.add(ing.ingredient_id)
+          cumul += (ing.prix_kg || 0)
+        }
+      }
+
+      // Fallback 2 : aucun prix enregistré → tout inclure
+      if (criticalIds.size === 0) {
+        allIngredients.forEach(ing => criticalIds.add(ing.ingredient_id))
+      }
+    }
+
     allIngredients = allIngredients
       .map(ing => ({ ...ing, est_critique: criticalIds.has(ing.ingredient_id) }))
       .filter(ing => ing.est_critique)
-
-    if (allIngredients.length === 0) {
-      return Response.json({
-        error: 'Aucun ingrédient critique trouvé (Pareto). Vérifiez que des achats ont été saisis dans les 3 derniers mois.'
-      }, { status: 422 })
-    }
   }
 
   // Créer l'inventaire

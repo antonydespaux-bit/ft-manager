@@ -35,7 +35,11 @@ export default function InventairePage() {
 
   const deleteInventaire = async (inv, e) => {
     e.stopPropagation()
-    if (!window.confirm(`Supprimer cet inventaire brouillon (${inv.type === 'tournant' ? 'Flash' : 'Complet'} — ${inv.section}) ?`)) return
+    const label = `${inv.type === 'tournant' ? 'Flash' : 'Complet'} — ${inv.section} (${formatDate(inv.date_inventaire)})`
+    const msg = inv.statut === 'brouillon'
+      ? `Supprimer ce brouillon ${label} ?`
+      : `Supprimer l'inventaire validé ${label} ? Cette action est irréversible.`
+    if (!window.confirm(msg)) return
 
     setDeleting(inv.id)
     try {
@@ -170,7 +174,7 @@ export default function InventairePage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {inv.statut === 'brouillon' && (
+                  {(
                     <button
                       onClick={(e) => deleteInventaire(inv, e)}
                       disabled={deleting === inv.id}

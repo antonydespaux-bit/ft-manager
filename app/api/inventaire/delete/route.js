@@ -28,9 +28,6 @@ export async function DELETE(request) {
 
   if (fetchErr) return Response.json({ error: fetchErr.message }, { status: 500 })
   if (!inv) return Response.json({ error: 'Inventaire introuvable.' }, { status: 404 })
-  if (inv.statut !== 'brouillon') {
-    return Response.json({ error: 'Seuls les inventaires en brouillon peuvent être supprimés.' }, { status: 403 })
-  }
 
   const { error: delErr } = await db
     .from('inventaires')
