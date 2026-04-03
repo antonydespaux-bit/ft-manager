@@ -46,10 +46,10 @@ export async function POST(request) {
     }
 
     // a) Insertion achats_factures
-    const totalHt = lignes.reduce(
-      (s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),
-      0
-    )
+    const totalHt = lignes.reduce((s, l) => {
+      const r = Number(l.remise) || 0
+      return s + (Number(l.quantite) || 0) * Number(l.prix_unitaire_ht) * (1 - r / 100)
+    }, 0)
     const { data: facture, error: fErr } = await db
       .from('achats_factures')
       .insert({
@@ -67,25 +67,32 @@ export async function POST(request) {
     const { error: lErr } = await db
       .from('achats_lignes')
       .insert(
-        lignes.map(l => ({
-          facture_id:       facture.id,
-          client_id:        clientId,
-          designation:      l.designation,
-          ingredient_id:    l.ingredient_id || null,
-          quantite:         Number(l.quantite) || 0,
-          unite:            l.unite || null,
-          prix_unitaire_ht: Number(l.prix_unitaire_ht) || 0,
-          montant_ht:       (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0),
-        }))
+        lignes.map(l => {
+          const r = Number(l.remise) || 0
+          const prixEffectif = Number(l.prix_unitaire_ht) * (1 - r / 100)
+          return {
+            facture_id:       facture.id,
+            client_id:        clientId,
+            designation:      l.designation,
+            ingredient_id:    l.ingredient_id || null,
+            quantite:         Number(l.quantite) || 0,
+            unite:            l.unite || null,
+            prix_unitaire_ht: prixEffectif,
+            remise:           r,
+            montant_ht:       (Number(l.quantite) || 0) * prixEffectif,
+          }
+        })
       )
     if (lErr) throw new Error(lErr.message)
 
     // c) Mise à jour ingredients.prix_kg pour les lignes cochées
     const toUpdate = lignes.filter(l => l.updatePrice && l.ingredient_id)
     for (const l of toUpdate) {
+      const r = Number(l.remise) || 0
+      const prixEffectif = Number(l.prix_unitaire_ht) * (1 - r / 100)
       const { error: uErr } = await db
         .from('ingredients')
-        .update({ prix_kg: Number(l.prix_unitaire_ht) })
+        .update({ prix_kg: prixEffectif })
         .eq('id', l.ingredient_id)
         .eq('client_id', clientId)
       if (uErr) console.warn('MAJ prix échouée pour', l.designation, ':', uErr.message)

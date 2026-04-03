@@ -90,7 +90,7 @@ export default function AchatsImportPage() {
   const [numeroFacture, setNumeroFacture] = useState('')
 
   // ── Lignes enrichies ──────────────────────────────────────────────────────
-  // Chaque ligne : { _id, designation, quantite, unite, prix_unitaire_ht,
+  // Chaque ligne : { _id, designation, quantite, unite, prix_unitaire_ht, remise,
   //                 ingredient_id|null, ingredient_nom|null,
   //                 prix_actuel|null, deltaPrix|null, reconnu, updatePrice }
   const [lignes, setLignes] = useState([])
@@ -191,9 +191,11 @@ export default function AchatsImportPage() {
 
     const ingId = ing?.id ?? null
     const prixActuel = ing ? Number(ing.prix_kg) : null
+    const remise = Number(ligne.remise) || 0
+    const prixEffectif = Number(ligne.prix_unitaire_ht) * (1 - remise / 100)
     const delta =
       prixActuel != null && prixActuel > 0
-        ? ((Number(ligne.prix_unitaire_ht) - prixActuel) / prixActuel) * 100
+        ? ((prixEffectif - prixActuel) / prixActuel) * 100
         : null
     return {
       ...ligne,
@@ -310,6 +312,7 @@ export default function AchatsImportPage() {
       quantite: 1,
       unite: 'kg',
       prix_unitaire_ht: 0,
+      remise: 0,
     })])
   }, [enrichLigne])
 
@@ -697,22 +700,25 @@ export default function AchatsImportPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 950 }}>
                       <thead>
                         <tr style={{ background: c.fond }}>
-                          <th style={{ ...th, width: '32%' }}>Désignation</th>
+                          <th style={{ ...th, width: '30%' }}>Désignation</th>
                           <th style={{ ...th, width: '7%', textAlign: 'right' }}>Qté</th>
-                          <th style={{ ...th, width: '6%' }}>Unité</th>
-                          <th style={{ ...th, width: '10%', textAlign: 'right' }}>Prix HT/u</th>
-                          <th style={{ ...th, width: '10%', textAlign: 'right' }}>Total HT</th>
-                          <th style={{ ...th, width: '13%', textAlign: 'center' }}>Reconnu</th>
-                          <th style={{ ...th, width: '8%', textAlign: 'center' }}>Δ Prix</th>
-                          <th style={{ ...th, width: '8%', textAlign: 'center' }}>MAJ prix</th>
-                          <th style={{ ...th, width: '8%' }} />
+                          <th style={{ ...th, width: '5%' }}>Unité</th>
+                          <th style={{ ...th, width: '9%', textAlign: 'right' }}>Prix HT/u</th>
+                          <th style={{ ...th, width: '6%', textAlign: 'right' }}>Remise %</th>
+                          <th style={{ ...th, width: '9%', textAlign: 'right' }}>Total HT</th>
+                          <th style={{ ...th, width: '12%', textAlign: 'center' }}>Reconnu</th>
+                          <th style={{ ...th, width: '7%', textAlign: 'center' }}>Δ Prix</th>
+                          <th style={{ ...th, width: '7%', textAlign: 'center' }}>MAJ prix</th>
+                          <th style={{ ...th, width: '5%' }} />
                         </tr>
                       </thead>
                       <tbody>
                         {lignes.map(l => {
                           const delta = fmtDelta(l.deltaPrix)
                           const deltaColor = l.deltaPrix == null ? c.texteMuted : l.deltaPrix > 0 ? c.orange : c.vert
-                          const totalLigne = (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0)
+                          const remise = Number(l.remise) || 0
+                          const prixEffectif = Number(l.prix_unitaire_ht) * (1 - remise / 100)
+                          const totalLigne = (Number(l.quantite) || 0) * prixEffectif
                           return (
                             <tr key={l._id}>
                               <td style={td}>
@@ -748,6 +754,14 @@ export default function AchatsImportPage() {
                                   type="number" min="0" step="0.01"
                                   value={l.prix_unitaire_ht}
                                   onChange={e => updateLigne(l._id, 'prix_unitaire_ht', e.target.value)}
+                                />
+                              </td>
+                              <td style={{ ...td, textAlign: 'right' }}>
+                                <input
+                                  style={{ ...inputS, textAlign: 'right', width: 60 }}
+                                  type="number" min="0" max="100" step="0.1"
+                                  value={l.remise ?? 0}
+                                  onChange={e => updateLigne(l._id, 'remise', e.target.value)}
                                 />
                               </td>
                               <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
@@ -907,7 +921,10 @@ export default function AchatsImportPage() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, fontSize: 14, color: c.texteMuted }}>
                 <span>Total HT :</span>
                 <span style={{ fontWeight: 700, fontSize: 16, color: c.texte }}>
-                  {fmtPrix(lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prix_unitaire_ht) || 0), 0))}
+                  {fmtPrix(lignes.reduce((s, l) => {
+                    const r = Number(l.remise) || 0
+                    return s + (Number(l.quantite) || 0) * Number(l.prix_unitaire_ht) * (1 - r / 100)
+                  }, 0))}
                 </span>
               </div>
             )}
