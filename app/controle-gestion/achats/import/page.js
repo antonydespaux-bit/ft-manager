@@ -682,14 +682,14 @@ export default function AchatsImportPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                       <thead>
                         <tr style={{ background: c.fond }}>
-                          <th style={{ ...th, width: '28%' }}>Désignation</th>
-                          <th style={{ ...th, width: '8%', textAlign: 'right' }}>Qté</th>
-                          <th style={{ ...th, width: '7%' }}>Unité</th>
-                          <th style={{ ...th, width: '10%', textAlign: 'right' }}>Prix HT/u</th>
-                          <th style={{ ...th, width: '10%', textAlign: 'right' }}>Total HT</th>
-                          <th style={{ ...th, width: '10%', textAlign: 'center' }}>Reconnu</th>
-                          <th style={{ ...th, width: '9%', textAlign: 'center' }}>Δ Prix</th>
-                          <th style={{ ...th, width: '10%', textAlign: 'center' }}>MAJ prix</th>
+                          <th style={{ ...th, width: '36%' }}>Désignation</th>
+                          <th style={{ ...th, width: '7%', textAlign: 'right' }}>Qté</th>
+                          <th style={{ ...th, width: '6%' }}>Unité</th>
+                          <th style={{ ...th, width: '9%', textAlign: 'right' }}>Prix HT/u</th>
+                          <th style={{ ...th, width: '9%', textAlign: 'right' }}>Total HT</th>
+                          <th style={{ ...th, width: '9%', textAlign: 'center' }}>Reconnu</th>
+                          <th style={{ ...th, width: '8%', textAlign: 'center' }}>Δ Prix</th>
+                          <th style={{ ...th, width: '8%', textAlign: 'center' }}>MAJ prix</th>
                           <th style={{ ...th, width: '8%' }} />
                         </tr>
                       </thead>
