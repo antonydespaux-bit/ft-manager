@@ -3,7 +3,7 @@ import { requireAdminOrSuperadmin, getServiceClient } from '../../../../lib/apiG
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { clientId, fournisseur, numeroFacture, dateFacture, lignes } = body ?? {}
+    const { clientId, fournisseur, numeroFacture, dateFacture, statut, lignes } = body ?? {}
 
     if (!clientId || !fournisseur || !dateFacture || !Array.isArray(lignes)) {
       return Response.json(
@@ -80,6 +80,7 @@ export async function POST(request) {
         numero_facture: numeroFacture?.trim() || null,
         date_facture:   dateFacture,
         total_ht:       totalHt,
+        statut:         statut === 'bl' ? 'bl' : 'facture',
       })
       .select()
       .single()

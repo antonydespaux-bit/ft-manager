@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase, getClientId } from '../../../../lib/supabase'
 import { useIsMobile } from '../../../../lib/useIsMobile'
@@ -12,12 +12,10 @@ function formatEuro(n) {
   if (n == null || Number.isNaN(Number(n))) return '—'
   return `${Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 }
-
 function formatQte(n) {
-  if (n == null || Number.isNaN(Number(n))) return '—'
+  if (n == null) return '—'
   return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 4 })
 }
-
 function formatDate(s) {
   if (!s) return '—'
   return new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -28,14 +26,23 @@ export default function AchatsDetailPage() {
   const { id } = useParams()
   const isMobile = useIsMobile()
   const { c } = useTheme()
-
   const { role, loading: roleLoading } = useRole()
 
   const [authReady, setAuthReady] = useState(false)
+  const [clientId, setClientId] = useState(null)
   const [facture, setFacture] = useState(null)
   const [lignes, setLignes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Edition header
+  const [editing, setEditing] = useState(false)
+  const [editFournisseur, setEditFournisseur] = useState('')
+  const [editNumero, setEditNumero] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editStatut, setEditStatut] = useState('facture')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -44,7 +51,8 @@ export default function AchatsDetailPage() {
         const { data: { session } } = await supabase.auth.getSession()
         if (cancelled) return
         if (!session) { router.replace('/'); return }
-        setAuthReady(true)
+        const cid = await getClientId()
+        if (!cancelled) { setClientId(cid); setAuthReady(true) }
       } catch {
         if (!cancelled) router.replace('/')
       }
@@ -57,131 +65,200 @@ export default function AchatsDetailPage() {
     if (role !== 'admin' && role !== 'directeur') router.replace('/dashboard')
   }, [role, roleLoading, router])
 
-  useEffect(() => {
-    if (!authReady || !id) return
-    ;(async () => {
-      setLoading(true)
-      setError('')
-      const cid = await getClientId()
-      if (!cid) { setLoading(false); return }
+  const loadFacture = useCallback(async () => {
+    if (!authReady || !id || !clientId) return
+    setLoading(true)
+    setError('')
 
-      const { data: fac, error: fErr } = await supabase
-        .from('achats_factures')
-        .select('id, fournisseur, numero_facture, date_facture, total_ht, taux_tva, created_at')
-        .eq('id', id)
-        .eq('client_id', cid)
-        .maybeSingle()
+    const { data: fac, error: fErr } = await supabase
+      .from('achats_factures')
+      .select('id, fournisseur, numero_facture, date_facture, total_ht, statut, created_at')
+      .eq('id', id)
+      .eq('client_id', clientId)
+      .maybeSingle()
 
-      if (fErr) { setError(fErr.message); setLoading(false); return }
-      if (!fac) { setError('Facture introuvable.'); setLoading(false); return }
-      setFacture(fac)
+    if (fErr) { setError(fErr.message); setLoading(false); return }
+    if (!fac) { setError('Facture introuvable.'); setLoading(false); return }
+    setFacture(fac)
 
-      const { data: rows, error: lErr } = await supabase
-        .from('achats_lignes')
-        .select('id, designation, ingredient_id, quantite, unite, prix_unitaire_ht, montant_ht, ingredients(nom)')
-        .eq('facture_id', id)
-        .eq('client_id', cid)
-        .order('designation')
+    const { data: rows, error: lErr } = await supabase
+      .from('achats_lignes')
+      .select('id, designation, ingredient_id, quantite, unite, prix_unitaire_ht, remise, montant_ht, ingredients(nom)')
+      .eq('facture_id', id)
+      .eq('client_id', clientId)
+      .order('designation')
 
-      if (lErr) console.warn('Lignes :', lErr.message)
-      setLignes(rows || [])
-      setLoading(false)
-    })()
-  }, [authReady, id])
+    if (lErr) console.warn('Lignes :', lErr.message)
+    setLignes(rows || [])
+    setLoading(false)
+  }, [authReady, id, clientId])
 
-  if (!authReady) {
-    return (
-      <div style={{ minHeight: '100vh', background: c.fond, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.texteMuted, fontSize: 14 }}>
-        Chargement…
-      </div>
-    )
+  useEffect(() => { loadFacture() }, [loadFacture])
+
+  const openEdit = () => {
+    setEditFournisseur(facture.fournisseur || '')
+    setEditNumero(facture.numero_facture || '')
+    setEditDate(facture.date_facture || '')
+    setEditStatut(facture.statut || 'facture')
+    setEditing(true)
   }
+
+  const handleSaveEdit = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/achats/update-facture', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ factureId: id, clientId, fournisseur: editFournisseur, numeroFacture: editNumero, dateFacture: editDate, statut: editStatut }),
+      })
+      if (!res.ok) { const r = await res.json(); throw new Error(r.error) }
+      setEditing(false)
+      await loadFacture()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Supprimer cette facture ? Toutes les lignes associées seront perdues.`)) return
+    setDeleting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`/api/achats/delete-facture?factureId=${id}&clientId=${clientId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) router.replace('/controle-gestion/achats')
+      else setError('Erreur lors de la suppression.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleConfirmFacture = async () => {
+    if (!window.confirm('Confirmer ce BL comme facture définitive ?')) return
+    setSaving(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch('/api/achats/update-facture', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ factureId: id, clientId, statut: 'facture' }),
+      })
+      await loadFacture()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!authReady) return (
+    <div style={{ minHeight: '100vh', background: c.fond, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.texteMuted, fontSize: 14 }}>Chargement…</div>
+  )
 
   const ht = facture ? Number(facture.total_ht) || 0 : 0
-  const tva = facture?.taux_tva != null ? Number(facture.taux_tva) : null
-  const montantTva = tva != null ? ht * (tva / 100) : null
-  const ttc = montantTva != null ? ht + montantTva : null
+  const isBl = facture?.statut === 'bl'
 
-  const th = {
-    padding: isMobile ? '10px 8px' : '11px 14px',
-    textAlign: 'left', fontWeight: 600, fontSize: 11,
-    color: c.texteMuted, textTransform: 'uppercase',
-    borderBottom: `1px solid ${c.bordure}`, whiteSpace: 'nowrap',
-  }
+  const th = { padding: isMobile ? '10px 8px' : '11px 14px', textAlign: 'left', fontWeight: 600, fontSize: 11, color: c.texteMuted, textTransform: 'uppercase', borderBottom: `1px solid ${c.bordure}`, whiteSpace: 'nowrap' }
   const thR = { ...th, textAlign: 'right' }
   const td = { padding: isMobile ? '11px 8px' : '12px 14px', fontSize: 14, color: c.texte, borderBottom: `1px solid ${c.bordure}` }
   const tdR = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
   const tdM = { ...tdR, color: c.texteMuted }
+  const inputS = { padding: '8px 10px', borderRadius: 8, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, fontSize: 14, width: '100%', boxSizing: 'border-box' }
 
   return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
       <Navbar section="cuisine" />
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* Retour */}
-        <button
-          onClick={() => router.push('/controle-gestion/achats')}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: c.texteMuted, fontSize: 13, padding: '0 0 16px 0',
-          }}
-        >
-          ← Retour aux achats
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+          <button onClick={() => router.push('/controle-gestion/achats')}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: c.texteMuted, fontSize: 13, padding: 0 }}>
+            ← Retour aux achats
+          </button>
+          {role === 'admin' && !loading && facture && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {isBl && (
+                <button onClick={handleConfirmFacture} disabled={saving}
+                  style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, border: 'none', background: '#059669', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
+                  ✓ Confirmer comme facture
+                </button>
+              )}
+              <button onClick={() => editing ? setEditing(false) : openEdit()}
+                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, cursor: 'pointer' }}>
+                {editing ? 'Annuler' : '✏️ Modifier'}
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, border: '1px solid #FECACA', background: '#FEF2F2', color: '#B91C1C', cursor: 'pointer' }}>
+                {deleting ? '…' : 'Supprimer'}
+              </button>
+            </div>
+          )}
+        </div>
 
-        {error && <p style={{ color: '#B91C1C', fontSize: 14 }}>{error}</p>}
+        {error && <p style={{ color: '#B91C1C', fontSize: 14, margin: '8px 0' }}>{error}</p>}
         {loading && <p style={{ color: c.texteMuted, fontSize: 14 }}>Chargement…</p>}
 
-        {!loading && !error && facture && (
+        {!loading && facture && (
           <>
-            {/* ── En-tête facture ── */}
-            <div style={{
-              background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`,
-              padding: isMobile ? 16 : 24, marginBottom: 24,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase', marginBottom: 6 }}>Fournisseur</div>
-                  <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 600, color: c.texte }}>{facture.fournisseur || '—'}</div>
-                  {facture.numero_facture && (
-                    <div style={{ fontSize: 13, color: c.texteMuted, marginTop: 4 }}>
-                      N° {facture.numero_facture}
-                    </div>
-                  )}
-                  <div style={{ fontSize: 13, color: c.texteMuted, marginTop: 2 }}>
-                    {formatDate(facture.date_facture)}
+            {/* ── En-tête ── */}
+            <div style={{ background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`, padding: isMobile ? 16 : 24, marginBottom: 24, marginTop: 12 }}>
+              {editing ? (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    Fournisseur
+                    <input style={inputS} value={editFournisseur} onChange={e => setEditFournisseur(e.target.value)} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    N° de facture / BL
+                    <input style={inputS} value={editNumero} onChange={e => setEditNumero(e.target.value)} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    Date
+                    <input style={inputS} type="date" value={editDate} onChange={e => setEditDate(e.target.value)} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    Type
+                    <select style={inputS} value={editStatut} onChange={e => setEditStatut(e.target.value)}>
+                      <option value="bl">Bon de livraison</option>
+                      <option value="facture">Facture</option>
+                    </select>
+                  </label>
+                  <div style={{ gridColumn: isMobile ? 'auto' : 'span 2', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button onClick={handleSaveEdit} disabled={saving}
+                      style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: c.accent, color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+                      {saving ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
                   </div>
                 </div>
-
-                {/* Totaux */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, auto)',
-                  gap: '8px 24px',
-                  textAlign: 'right',
-                }}>
-                  {[
-                    { label: 'Total HT', value: formatEuro(ht), color: c.texte },
-                    { label: tva != null ? `TVA (${tva} %)` : 'TVA', value: montantTva != null ? formatEuro(montantTva) : '—', color: c.texteMuted },
-                    { label: 'Total TTC', value: ttc != null ? formatEuro(ttc) : '—', color: c.accent },
-                  ].map(({ label, value, color }) => (
-                    <div key={label}>
-                      <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase' }}>{label}</div>
-                      <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 600, color }}>{value}</div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 600, color: c.texte }}>{facture.fournisseur || '—'}</div>
+                      {isBl
+                        ? <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: '#FEF3C7', color: '#92400E' }}>BL</span>
+                        : <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: '#D1FAE5', color: '#065F46' }}>Facture</span>}
                     </div>
-                  ))}
+                    {facture.numero_facture && <div style={{ fontSize: 13, color: c.texteMuted }}>N° {facture.numero_facture}</div>}
+                    <div style={{ fontSize: 13, color: c.texteMuted }}>{formatDate(facture.date_facture)}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase' }}>Total HT</div>
+                    <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 600, color: c.texte }}>{formatEuro(ht)}</div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* ── Lignes articles ── */}
-            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: c.texte }}>
-              Articles ({lignes.length})
-            </h2>
+            {/* ── Lignes ── */}
+            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: c.texte }}>Articles ({lignes.length})</h2>
 
             {lignes.length === 0 ? (
-              <p style={{ color: c.texteMuted, fontSize: 14 }}>Aucun article enregistré pour cette facture.</p>
+              <p style={{ color: c.texteMuted, fontSize: 14 }}>Aucun article enregistré.</p>
             ) : (
               <div style={{ background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
@@ -192,8 +269,9 @@ export default function AchatsDetailPage() {
                         <th style={thR}>Qté</th>
                         <th style={th}>Unité</th>
                         <th style={thR}>Prix HT/u</th>
+                        <th style={thR}>Remise</th>
                         <th style={thR}>Total HT</th>
-                        <th style={th}>Ingrédient lié</th>
+                        <th style={th}>Ingrédient</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -203,6 +281,7 @@ export default function AchatsDetailPage() {
                           <td style={tdM}>{formatQte(l.quantite)}</td>
                           <td style={tdM}>{l.unite || '—'}</td>
                           <td style={tdR}>{formatEuro(l.prix_unitaire_ht)}</td>
+                          <td style={tdM}>{l.remise ? `${l.remise} %` : '—'}</td>
                           <td style={tdR}>{formatEuro(l.montant_ht)}</td>
                           <td style={td}>
                             {l.ingredients?.nom
@@ -214,10 +293,8 @@ export default function AchatsDetailPage() {
                     </tbody>
                     <tfoot>
                       <tr style={{ fontWeight: 600, background: c.fond }}>
-                        <td style={{ ...td, color: c.texte }} colSpan={4}>Total</td>
-                        <td style={{ ...tdR, color: c.texte }}>
-                          {formatEuro(lignes.reduce((s, l) => s + (Number(l.montant_ht) || 0), 0))}
-                        </td>
+                        <td style={{ ...td, color: c.texte }} colSpan={5}>Total</td>
+                        <td style={{ ...tdR, color: c.texte }}>{formatEuro(lignes.reduce((s, l) => s + (Number(l.montant_ht) || 0), 0))}</td>
                         <td style={td} />
                       </tr>
                     </tfoot>
