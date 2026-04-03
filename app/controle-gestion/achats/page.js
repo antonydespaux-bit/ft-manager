@@ -31,6 +31,7 @@ export default function AchatsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [recherche, setRecherche] = useState('')
+  const [deleting, setDeleting] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -61,7 +62,7 @@ export default function AchatsListPage() {
 
     const { data: rows, error: fErr } = await supabase
       .from('achats_factures')
-      .select('id, fournisseur, numero_facture, date_facture, total_ht, created_at')
+      .select('id, fournisseur, numero_facture, date_facture, total_ht, statut, created_at')
       .eq('client_id', cid)
       .order('date_facture', { ascending: false })
 
@@ -93,6 +94,23 @@ export default function AchatsListPage() {
     if (!authReady) return
     loadFactures()
   }, [authReady, loadFactures])
+
+  const handleDelete = async (f, e) => {
+    e.stopPropagation()
+    if (!window.confirm(`Supprimer la facture ${f.numero_facture || f.fournisseur} ? Cette action est irréversible.`)) return
+    setDeleting(f.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`/api/achats/delete-facture?factureId=${f.id}&clientId=${clientId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) await loadFactures()
+      else setError('Erreur lors de la suppression.')
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   if (!authReady) {
     return (
@@ -202,8 +220,10 @@ export default function AchatsListPage() {
                         <th style={th}>Fournisseur</th>
                         <th style={th}>N° Facture</th>
                         <th style={th}>Date</th>
+                        <th style={th}>Statut</th>
                         <th style={thR}>Articles</th>
                         <th style={thR}>Total HT</th>
+                        {role === 'admin' && <th style={th} />}
                       </tr>
                     </thead>
                     <tbody>
@@ -230,8 +250,24 @@ export default function AchatsListPage() {
                             </td>
                             <td style={tdM}>{f.numero_facture || '—'}</td>
                             <td style={tdM}>{formatDate(f.date_facture)}</td>
+                            <td style={td}>
+                              {f.statut === 'bl'
+                                ? <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: '#FEF3C7', color: '#92400E' }}>BL</span>
+                                : <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: '#D1FAE5', color: '#065F46' }}>Facture</span>}
+                            </td>
                             <td style={tdM}>{nb}</td>
                             <td style={tdR}>{formatEuro(ht)}</td>
+                            {role === 'admin' && (
+                              <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={(e) => handleDelete(f, e)}
+                                  disabled={deleting === f.id}
+                                  style={{ background: 'none', border: `1px solid ${c.bordure}`, borderRadius: 6, padding: '4px 10px', fontSize: 12, color: '#B91C1C', cursor: 'pointer' }}
+                                >
+                                  {deleting === f.id ? '…' : 'Supprimer'}
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         )
                       })}

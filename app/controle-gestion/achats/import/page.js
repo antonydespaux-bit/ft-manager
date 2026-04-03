@@ -88,6 +88,7 @@ export default function AchatsImportPage() {
   const [fournisseur, setFournisseur] = useState('')
   const [dateFacture, setDateFacture] = useState(yesterdayIso())
   const [numeroFacture, setNumeroFacture] = useState('')
+  const [statut, setStatut] = useState('facture')
 
   // ── Lignes enrichies ──────────────────────────────────────────────────────
   // Chaque ligne : { _id, designation, quantite, unite, prix_unitaire_ht, remise,
@@ -329,6 +330,7 @@ export default function AchatsImportPage() {
     setFournisseur('')
     setDateFacture(yesterdayIso())
     setNumeroFacture('')
+    setStatut('facture')
     setLignes([])
     setError('')
     setExtractError('')
@@ -395,7 +397,7 @@ export default function AchatsImportPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ clientId, fournisseur, numeroFacture, dateFacture, lignes, forceInsert }),
+        body: JSON.stringify({ clientId, fournisseur, numeroFacture, dateFacture, statut, lignes, forceInsert }),
       })
       const result = await res.json()
 
@@ -414,7 +416,7 @@ export default function AchatsImportPage() {
       setError(err.message || 'Erreur lors de l\'enregistrement.')
       setStep('review')
     }
-  }, [clientId, fournisseur, numeroFacture, dateFacture, lignes])
+  }, [clientId, fournisseur, numeroFacture, dateFacture, statut, lignes])
 
   // ─── Styles partagés ─────────────────────────────────────────────────────
 
@@ -637,9 +639,16 @@ export default function AchatsImportPage() {
                     Date de la facture *
                     <input style={inputS} type="date" value={dateFacture} onChange={e => setDateFacture(e.target.value)} />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted, gridColumn: isMobile ? 'auto' : 'span 2' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
                     N° de facture
                     <input style={inputS} value={numeroFacture} onChange={e => { setNumeroFacture(e.target.value); setDuplicateWarning(null) }} placeholder="Référence optionnelle" />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: c.texteMuted }}>
+                    Type de document
+                    <select style={inputS} value={statut} onChange={e => setStatut(e.target.value)}>
+                      <option value="facture">Facture</option>
+                      <option value="bl">Bon de livraison (BL)</option>
+                    </select>
                   </label>
                 </div>
               </div>
