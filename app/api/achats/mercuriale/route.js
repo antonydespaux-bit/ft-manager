@@ -14,6 +14,14 @@ export async function GET(request) {
 
     const db = getServiceClient()
 
+    // Tous les ingrédients du client — toujours chargés (nécessaire pour la recherche hors mercuriale)
+    const { data: allIngs } = await db
+      .from('ingredients')
+      .select('id, nom, unite')
+      .eq('client_id', clientId)
+      .order('nom')
+    const allIngredients = (allIngs ?? []).map(i => ({ id: i.id, nom: i.nom, unite: i.unite ?? '' }))
+
     // Récupère toutes les factures + BL du client
     const { data: factures, error: fErr } = await db
       .from('achats_factures')
@@ -22,7 +30,11 @@ export async function GET(request) {
       .order('date_facture', { ascending: false })
 
     if (fErr) return Response.json({ error: fErr.message }, { status: 500 })
-    if (!factures?.length) return Response.json({ rows: [], fournisseurs: [] })
+
+    // Pas encore de factures : retourne quand même allIngredients pour la recherche
+    if (!factures?.length) {
+      return Response.json({ rows: [], fournisseurs: [], allIngredients })
+    }
 
     const factureIds = factures.map(f => f.id)
     const factureMap = Object.fromEntries(factures.map(f => [f.id, f]))
@@ -36,7 +48,7 @@ export async function GET(request) {
 
     if (lErr) return Response.json({ error: lErr.message }, { status: 500 })
 
-    // Récupère les ingrédients pour avoir le nom canonique
+    // Index ingrédients pour le nom canonique
     const ingredientIds = [...new Set((lignes ?? []).map(l => l.ingredient_id))]
     let ingredientsById = {}
     if (ingredientIds.length) {
@@ -47,17 +59,7 @@ export async function GET(request) {
       if (ings) ingredientsById = Object.fromEntries(ings.map(i => [i.id, i]))
     }
 
-    // Tous les ingrédients du client (pour la recherche "hors mercuriale")
-    const { data: allIngs } = await db
-      .from('ingredients')
-      .select('id, nom, unite')
-      .eq('client_id', clientId)
-      .eq('est_sous_fiche', false)
-      .order('nom')
-    const allIngredients = (allIngs ?? []).map(i => ({ id: i.id, nom: i.nom, unite: i.unite ?? '' }))
-
     // Agrège par (ingredient_id, fournisseur)
-    // Structure : { [ingredientId]: { [fournisseur]: [{ prix, date }] } }
     const agg = {}
     for (const l of lignes ?? []) {
       const f = factureMap[l.facture_id]
@@ -71,14 +73,14 @@ export async function GET(request) {
       agg[l.ingredient_id][fourn].achats.push({ prix, date: f.date_facture, unite: l.unite })
     }
 
-    // Construit la liste des fournisseurs (triés alphabétiquement)
+    // Liste des fournisseurs triés
     const fournisseursSet = new Set()
     for (const ingData of Object.values(agg)) {
       for (const fourn of Object.keys(ingData)) fournisseursSet.add(fourn)
     }
     const fournisseurs = [...fournisseursSet].sort()
 
-    // Construit les lignes de la mercuriale
+    // Lignes de la mercuriale
     const rows = Object.entries(agg).map(([ingredientId, byFourn]) => {
       const ing = ingredientsById[ingredientId]
       const cols = {}
@@ -88,19 +90,17 @@ export async function GET(request) {
         const sorted = data.achats.sort((a, b) => b.date.localeCompare(a.date))
         const prixLast = sorted[0].prix
         const prixMoy = sorted.reduce((s, a) => s + a.prix, 0) / sorted.length
-        const unite = sorted[0].unite
         cols[fourn] = {
           fournisseur_id: data.fournisseur_id,
           prix_last:      Math.round(prixLast * 10000) / 10000,
           prix_moy:       Math.round(prixMoy * 10000) / 10000,
           date_last:      sorted[0].date,
           nb_achats:      sorted.length,
-          unite,
+          unite:          sorted[0].unite,
         }
         if (bestPrix === null || prixLast < bestPrix) bestPrix = prixLast
       }
 
-      // Marque le fournisseur le moins cher
       for (const fourn of Object.keys(cols)) {
         cols[fourn].is_best = Math.abs(cols[fourn].prix_last - bestPrix) < 0.001
       }
