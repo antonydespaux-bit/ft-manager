@@ -356,7 +356,8 @@ export default function Navbar({ section = 'cuisine' }) {
         <div className="no-print" style={{
           background: NAV, padding: '12px 16px 20px',
           borderBottom: '0.5px solid rgba(255,255,255,0.06)',
-          position: 'sticky', top: '56px', zIndex: 99
+          position: 'sticky', top: '56px', zIndex: 99,
+          maxHeight: 'calc(100vh - 56px)', overflowY: 'auto',
         }}>
           {showReturnSuperAdmin && (
             <button
