@@ -56,6 +56,8 @@ export async function GET(request) {
         'Content-Type': mime,
         'Content-Disposition': 'inline',
         'Cache-Control': 'private, max-age=3600',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Content-Security-Policy': "frame-ancestors 'self'",
       },
     })
   } catch (err) {
