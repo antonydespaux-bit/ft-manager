@@ -597,41 +597,22 @@ export default function AchatsImportPage() {
 
         {/* ══ STEP : REVIEW ══════════════════════════════════════════════════ */}
         {(step === 'review' || step === 'saving') && (
-          <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: 20 } : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, alignItems: 'start' }}>
+          <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: 20 } : { display: 'grid', gridTemplateColumns: '2fr 3fr', gap: 0, alignItems: 'start', minHeight: 'calc(100vh - 140px)' }}>
 
-            {/* ── Colonne gauche : aperçu du fichier ── */}
-            <div style={{ position: isMobile ? 'static' : 'sticky', top: 80 }}>
-              {previewUrl && (
-                isPdf ? (
-                  <iframe
-                    src={previewUrl}
-                    title="Aperçu facture PDF"
-                    style={{ width: '100%', height: isMobile ? 220 : 600, borderRadius: 10, border: `1px solid ${c.bordure}` }}
-                  />
-                ) : (
-                  <img
-                    src={previewUrl}
-                    alt="Aperçu facture"
-                    style={{ width: '100%', maxHeight: isMobile ? 200 : 600, objectFit: 'contain', borderRadius: 10, border: `1px solid ${c.bordure}`, background: c.blanc }}
-                  />
-                )
-              )}
-              {!previewUrl && (
-                <div style={{ background: c.blanc, border: `1px solid ${c.bordure}`, borderRadius: 10, padding: 32, textAlign: 'center', color: c.texteMuted, fontSize: 14 }}>
-                  Aucun fichier sélectionné
+            {/* ── Colonne gauche : métadonnées + lignes ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: isMobile ? 0 : '0 24px 0 0', overflowY: isMobile ? 'visible' : 'auto', maxHeight: isMobile ? 'none' : 'calc(100vh - 140px)' }}>
+
+              {/* Aperçu fichier — mobile uniquement */}
+              {isMobile && previewUrl && (
+                <div>
+                  {isPdf ? (
+                    <iframe src={previewUrl} title="Aperçu facture PDF" style={{ width: '100%', height: 220, borderRadius: 10, border: `1px solid ${c.bordure}` }} />
+                  ) : (
+                    <img src={previewUrl} alt="Aperçu facture" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 10, border: `1px solid ${c.bordure}`, background: c.blanc }} />
+                  )}
+                  <button style={{ ...btnSecondary, marginTop: 10, width: '100%' }} onClick={resetForm}>↩ Changer de fichier</button>
                 </div>
               )}
-              {/* Bouton changer fichier */}
-              <button
-                style={{ ...btnSecondary, marginTop: 10, width: '100%' }}
-                onClick={resetForm}
-              >
-                ↩ Changer de fichier
-              </button>
-            </div>
-
-            {/* ── Colonne droite : métadonnées + lignes ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
               {/* Bandeau extraction échouée */}
               {extractError && (
@@ -908,6 +889,35 @@ export default function AchatsImportPage() {
                 </button>
               </div>
             </div>
+
+            {/* ── Colonne droite : aperçu PDF ── */}
+            {!isMobile && (
+              <div style={{ position: 'sticky', top: 80, height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column', borderLeft: `1px solid ${c.bordure}`, paddingLeft: 24 }}>
+                {previewUrl && (
+                  isPdf ? (
+                    <iframe
+                      src={previewUrl}
+                      title="Aperçu facture PDF"
+                      style={{ width: '100%', flex: 1, borderRadius: 10, border: `1px solid ${c.bordure}` }}
+                    />
+                  ) : (
+                    <img
+                      src={previewUrl}
+                      alt="Aperçu facture"
+                      style={{ width: '100%', flex: 1, objectFit: 'contain', borderRadius: 10, border: `1px solid ${c.bordure}`, background: c.blanc }}
+                    />
+                  )
+                )}
+                {!previewUrl && (
+                  <div style={{ flex: 1, background: c.blanc, border: `1px solid ${c.bordure}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.texteMuted, fontSize: 14 }}>
+                    Aucun fichier
+                  </div>
+                )}
+                <button style={{ ...btnSecondary, marginTop: 10, width: '100%' }} onClick={resetForm}>
+                  ↩ Changer de fichier
+                </button>
+              </div>
+            )}
           </div>
         )}
 
