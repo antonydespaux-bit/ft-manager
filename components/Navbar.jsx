@@ -155,15 +155,6 @@ export default function Navbar({ section = 'cuisine' }) {
           ]
         },
         ...(hasModule('gestion') && (role === 'admin' || role === 'directeur') ? [{
-          label: 'Gestion',
-          paths: ['/inventaire', '/controle-gestion'],
-          items: [
-            { label: 'Inventaire',   path: '/inventaire' },
-            ...(role === 'admin' ? [{ label: 'Achats',      path: '/controle-gestion/achats/import' }] : []),
-            ...(role === 'admin' ? [{ label: 'Marges',      path: '/controle-gestion/marges' }] : []),
-          ]
-        }] : []),
-        ...(role === 'admin' ? [{
           label: 'Admin',
           paths: ['/parametres', '/admin', '/admin/logs', '/admin/ardoise'],
           items: [
