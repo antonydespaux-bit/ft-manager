@@ -164,6 +164,14 @@ export default function Navbar({ section = 'cuisine' }) {
             ...(hasModule('ardoise') ? [{ label: 'Ardoise', path: '/admin/ardoise' }] : []),
           ]
         }] : []),
+        ...(hasModule('controle-gestion') ? [{
+          label: 'Gestion',
+          paths: ['/controle-gestion/marges', '/controle-gestion/import'],
+          items: [
+            { label: 'Dashboard Marges', path: '/controle-gestion/marges' },
+            { label: 'Import ventes',    path: '/controle-gestion/import' },
+          ]
+        }] : []),
       ].filter(g => g.items.length > 0)
 
   // ─── Styles réutilisés ───────────────────────────────────────────────────────

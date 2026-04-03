@@ -7,8 +7,9 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { useTheme } from '../../../lib/useTheme'
 import { getSeuilsFromParams } from '../../../lib/foodCost'
 import Navbar from '../../../components/Navbar'
+import * as XLSX from 'xlsx'
 import {
-  AreaChart, Area, BarChart, Bar, Cell,
+  AreaChart, Area, ScatterChart, Scatter, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 
@@ -52,6 +53,37 @@ function formatEuro(n) {
 function formatPct(n) {
   if (n == null || Number.isNaN(n)) return '—'
   return `${Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`
+}
+
+function formatQte(n) {
+  if (n == null || Number.isNaN(n)) return '—'
+  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
+}
+
+/**
+ * Calcule la consommation théorique par ingrédient d'après les fiches vendues.
+ * Formule : (quantiteVendue × fi.quantite) / fiche.nb_portions
+ */
+function computeConsoTheorique(lignes, ficheIngsMap, ficheNbPortions) {
+  const map = new Map()
+  for (const ligne of lignes) {
+    const nbPortions = ficheNbPortions[ligne.fiche_id]
+    if (!nbPortions || nbPortions <= 0) continue
+    for (const fi of (ficheIngsMap[ligne.fiche_id] || [])) {
+      const conso = (ligne.quantiteVendue * (Number(fi.quantite) || 0)) / nbPortions
+      const ingId = fi.ingredient_id
+      if (!map.has(ingId)) {
+        map.set(ingId, {
+          ingredient_id: ingId,
+          nom: fi.ingredients?.nom ?? `Ingrédient (${ingId})`,
+          unite: fi.unite ?? '—',
+          qteTotale: 0,
+        })
+      }
+      map.get(ingId).qteTotale += conso
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
 
 // ─── Logique d'agrégation ────────────────────────────────────────────────────
@@ -275,13 +307,45 @@ export default function MargesDashboardPage() {
 
   const chartData = useMemo(() => buildChartData(rawVentes, ficheById), [rawVentes, ficheById])
 
-  const top10Data = useMemo(() => {
-    return [...lignes]
-      .filter((L) => L.margePct != null)
-      .sort((a, b) => b.margePct - a.margePct)
-      .slice(0, 10)
-      .map((L) => ({ nom: L.designation.slice(0, 22), marge: Math.round(L.margePct * 10) / 10 }))
-      .reverse()
+  const ficheNbPortions = useMemo(() => {
+    const map = {}
+    Object.entries(ficheById).forEach(([id, f]) => {
+      if (f.nb_portions != null) map[id] = Number(f.nb_portions)
+    })
+    return map
+  }, [ficheById])
+
+  const consoLignes = useMemo(
+    () => computeConsoTheorique(lignes, ficheIngsMap, ficheNbPortions),
+    [lignes, ficheIngsMap, ficheNbPortions]
+  )
+
+  const menuEngineeringData = useMemo(() => {
+    const withData = lignes.filter((L) => L.margePct != null && L.quantiteVendue > 0)
+    if (withData.length === 0) return { points: [], avgQte: 0, avgMarge: 0 }
+    const avgQte = withData.reduce((s, L) => s + L.quantiteVendue, 0) / withData.length
+    const avgMarge = withData.reduce((s, L) => s + L.margePct, 0) / withData.length
+    const points = withData.map((L) => {
+      const isPopular = L.quantiteVendue >= avgQte
+      const isProfitable = L.margePct >= avgMarge
+      const quadrant = isPopular && isProfitable ? 'Star'
+        : isPopular ? 'Vache à lait'
+        : isProfitable ? 'Puzzle'
+        : 'Chien'
+      const quadrantColor = quadrant === 'Star' ? '#3B6D11'
+        : quadrant === 'Vache à lait' ? '#6366F1'
+        : quadrant === 'Puzzle' ? '#D97706'
+        : '#A32D2D'
+      return {
+        x: L.quantiteVendue,
+        y: L.margePct,
+        nom: L.designation,
+        quadrant,
+        quadrantColor,
+        ca: L.caNet,
+      }
+    })
+    return { points, avgQte, avgMarge }
   }, [lignes])
 
   const categories = useMemo(() => {
@@ -319,10 +383,32 @@ export default function MargesDashboardPage() {
     return { bg: '#FCEBEB', color: '#A32D2D' }
   }
 
-  function barColor(marge) {
-    if (marge >= margeSeuilVert) return '#3B6D11'
-    if (marge >= margeSeuilOrange) return '#854F0B'
-    return '#A32D2D'
+  // ── Export Menu Engineering ──────────────────────────────────────────────────
+
+  function exportMenuEngineering() {
+    const { avgQte, avgMarge } = menuEngineeringData
+    const rows = lignes.map((L) => {
+      const isPopular = L.quantiteVendue >= avgQte
+      const isProfitable = (L.margePct ?? 0) >= avgMarge
+      const quadrant = L.margePct == null ? '—'
+        : isPopular && isProfitable ? 'Star ⭐'
+        : isPopular ? 'Vache à lait 🐄'
+        : isProfitable ? 'Puzzle ❓'
+        : 'Chien 🐕'
+      return {
+        'Désignation': L.designation,
+        'Catégorie': L.categorie ?? '—',
+        'Qté vendue': L.quantiteVendue,
+        'CA HT (€)': L.caNet != null ? Number(L.caNet.toFixed(2)) : '',
+        'Coût matière (€)': L.coutMatiere != null ? Number(L.coutMatiere.toFixed(2)) : '',
+        'Marge brute (€)': L.margeBrute != null ? Number(L.margeBrute.toFixed(2)) : '',
+        'Marge (%)': L.margePct != null ? Number(L.margePct.toFixed(1)) : '',
+        'Classification': quadrant,
+      }
+    })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Menu Engineering')
+    XLSX.writeFile(wb, `menu-engineering_${dateDebut}_${dateFin}.xlsx`)
   }
 
   // ── Tri tableau ─────────────────────────────────────────────────────────────
@@ -432,6 +518,30 @@ export default function MargesDashboardPage() {
           )}
         </div>
 
+        {/* ── Boutons d'action ── */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+          <button
+            onClick={() => router.push('/controle-gestion/import')}
+            style={{
+              padding: '7px 14px', borderRadius: 8, fontSize: 13,
+              border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, cursor: 'pointer',
+            }}
+          >
+            ⬆ Importer les ventes
+          </button>
+          {lignes.length > 0 && (
+            <button
+              onClick={exportMenuEngineering}
+              style={{
+                padding: '7px 14px', borderRadius: 8, fontSize: 13,
+                border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texteMuted, cursor: 'pointer',
+              }}
+            >
+              📊 {!isMobile && 'Export '}Menu Engineering
+            </button>
+          )}
+        </div>
+
         {error && (
           <p style={{ color: '#B91C1C', fontSize: 14, marginBottom: 16 }}>{error}</p>
         )}
@@ -519,39 +629,72 @@ export default function MargesDashboardPage() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* BarChart — Top 10 plats par marge */}
-                {top10Data.length > 0 && (
+                {/* ScatterChart — Matrice Menu Engineering */}
+                {menuEngineeringData.points.length > 0 && (
                   <div style={{ background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`, padding: isMobile ? '14px 8px' : '20px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: c.texte, marginBottom: 12 }}>
-                      Top 10 plats — Taux de marge
+                    <div style={{ fontSize: 13, fontWeight: 500, color: c.texte, marginBottom: 6 }}>
+                      Matrice Menu Engineering
                     </div>
-                    <ResponsiveContainer width="100%" height={isMobile ? 220 : 260}>
-                      <BarChart data={top10Data} layout="vertical" margin={{ top: 0, right: 24, left: 0, bottom: 0 }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12, fontSize: 11 }}>
+                      <span style={{ color: '#3B6D11', fontWeight: 500 }}>⭐ Stars</span>
+                      <span style={{ color: '#6366F1', fontWeight: 500 }}>🐄 Vaches à lait</span>
+                      <span style={{ color: '#D97706', fontWeight: 500 }}>❓ Puzzles</span>
+                      <span style={{ color: '#A32D2D', fontWeight: 500 }}>🐕 Chiens</span>
+                    </div>
+                    <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
+                      <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={c.bordure} />
                         <XAxis
                           type="number"
-                          tick={{ fontSize: 10, fill: c.texteMuted }}
+                          dataKey="x"
+                          name="Popularité"
+                          label={{ value: 'Popularité →', position: 'insideBottom', offset: -18, fontSize: 10, fill: c.texteMuted }}
+                          tick={{ fontSize: 9, fill: c.texteMuted }}
                           axisLine={false}
                           tickLine={false}
-                          tickFormatter={(v) => `${v}%`}
                         />
                         <YAxis
-                          dataKey="nom"
-                          type="category"
-                          tick={{ fontSize: 10, fill: c.texteMuted }}
-                          width={isMobile ? 90 : 110}
+                          type="number"
+                          dataKey="y"
+                          name="Marge %"
+                          label={{ value: 'Marge %', angle: -90, position: 'insideLeft', offset: 14, fontSize: 10, fill: c.texteMuted }}
+                          tick={{ fontSize: 9, fill: c.texteMuted }}
                           axisLine={false}
                           tickLine={false}
+                          tickFormatter={(v) => `${v.toFixed(0)}%`}
                         />
                         <Tooltip
-                          contentStyle={{ borderRadius: 8, border: `0.5px solid ${c.bordure}`, fontSize: 12 }}
-                          formatter={(v) => [`${Number(v).toFixed(1)} %`, 'Marge']}
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null
+                            const d = payload[0].payload
+                            return (
+                              <div style={{ background: c.blanc, border: `0.5px solid ${c.bordure}`, borderRadius: 8, padding: '8px 12px', fontSize: 12, maxWidth: 200 }}>
+                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.nom}</div>
+                                <div style={{ color: d.quadrantColor, fontWeight: 500, marginBottom: 4 }}>{d.quadrant}</div>
+                                <div style={{ color: c.texteMuted }}>Popularité : {Number(d.x).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}</div>
+                                <div style={{ color: c.texteMuted }}>Marge : {Number(d.y).toFixed(1)} %</div>
+                              </div>
+                            )
+                          }}
                         />
-                        <Bar dataKey="marge" name="Marge (%)">
-                          {top10Data.map((entry, i) => (
-                            <Cell key={i} fill={barColor(entry.marge)} />
-                          ))}
-                        </Bar>
-                      </BarChart>
+                        <ReferenceLine x={menuEngineeringData.avgQte} stroke={c.texteMuted} strokeDasharray="4 4" strokeWidth={1} />
+                        <ReferenceLine y={menuEngineeringData.avgMarge} stroke={c.texteMuted} strokeDasharray="4 4" strokeWidth={1} />
+                        <Scatter
+                          data={menuEngineeringData.points}
+                          shape={(props) => {
+                            const { cx, cy, payload } = props
+                            return (
+                              <circle
+                                cx={cx} cy={cy} r={5}
+                                fill={payload.quadrantColor}
+                                fillOpacity={0.85}
+                                stroke="white"
+                                strokeWidth={1}
+                              />
+                            )
+                          }}
+                        />
+                      </ScatterChart>
                     </ResponsiveContainer>
                   </div>
                 )}
@@ -673,6 +816,49 @@ export default function MargesDashboardPage() {
                 </div>
               </div>
             )}
+            {/* ── Consommations Théoriques ── */}
+            <div style={{ marginTop: 32 }}>
+              <h2 style={{ margin: '0 0 4px', fontSize: isMobile ? 18 : 20, fontWeight: 600, color: c.texte }}>
+                Consommations théoriques
+              </h2>
+              <p style={{ margin: '0 0 16px', fontSize: 13, color: c.texteMuted, maxWidth: 700 }}>
+                Quantités calculées d&apos;après les recettes et les ventes de la période.
+                Formule : <em>qté vendue × quantité recette / nb portions</em>.
+              </p>
+
+              {consoLignes.length === 0 ? (
+                <p style={{ color: c.texteMuted, fontSize: 14 }}>
+                  {lignes.length === 0
+                    ? 'Aucune vente sur cette période.'
+                    : 'Aucune composition disponible (vérifiez que les fiches ont des ingrédients et un nombre de portions renseigné).'}
+                </p>
+              ) : (
+                <div style={{ overflowX: 'auto', borderRadius: 12, border: `0.5px solid ${c.bordure}`, background: c.blanc }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 480 : 0 }}>
+                    <thead>
+                      <tr style={{ background: c.fond }}>
+                        <th style={{ ...th }}>Ingrédient</th>
+                        <th style={{ ...th, textAlign: 'right' }}>Qté théorique</th>
+                        <th style={{ ...th }}>Unité</th>
+                        <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Achats réels</th>
+                        <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Écart</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {consoLignes.map((L) => (
+                        <tr key={L.ingredient_id}>
+                          <td style={td}>{L.nom}</td>
+                          <td style={tdNum}>{formatQte(L.qteTotale)}</td>
+                          <td style={td}>{L.unite}</td>
+                          <td style={tdMuted}>—</td>
+                          <td style={tdMuted}>—</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
