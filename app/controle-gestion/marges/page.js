@@ -848,14 +848,14 @@ export default function MargesDashboardPage() {
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto', borderRadius: 12, border: `0.5px solid ${c.bordure}`, background: c.blanc }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 340 : 0 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 200 : 0 }}>
                     <thead>
                       <tr style={{ background: c.fond }}>
                         <th style={{ ...th }}>Ingrédient</th>
                         <th style={{ ...th, textAlign: 'right' }}>Qté théorique</th>
                         <th style={{ ...th }}>Unité</th>
-                        <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Achats réels</th>
-                        <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Écart</th>
+                        {!isMobile && <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Achats réels</th>}
+                        {!isMobile && <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Écart</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -864,8 +864,8 @@ export default function MargesDashboardPage() {
                           <td style={td}>{L.nom}</td>
                           <td style={tdNum}>{formatQte(L.qteTotale)}</td>
                           <td style={td}>{L.unite}</td>
-                          <td style={tdMuted}>—</td>
-                          <td style={tdMuted}>—</td>
+                          {!isMobile && <td style={tdMuted}>—</td>}
+                          {!isMobile && <td style={tdMuted}>—</td>}
                         </tr>
                       ))}
                     </tbody>
