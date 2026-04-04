@@ -375,21 +375,19 @@ export default function MercurialePage() {
                   <div style={{ padding: '10px 14px' }}>
                     {isGhostAdding ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <input
-                            autoFocus type="number" min="0" step="0.1"
-                            value={ghostQty} onChange={e => setGhostQty(e.target.value)}
-                            placeholder={`qté (${ing.unite || '—'})`}
-                            style={{ flex: 1, padding: '7px 10px', borderRadius: 7, border: `1px solid ${c.bordure}`, fontSize: 13 }}
-                          />
-                          <select
-                            value={ghostFourn} onChange={e => setGhostFourn(e.target.value)}
-                            style={{ flex: 2, padding: '7px 10px', borderRadius: 7, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, fontSize: 13 }}
-                          >
-                            <option value="">— fournisseur —</option>
-                            {fournisseurs.map(fn => <option key={fn} value={fn}>{fn}</option>)}
-                          </select>
-                        </div>
+                        <input
+                          autoFocus type="number" min="0" step="0.1"
+                          value={ghostQty} onChange={e => setGhostQty(e.target.value)}
+                          placeholder={`qté (${ing.unite || '—'})`}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: `1px solid ${c.bordure}`, fontSize: 13, boxSizing: 'border-box' }}
+                        />
+                        <select
+                          value={ghostFourn} onChange={e => setGhostFourn(e.target.value)}
+                          style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, fontSize: 13, boxSizing: 'border-box' }}
+                        >
+                          <option value="">— fournisseur —</option>
+                          {fournisseurs.map(fn => <option key={fn} value={fn}>{fn}</option>)}
+                        </select>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button onClick={confirmGhostAdd} style={{ flex: 1, padding: '8px', background: c.vert, color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13 }}>✓ Ajouter</button>
                           <button onClick={() => { setGhostAdding(null); setGhostQty(''); setGhostFourn('') }} style={{ padding: '8px 12px', background: 'transparent', border: `1px solid ${c.bordure}`, borderRadius: 7, cursor: 'pointer', fontSize: 13, color: c.texteMuted }}>✕</button>

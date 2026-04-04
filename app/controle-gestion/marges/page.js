@@ -749,7 +749,7 @@ export default function MargesDashboardPage() {
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 440 : 0 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 300 : 0 }}>
                     <thead>
                       <tr style={{ background: c.fond }}>
                         <th style={thSort} onClick={() => handleTri('designation')}>
@@ -761,8 +761,8 @@ export default function MargesDashboardPage() {
                         <th style={thNum} onClick={() => handleTri('caNet')}>
                           CA net{sortIndicator('caNet')}
                         </th>
-                        <th style={{ ...th, textAlign: 'right' }}>Coût matière</th>
-                        <th style={{ ...th, textAlign: 'right' }}>Marge brute</th>
+                        {!isMobile && <th style={{ ...th, textAlign: 'right' }}>Coût matière</th>}
+                        {!isMobile && <th style={{ ...th, textAlign: 'right' }}>Marge brute</th>}
                         <th style={thNum} onClick={() => handleTri('margePct')}>
                           Marge %{sortIndicator('margePct')}
                         </th>
@@ -783,8 +783,8 @@ export default function MargesDashboardPage() {
                             </td>
                             <td style={tdNum}>{Number(L.quantiteVendue).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}</td>
                             <td style={tdNum}>{formatEuro(L.caNet)}</td>
-                            <td style={tdMuted}>{formatEuro(L.coutMatiere)}</td>
-                            <td style={tdNum}>{formatEuro(L.margeBrute)}</td>
+                            {!isMobile && <td style={tdMuted}>{formatEuro(L.coutMatiere)}</td>}
+                            {!isMobile && <td style={tdNum}>{formatEuro(L.margeBrute)}</td>}
                             <td style={{ ...tdNum, color: mc.color, fontWeight: L.margePct != null ? 600 : 400 }}>
                               {formatPct(L.margePct)}
                             </td>
@@ -801,16 +801,20 @@ export default function MargesDashboardPage() {
                         <td style={{ ...tdNum, color: c.texte }}>
                           {formatEuro(lignesFiltrees.reduce((s, L) => s + L.caNet, 0))}
                         </td>
-                        <td style={{ ...tdNum, color: c.texte }}>
-                          {formatEuro(lignesFiltrees.some((L) => L.coutMatiere != null)
-                            ? lignesFiltrees.reduce((s, L) => s + (L.coutMatiere ?? 0), 0)
-                            : null)}
-                        </td>
-                        <td style={{ ...tdNum, color: c.texte }}>
-                          {formatEuro(lignesFiltrees.some((L) => L.margeBrute != null)
-                            ? lignesFiltrees.reduce((s, L) => s + (L.margeBrute ?? 0), 0)
-                            : null)}
-                        </td>
+                        {!isMobile && (
+                          <td style={{ ...tdNum, color: c.texte }}>
+                            {formatEuro(lignesFiltrees.some((L) => L.coutMatiere != null)
+                              ? lignesFiltrees.reduce((s, L) => s + (L.coutMatiere ?? 0), 0)
+                              : null)}
+                          </td>
+                        )}
+                        {!isMobile && (
+                          <td style={{ ...tdNum, color: c.texte }}>
+                            {formatEuro(lignesFiltrees.some((L) => L.margeBrute != null)
+                              ? lignesFiltrees.reduce((s, L) => s + (L.margeBrute ?? 0), 0)
+                              : null)}
+                          </td>
+                        )}
                         <td style={{ ...tdNum, color: c.texte }}>
                           {(() => {
                             const totalCa = lignesFiltrees.reduce((s, L) => s + L.caNet, 0)
