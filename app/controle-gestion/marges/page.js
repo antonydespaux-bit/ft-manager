@@ -9,10 +9,11 @@ import { useRole } from '../../../lib/useRole'
 import { getSeuilsFromParams } from '../../../lib/foodCost'
 import Navbar from '../../../components/Navbar'
 import * as XLSX from 'xlsx'
-import {
-  AreaChart, Area, ScatterChart, Scatter, ReferenceLine,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
+import DateSelector from '../../../components/marges/DateSelector'
+import StatsCards from '../../../components/marges/StatsCards'
+import Charts from '../../../components/marges/Charts'
+import SalesTable from '../../../components/marges/SalesTable'
+import ConsoTable from '../../../components/marges/ConsoTable'
 
 /** Fallback temporaire si `getClientId()` est vide (debug multi-établissement). */
 const DEBUG_FALLBACK_CLIENT_ID = 'fa725e66-2cad-4ea4-892a-7eb3e90496a7'
@@ -42,49 +43,6 @@ function getPeriodDates(periode) {
     return { debut: toIsoDate(firstOfPrevMonth), fin: toIsoDate(lastOfPrevMonth) }
   }
   return null
-}
-
-// ─── Helpers de formatage ─────────────────────────────────────────────────────
-
-function formatEuro(n) {
-  if (n == null || Number.isNaN(n)) return '—'
-  return `${Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
-}
-
-function formatPct(n) {
-  if (n == null || Number.isNaN(n)) return '—'
-  return `${Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`
-}
-
-function formatQte(n) {
-  if (n == null || Number.isNaN(n)) return '—'
-  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 3 })
-}
-
-/**
- * Calcule la consommation théorique par ingrédient d'après les fiches vendues.
- * Formule : (quantiteVendue × fi.quantite) / fiche.nb_portions
- */
-function computeConsoTheorique(lignes, ficheIngsMap, ficheNbPortions) {
-  const map = new Map()
-  for (const ligne of lignes) {
-    const nbPortions = ficheNbPortions[ligne.fiche_id]
-    if (!nbPortions || nbPortions <= 0) continue
-    for (const fi of (ficheIngsMap[ligne.fiche_id] || [])) {
-      const conso = (ligne.quantiteVendue * (Number(fi.quantite) || 0)) / nbPortions
-      const ingId = fi.ingredient_id
-      if (!map.has(ingId)) {
-        map.set(ingId, {
-          ingredient_id: ingId,
-          nom: fi.ingredients?.nom ?? `Ingrédient (${ingId})`,
-          unite: fi.unite ?? '—',
-          qteTotale: 0,
-        })
-      }
-      map.get(ingId).qteTotale += conso
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
 
 // ─── Logique d'agrégation ────────────────────────────────────────────────────
@@ -142,6 +100,28 @@ function buildChartData(rawVentes, ficheById) {
       ca: Math.round(vals.ca * 100) / 100,
       cout: Math.round(vals.cout * 100) / 100,
     }))
+}
+
+function computeConsoTheorique(lignes, ficheIngsMap, ficheNbPortions) {
+  const map = new Map()
+  for (const ligne of lignes) {
+    const nbPortions = ficheNbPortions[ligne.fiche_id]
+    if (!nbPortions || nbPortions <= 0) continue
+    for (const fi of (ficheIngsMap[ligne.fiche_id] || [])) {
+      const conso = (ligne.quantiteVendue * (Number(fi.quantite) || 0)) / nbPortions
+      const ingId = fi.ingredient_id
+      if (!map.has(ingId)) {
+        map.set(ingId, {
+          ingredient_id: ingId,
+          nom: fi.ingredients?.nom ?? `Ingrédient (${ingId})`,
+          unite: fi.unite ?? '—',
+          qteTotale: 0,
+        })
+      }
+      map.get(ingId).qteTotale += conso
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
 }
 
 // ─── Composant principal ─────────────────────────────────────────────────────
@@ -224,7 +204,6 @@ export default function MargesDashboardPage() {
     const p = await getParametres()
     setParams(p)
 
-    // 1. Ventes sur la période
     const { data: ventesRaw, error: vErr } = await supabase
       .from('ventes_journalieres')
       .select('fiche_id, quantite_vendue, prix_vente_net, jour')
@@ -249,7 +228,6 @@ export default function MargesDashboardPage() {
     let ingsMap = {}
 
     if (ficheIds.length > 0) {
-      // 2. Fiches (avec catégorie)
       const { data: fichesRows } = await supabase
         .from('fiches')
         .select('id, nom, cout_portion, nb_portions, categorie')
@@ -257,7 +235,6 @@ export default function MargesDashboardPage() {
 
       ficheMap = Object.fromEntries((fichesRows || []).map((f) => [f.id, f]))
 
-      // 3. Compositions
       const { data: fiRows } = await supabase
         .from('fiche_ingredients')
         .select('fiche_id, ingredient_id, quantite, unite, ingredients(id, nom)')
@@ -270,7 +247,6 @@ export default function MargesDashboardPage() {
       }
     }
 
-    // 4. Achats sur la période
     const { data: achatsRows } = await supabase
       .from('achats_lignes')
       .select('montant_ht, achats_factures!inner(date_facture)')
@@ -344,14 +320,7 @@ export default function MargesDashboardPage() {
         : quadrant === 'Vache à lait' ? '#6366F1'
         : quadrant === 'Puzzle' ? '#D97706'
         : '#A32D2D'
-      return {
-        x: L.quantiteVendue,
-        y: L.margePct,
-        nom: L.designation,
-        quadrant,
-        quadrantColor,
-        ca: L.caNet,
-      }
+      return { x: L.quantiteVendue, y: L.margePct, nom: L.designation, quadrant, quadrantColor, ca: L.caNet }
     })
     return { points, avgQte, avgMarge }
   }, [lignes])
@@ -377,12 +346,11 @@ export default function MargesDashboardPage() {
     })
   }, [lignes, filtreCategorie, triColonne, triSens])
 
-  // ── Seuils couleur (food cost = 100 - marge) ─────────────────────────────────
+  // ── Seuils couleur ──────────────────────────────────────────────────────────
 
   const { seuilVert, seuilOrange } = getSeuilsFromParams(params, 'cuisine')
-  // Seuils food cost → seuils marge (inverser)
-  const margeSeuilVert = 100 - seuilVert     // ex : 100 - 28 = 72%
-  const margeSeuilOrange = 100 - seuilOrange  // ex : 100 - 35 = 65%
+  const margeSeuilVert = 100 - seuilVert
+  const margeSeuilOrange = 100 - seuilOrange
 
   function margeColor(pct) {
     if (pct == null) return { bg: null, color: c.texte }
@@ -419,7 +387,7 @@ export default function MargesDashboardPage() {
     XLSX.writeFile(wb, `menu-engineering_${dateDebut}_${dateFin}.xlsx`)
   }
 
-  // ── Tri tableau ─────────────────────────────────────────────────────────────
+  // ── Tri ─────────────────────────────────────────────────────────────────────
 
   function handleTri(col) {
     if (triColonne === col) {
@@ -428,11 +396,6 @@ export default function MargesDashboardPage() {
       setTriColonne(col)
       setTriSens(col === 'designation' ? 'asc' : 'desc')
     }
-  }
-
-  function sortIndicator(col) {
-    if (triColonne !== col) return ''
-    return triSens === 'asc' ? ' ▲' : ' ▼'
   }
 
   // ── Rendu ────────────────────────────────────────────────────────────────────
@@ -445,28 +408,6 @@ export default function MargesDashboardPage() {
     )
   }
 
-  const th = {
-    padding: isMobile ? '10px 8px' : '12px 14px',
-    textAlign: 'left',
-    fontWeight: 600,
-    fontSize: 12,
-    color: c.texteMuted,
-    borderBottom: `1px solid ${c.bordure}`,
-    whiteSpace: 'nowrap',
-  }
-  const thNum = { ...th, textAlign: 'right', cursor: 'pointer', userSelect: 'none' }
-  const thSort = { ...th, cursor: 'pointer', userSelect: 'none' }
-  const td = { padding: isMobile ? '10px 8px' : '12px 14px', fontSize: 14, color: c.texte, borderBottom: `1px solid ${c.bordure}` }
-  const tdNum = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
-  const tdMuted = { ...tdNum, color: c.texteMuted }
-
-  const periodes = [
-    { id: '7j', label: '7 jours' },
-    { id: '30j', label: '30 jours' },
-    { id: 'mois-precedent', label: 'Mois dernier' },
-    { id: 'custom', label: 'Personnalisé' },
-  ]
-
   const margePctVal = totaux.margePct
   const margeCardColors = margeColor(margePctVal)
   const coverageCardColors = coveragePct == null ? { bg: null, color: c.texte }
@@ -478,7 +419,6 @@ export default function MargesDashboardPage() {
       <Navbar section="cuisine" />
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1200px', margin: '0 auto' }}>
 
-        {/* ── En-tête ── */}
         <h1 style={{ margin: '0 0 4px', fontSize: isMobile ? 22 : 26, fontWeight: 600, color: c.texte }}>
           Dashboard Marges
         </h1>
@@ -486,47 +426,16 @@ export default function MargesDashboardPage() {
           Analyse des marges sur ventes — CA, coût matière et rentabilité par plat.
         </p>
 
-        {/* ── Sélecteur de période ── */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-          {periodes.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => handlePeriode(id)}
-              style={{
-                padding: '7px 14px',
-                borderRadius: 8,
-                border: `1px solid ${periode === id ? c.accent : c.bordure}`,
-                background: periode === id ? c.accent : c.blanc,
-                color: periode === id ? '#fff' : c.texte,
-                fontSize: 13,
-                fontWeight: periode === id ? 600 : 400,
-                cursor: 'pointer',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        <DateSelector
+          periode={periode}
+          dateDebut={dateDebut}
+          dateFin={dateFin}
+          onPeriode={handlePeriode}
+          onDateDebut={setDateDebut}
+          onDateFin={setDateFin}
+        />
 
-          {periode === 'custom' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginLeft: 4 }}>
-              <input
-                type="date"
-                value={dateDebut}
-                onChange={(e) => setDateDebut(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, fontSize: 13 }}
-              />
-              <span style={{ fontSize: 13, color: c.texteMuted }}>→</span>
-              <input
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, fontSize: 13 }}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* ── Boutons d'action ── */}
+        {/* Boutons d'action */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
           {role === 'admin' && (
             <button
@@ -552,327 +461,36 @@ export default function MargesDashboardPage() {
           )}
         </div>
 
-        {error && (
-          <p style={{ color: '#B91C1C', fontSize: 14, marginBottom: 16 }}>{error}</p>
-        )}
-
-        {loading && (
-          <p style={{ color: c.texteMuted, fontSize: 14, marginBottom: 24 }}>Chargement des données…</p>
-        )}
+        {error && <p style={{ color: '#B91C1C', fontSize: 14, marginBottom: 16 }}>{error}</p>}
+        {loading && <p style={{ color: c.texteMuted, fontSize: 14, marginBottom: 24 }}>Chargement des données…</p>}
 
         {!loading && !error && clientId && (
           <>
-            {/* ── KPI Cards ── */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-              gap: isMobile ? 10 : 16,
-              marginBottom: 24,
-            }}>
-              {/* CA Total */}
-              <div style={{ background: c.accentClair, borderRadius: 12, padding: isMobile ? 14 : 20, border: `0.5px solid ${c.bordure}` }}>
-                <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase', marginBottom: 8 }}>CA Total (HT)</div>
-                <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 600, color: c.accent }}>
-                  {formatEuro(totaux.caNet)}
-                </div>
-                <div style={{ fontSize: 11, color: c.texteMuted, marginTop: 4 }}>
-                  {lignes.length} plat{lignes.length !== 1 ? 's' : ''} vendus
-                </div>
-              </div>
+            <StatsCards
+              totaux={totaux}
+              totalAchatsHT={totalAchatsHT}
+              lignesCount={lignes.length}
+              margePctVal={margePctVal}
+              margeCardColors={margeCardColors}
+              coverageCardColors={coverageCardColors}
+              coveragePct={coveragePct}
+            />
 
-              {/* Marge Théorique */}
-              <div style={{ background: margeCardColors.bg ?? c.blanc, borderRadius: 12, padding: isMobile ? 14 : 20, border: `0.5px solid ${c.bordure}` }}>
-                <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase', marginBottom: 8 }}>Marge Théorique</div>
-                <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 600, color: margeCardColors.color }}>
-                  {formatPct(margePctVal)}
-                </div>
-                <div style={{ fontSize: 11, color: c.texteMuted, marginTop: 4 }}>Basée sur les fiches techniques</div>
-              </div>
+            <Charts chartData={chartData} menuEngineeringData={menuEngineeringData} />
 
-              {/* Coût Matière */}
-              <div style={{ background: c.blanc, borderRadius: 12, padding: isMobile ? 14 : 20, border: `0.5px solid ${c.bordure}` }}>
-                <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase', marginBottom: 8 }}>Coût Matière</div>
-                <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 600, color: c.texte }}>
-                  {formatEuro(totaux.coutMatiere)}
-                </div>
-                <div style={{ fontSize: 11, color: c.texteMuted, marginTop: 4 }}>
-                  {totalAchatsHT != null && totalAchatsHT > 0 ? `Achats réels : ${formatEuro(totalAchatsHT)}` : 'Depuis les fiches techniques'}
-                </div>
-              </div>
+            <SalesTable
+              lignes={lignes}
+              lignesFiltrees={lignesFiltrees}
+              categories={categories}
+              filtreCategorie={filtreCategorie}
+              onFiltreCategorie={setFiltreCategorie}
+              triColonne={triColonne}
+              triSens={triSens}
+              onTri={handleTri}
+              margeColor={margeColor}
+            />
 
-              {/* Indice de Performance */}
-              <div style={{ background: coverageCardColors.bg ?? c.blanc, borderRadius: 12, padding: isMobile ? 14 : 20, border: `0.5px solid ${c.bordure}` }}>
-                <div style={{ fontSize: 11, color: c.texteMuted, fontWeight: 500, textTransform: 'uppercase', marginBottom: 8 }}>Indice de Performance</div>
-                <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 600, color: coverageCardColors.color }}>
-                  {coveragePct != null ? `${Math.round(coveragePct)} %` : '—'}
-                </div>
-                <div style={{ fontSize: 11, color: c.texteMuted, marginTop: 4 }}>CA couvert par les fiches</div>
-              </div>
-            </div>
-
-            {/* ── Graphiques ── */}
-            {chartData.length > 0 && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                gap: isMobile ? 12 : 16,
-                marginBottom: 24,
-              }}>
-                {/* AreaChart — CA vs Coût Matière */}
-                <div style={{ background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`, padding: isMobile ? '14px 8px' : '20px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: c.texte, marginBottom: 12 }}>
-                    Évolution CA vs Coût Matière
-                  </div>
-                  <ResponsiveContainer width="100%" height={isMobile ? 180 : 220}>
-                    <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={c.bordure} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: c.texteMuted }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: c.texteMuted }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}€`} />
-                      <Tooltip
-                        contentStyle={{ borderRadius: 8, border: `0.5px solid ${c.bordure}`, fontSize: 12 }}
-                        formatter={(v) => [`${Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`]}
-                      />
-                      <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                      <Area type="monotone" dataKey="ca" name="CA HT" stroke={c.accent} fill={c.accentClair} strokeWidth={2} dot={false} />
-                      <Area type="monotone" dataKey="cout" name="Coût Matière" stroke="#D97706" fill="#FEF3C7" strokeWidth={2} dot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* ScatterChart — Matrice Menu Engineering */}
-                {menuEngineeringData.points.length > 0 && (
-                  <div style={{ background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`, padding: isMobile ? '14px 8px' : '20px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: c.texte, marginBottom: 6 }}>
-                      Matrice Menu Engineering
-                    </div>
-                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12, fontSize: 11 }}>
-                      <span style={{ color: '#3B6D11', fontWeight: 500 }}>⭐ Stars</span>
-                      <span style={{ color: '#6366F1', fontWeight: 500 }}>🐄 Vaches à lait</span>
-                      <span style={{ color: '#D97706', fontWeight: 500 }}>❓ Puzzles</span>
-                      <span style={{ color: '#A32D2D', fontWeight: 500 }}>🐕 Chiens</span>
-                    </div>
-                    <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
-                      <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={c.bordure} />
-                        <XAxis
-                          type="number"
-                          dataKey="x"
-                          name="Popularité"
-                          label={{ value: 'Popularité →', position: 'insideBottom', offset: -18, fontSize: 10, fill: c.texteMuted }}
-                          tick={{ fontSize: 9, fill: c.texteMuted }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          type="number"
-                          dataKey="y"
-                          name="Marge %"
-                          label={{ value: 'Marge %', angle: -90, position: 'insideLeft', offset: 14, fontSize: 10, fill: c.texteMuted }}
-                          tick={{ fontSize: 9, fill: c.texteMuted }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={(v) => `${v.toFixed(0)}%`}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload?.length) return null
-                            const d = payload[0].payload
-                            return (
-                              <div style={{ background: c.blanc, border: `0.5px solid ${c.bordure}`, borderRadius: 8, padding: '8px 12px', fontSize: 12, maxWidth: 200 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.nom}</div>
-                                <div style={{ color: d.quadrantColor, fontWeight: 500, marginBottom: 4 }}>{d.quadrant}</div>
-                                <div style={{ color: c.texteMuted }}>Popularité : {Number(d.x).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}</div>
-                                <div style={{ color: c.texteMuted }}>Marge : {Number(d.y).toFixed(1)} %</div>
-                              </div>
-                            )
-                          }}
-                        />
-                        <ReferenceLine x={menuEngineeringData.avgQte} stroke={c.texteMuted} strokeDasharray="4 4" strokeWidth={1} />
-                        <ReferenceLine y={menuEngineeringData.avgMarge} stroke={c.texteMuted} strokeDasharray="4 4" strokeWidth={1} />
-                        <Scatter
-                          data={menuEngineeringData.points}
-                          shape={(props) => {
-                            const { cx, cy, payload } = props
-                            return (
-                              <circle
-                                cx={cx} cy={cy} r={5}
-                                fill={payload.quadrantColor}
-                                fillOpacity={0.85}
-                                stroke="white"
-                                strokeWidth={1}
-                              />
-                            )
-                          }}
-                        />
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Tableau détail ── */}
-            {lignes.length === 0 ? (
-              <p style={{ color: c.texteMuted, fontSize: 14 }}>Aucune vente enregistrée sur cette période.</p>
-            ) : (
-              <div style={{ background: c.blanc, borderRadius: 12, border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
-                {/* En-tête tableau avec filtres */}
-                <div style={{ padding: '14px 16px', borderBottom: `0.5px solid ${c.bordure}`, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: c.texte, marginRight: 4 }}>Détail par plat</span>
-                  <button
-                    onClick={() => setFiltreCategorie('all')}
-                    style={{
-                      padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-                      border: `1px solid ${filtreCategorie === 'all' ? c.accent : c.bordure}`,
-                      background: filtreCategorie === 'all' ? c.accent : c.blanc,
-                      color: filtreCategorie === 'all' ? '#fff' : c.texteMuted,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Tout
-                  </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setFiltreCategorie(cat)}
-                      style={{
-                        padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-                        border: `1px solid ${filtreCategorie === cat ? c.accent : c.bordure}`,
-                        background: filtreCategorie === cat ? c.accent : c.blanc,
-                        color: filtreCategorie === cat ? '#fff' : c.texteMuted,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 300 : 0 }}>
-                    <thead>
-                      <tr style={{ background: c.fond }}>
-                        <th style={thSort} onClick={() => handleTri('designation')}>
-                          Désignation{sortIndicator('designation')}
-                        </th>
-                        <th style={{ ...thNum }} onClick={() => handleTri('quantiteVendue')}>
-                          Qté{sortIndicator('quantiteVendue')}
-                        </th>
-                        <th style={thNum} onClick={() => handleTri('caNet')}>
-                          CA net{sortIndicator('caNet')}
-                        </th>
-                        {!isMobile && <th style={{ ...th, textAlign: 'right' }}>Coût matière</th>}
-                        {!isMobile && <th style={{ ...th, textAlign: 'right' }}>Marge brute</th>}
-                        <th style={thNum} onClick={() => handleTri('margePct')}>
-                          Marge %{sortIndicator('margePct')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lignesFiltrees.map((L) => {
-                        const mc = margeColor(L.margePct)
-                        return (
-                          <tr key={L.fiche_id}>
-                            <td style={td}>
-                              {L.designation}
-                              {L.categorie && (
-                                <span style={{ marginLeft: 6, fontSize: 10, color: c.texteMuted, background: c.fond, borderRadius: 4, padding: '1px 5px' }}>
-                                  {L.categorie}
-                                </span>
-                              )}
-                            </td>
-                            <td style={tdNum}>{Number(L.quantiteVendue).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}</td>
-                            <td style={tdNum}>{formatEuro(L.caNet)}</td>
-                            {!isMobile && <td style={tdMuted}>{formatEuro(L.coutMatiere)}</td>}
-                            {!isMobile && <td style={tdNum}>{formatEuro(L.margeBrute)}</td>}
-                            <td style={{ ...tdNum, color: mc.color, fontWeight: L.margePct != null ? 600 : 400 }}>
-                              {formatPct(L.margePct)}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ fontWeight: 600, background: c.fond }}>
-                        <td style={{ ...td, color: c.texte }}>Total ({lignesFiltrees.length} plat{lignesFiltrees.length !== 1 ? 's' : ''})</td>
-                        <td style={{ ...tdNum, color: c.texte }}>
-                          {Number(lignesFiltrees.reduce((s, L) => s + L.quantiteVendue, 0)).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
-                        </td>
-                        <td style={{ ...tdNum, color: c.texte }}>
-                          {formatEuro(lignesFiltrees.reduce((s, L) => s + L.caNet, 0))}
-                        </td>
-                        {!isMobile && (
-                          <td style={{ ...tdNum, color: c.texte }}>
-                            {formatEuro(lignesFiltrees.some((L) => L.coutMatiere != null)
-                              ? lignesFiltrees.reduce((s, L) => s + (L.coutMatiere ?? 0), 0)
-                              : null)}
-                          </td>
-                        )}
-                        {!isMobile && (
-                          <td style={{ ...tdNum, color: c.texte }}>
-                            {formatEuro(lignesFiltrees.some((L) => L.margeBrute != null)
-                              ? lignesFiltrees.reduce((s, L) => s + (L.margeBrute ?? 0), 0)
-                              : null)}
-                          </td>
-                        )}
-                        <td style={{ ...tdNum, color: c.texte }}>
-                          {(() => {
-                            const totalCa = lignesFiltrees.reduce((s, L) => s + L.caNet, 0)
-                            const totalMarge = lignesFiltrees.some((L) => L.margeBrute != null)
-                              ? lignesFiltrees.reduce((s, L) => s + (L.margeBrute ?? 0), 0)
-                              : null
-                            return totalMarge != null && totalCa > 0 ? formatPct((totalMarge / totalCa) * 100) : '—'
-                          })()}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            )}
-            {/* ── Consommations Théoriques ── */}
-            <div style={{ marginTop: 32 }}>
-              <h2 style={{ margin: '0 0 4px', fontSize: isMobile ? 18 : 20, fontWeight: 600, color: c.texte }}>
-                Consommations théoriques
-              </h2>
-              <p style={{ margin: '0 0 16px', fontSize: 13, color: c.texteMuted, maxWidth: 700 }}>
-                Quantités calculées d&apos;après les recettes et les ventes de la période.
-                Formule : <em>qté vendue × quantité recette / nb portions</em>.
-              </p>
-
-              {consoLignes.length === 0 ? (
-                <p style={{ color: c.texteMuted, fontSize: 14 }}>
-                  {lignes.length === 0
-                    ? 'Aucune vente sur cette période.'
-                    : 'Aucune composition disponible (vérifiez que les fiches ont des ingrédients et un nombre de portions renseigné).'}
-                </p>
-              ) : (
-                <div style={{ overflowX: 'auto', borderRadius: 12, border: `0.5px solid ${c.bordure}`, background: c.blanc }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 200 : 0 }}>
-                    <thead>
-                      <tr style={{ background: c.fond }}>
-                        <th style={{ ...th }}>Ingrédient</th>
-                        <th style={{ ...th, textAlign: 'right' }}>Qté théorique</th>
-                        <th style={{ ...th }}>Unité</th>
-                        {!isMobile && <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Achats réels</th>}
-                        {!isMobile && <th style={{ ...th, textAlign: 'right', color: c.texteMuted }}>Écart</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {consoLignes.map((L) => (
-                        <tr key={L.ingredient_id}>
-                          <td style={td}>{L.nom}</td>
-                          <td style={tdNum}>{formatQte(L.qteTotale)}</td>
-                          <td style={td}>{L.unite}</td>
-                          {!isMobile && <td style={tdMuted}>—</td>}
-                          {!isMobile && <td style={tdMuted}>—</td>}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <ConsoTable consoLignes={consoLignes} hasVentes={lignes.length > 0} />
           </>
         )}
       </div>
