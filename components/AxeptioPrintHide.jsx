@@ -13,14 +13,17 @@ export default function AxeptioPrintHide() {
     // Axeptio peut ré-appliquer ses styles inline après notre premier passage.
     // On observe à la fois les mutations DOM (injection du widget) ET les
     // changements d'attribut style sur l'élément lui-même.
-    let applying = false
     const applyPos = (el) => {
-      if (applying) return
-      applying = true
+      if (!el || window.innerWidth >= 768) return
+      // Si déjà correct → ne rien faire (empêche la boucle infinie avec styleObserver)
+      if (
+        el.style.getPropertyValue('bottom') === '72px' &&
+        el.style.getPropertyValue('right') === '16px' &&
+        el.style.getPropertyValue('left') === 'auto'
+      ) return
       el.style.setProperty('bottom', '72px', 'important')
       el.style.setProperty('right', '16px', 'important')
       el.style.setProperty('left', 'auto', 'important')
-      applying = false
     }
 
     // Observe les re-styles Axeptio sur l'overlay lui-même
