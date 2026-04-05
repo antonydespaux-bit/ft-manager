@@ -1,0 +1,85 @@
+import { z } from 'zod'
+import { uuidSchema, clientIdSchema } from './achats.schema'
+
+// ── Roles ──────────────────────────────────────────────────────────────────
+const roleSchema = z.enum(['admin', 'cuisine', 'bar', 'directeur'])
+
+// ── Create user ────────────────────────────────────────────────────────────
+export const createUserSchema = z.object({
+  email:    z.string().email('Email invalide'),
+  password: z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+  nom:      z.string().min(1, 'Nom requis').max(255),
+  role:     roleSchema.default('cuisine'),
+  clientId: clientIdSchema,
+})
+
+export type CreateUserInput = z.infer<typeof createUserSchema>
+
+// ── Invite admin ───────────────────────────────────────────────────────────
+export const inviteAdminSchema = z.object({
+  email:    z.string().email('Email invalide'),
+  nom:      z.string().min(1, 'Nom requis').max(255),
+  clientId: clientIdSchema,
+})
+
+// ── List users query ───────────────────────────────────────────────────────
+export const listUsersQuerySchema = z.object({
+  client_id: clientIdSchema,
+})
+
+// ── Update user (superadmin) ───────────────────────────────────────────────
+export const updateUserSchema = z.object({
+  userId:           uuidSchema,
+  email:            z.string().email().optional(),
+  nom:              z.string().min(1).max(255).optional(),
+  role:             roleSchema.optional(),
+  telephone:        z.string().max(20).optional().nullable(),
+  site_web:         z.string().max(255).optional().nullable(),
+  siret_personnel:  z.string().regex(/^\d{14}$/, 'SIRET invalide (14 chiffres)').optional().nullable(),
+  adresse_pro:      z.string().max(500).optional().nullable(),
+})
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>
+
+// ── Delete user ────────────────────────────────────────────────────────────
+export const deleteUserSchema = z.object({
+  userId: uuidSchema,
+})
+
+// ── Create global user (superadmin) ────────────────────────────────────────
+export const createGlobalUserSchema = z.object({
+  email:            z.string().email('Email invalide'),
+  password:         z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+  nom:              z.string().min(1, 'Nom requis').max(255),
+  role:             roleSchema.default('admin'),
+  clientIds:        z.array(uuidSchema).optional().default([]),
+  telephone:        z.string().max(20).optional().nullable(),
+  site_web:         z.string().max(255).optional().nullable(),
+  siret_personnel:  z.string().regex(/^\d{14}$/, 'SIRET invalide').optional().nullable(),
+  adresse_pro:      z.string().max(500).optional().nullable(),
+})
+
+export type CreateGlobalUserInput = z.infer<typeof createGlobalUserSchema>
+
+// ── Update client (legal info) ─────────────────────────────────────────────
+export const updateClientSchema = z.object({
+  clientId:          clientIdSchema,
+  siret:             z.string().regex(/^\d{14}$/, 'SIRET invalide (14 chiffres)').optional().nullable(),
+  numero_tva:        z.string().regex(/^[A-Z]{2}\d+$/, 'Format TVA invalide').optional().nullable(),
+  adresse:           z.string().max(500).optional().nullable(),
+  code_naf:          z.string().max(10).optional().nullable(),
+  kbis_url:          z.string().max(500).optional().nullable(),
+  rib_url:           z.string().max(500).optional().nullable(),
+  email_contact:     z.string().email().optional().nullable(),
+  telephone_contact: z.string().max(20).optional().nullable(),
+})
+
+export type UpdateClientInput = z.infer<typeof updateClientSchema>
+
+// ── Activity logs query ────────────────────────────────────────────────────
+export const activityLogsQuerySchema = z.object({
+  clientId: clientIdSchema.optional(),
+  userId:   uuidSchema.optional(),
+  device:   z.string().optional(),
+  timespan: z.enum(['24h', '7d', '30d', 'all']).default('7d'),
+})
