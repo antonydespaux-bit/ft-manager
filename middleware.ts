@@ -152,7 +152,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // ── 3. Security headers ──────────────────────────────────────────────────
-  res.headers.set('X-Frame-Options', 'DENY')
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN')
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
@@ -171,10 +171,10 @@ export async function middleware(req: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://fonts.axept.io https://*.axept.io",
       "font-src 'self' https://fonts.gstatic.com https://fonts.axept.io",
       "img-src 'self' data: blob: https:",
-      "frame-src 'self' blob:",
+      "frame-src 'self' blob: data:",
       "worker-src 'self' blob:",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://static.axept.io https://axept.io https://*.axept.io https://cdn.jsdelivr.net https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://lottie.host",
-      "frame-ancestors 'none'",
+      "frame-ancestors 'self'",
     ].join('; ')
   )
 
