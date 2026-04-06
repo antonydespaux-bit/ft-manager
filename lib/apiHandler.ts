@@ -62,7 +62,7 @@ export function apiHandler<T>(options: ApiHandlerOptions<T>) {
       // ── 1. Parse & validate body or query ─────────────────────────────
       if (options.schema) {
         const method = request.method.toUpperCase()
-        if (method === 'GET' || method === 'DELETE') {
+        if (method === 'GET') {
           const url = new URL(request.url)
           const rawQuery = Object.fromEntries(url.searchParams.entries())
           const result = options.schema.safeParse(rawQuery)

@@ -34,15 +34,23 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
         </div>
       )}
 
-      {!activityLoading && activityData && (
+      {!activityLoading && activityData && (() => {
+        // Normalize: service may return { logs } or { kpis, recentLogs, chartData, ... }
+        const logs = activityData.recentLogs || activityData.logs || []
+        const kpis = activityData.kpis || null
+        const chartData = chartData
+        const clients = activityData.clients || []
+        const users = activityData.users || []
+
+        return (
         <>
           {/* KPI Cards */}
-          {activityData.kpis && (
+          {kpis && (
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
             {[
-              { label: 'Utilisateurs actifs (24h)', value: activityData.kpis?.activeUsers24h ?? '—', icon: '👤', color: '#6366F1', bg: '#EEF2FF' },
-              { label: 'Modifications aujourd\'hui', value: activityData.kpis?.modificationsToday ?? '—', icon: '✏️', color: '#D97706', bg: '#FEF3C7' },
-              { label: 'Établissement le plus actif', value: activityData.kpis?.topClient || '—', icon: '🏆', color: '#16A34A', bg: '#DCFCE7' },
+              { label: 'Utilisateurs actifs (24h)', value: kpis.activeUsers24h ?? '—', icon: '👤', color: '#6366F1', bg: '#EEF2FF' },
+              { label: 'Modifications aujourd\'hui', value: kpis.modificationsToday ?? '—', icon: '✏️', color: '#D97706', bg: '#FEF3C7' },
+              { label: 'Établissement le plus actif', value: kpis.topClient || '—', icon: '🏆', color: '#16A34A', bg: '#DCFCE7' },
             ].map((kpi) => (
               <div key={kpi.label} style={{ background: 'white', borderRadius: '12px', border: '0.5px solid #E4E4E7', padding: '20px 24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -62,7 +70,7 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
               <select value={filterClient} onChange={e => handleFilterChange(e.target.value, filterUser, filterDevice)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid #E4E4E7', fontSize: '13px', background: 'white', color: '#18181B', outline: 'none' }}>
                 <option value="">Tous les établissements</option>
-                {(activityData.clients || []).map(c => <option key={c.id} value={c.id}>{c.nom_etablissement}</option>)}
+                {clients.map(c => <option key={c.id} value={c.id}>{c.nom_etablissement}</option>)}
               </select>
             </div>
             <div style={{ flex: 1, minWidth: '160px' }}>
@@ -70,7 +78,7 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
               <select value={filterUser} onChange={e => handleFilterChange(filterClient, e.target.value, filterDevice)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid #E4E4E7', fontSize: '13px', background: 'white', color: '#18181B', outline: 'none' }}>
                 <option value="">Tous les utilisateurs</option>
-                {(activityData.users || []).map(u => <option key={u.user_id} value={u.user_id}>{u.user_nom}</option>)}
+                {users.map(u => <option key={u.user_id} value={u.user_id}>{u.user_nom}</option>)}
               </select>
             </div>
             <div style={{ flex: 1, minWidth: '160px' }}>
@@ -94,7 +102,7 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
             <div style={{ fontSize: '13px', fontWeight: '600', color: '#18181B', marginBottom: '4px' }}>Volume d'actions — 7 derniers jours</div>
             <div style={{ fontSize: '12px', color: '#71717A', marginBottom: '20px' }}>Toutes actions confondues</div>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={activityData.chartData || []} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
+              <LineChart data={chartData} margin={{ top: 4, right: 16, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F4F4F5" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#71717A' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#71717A' }} axisLine={false} tickLine={false} allowDecimals={false} />
@@ -108,7 +116,7 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
           <div style={{ background: 'white', borderRadius: '12px', border: '0.5px solid #E4E4E7', overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '0.5px solid #E4E4E7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '13px', fontWeight: '600', color: '#18181B' }}>Journal d'audit</div>
-              <span style={{ fontSize: '12px', color: '#71717A' }}>{(activityData.recentLogs || []).length} dernières actions</span>
+              <span style={{ fontSize: '12px', color: '#71717A' }}>{logs.length} dernières actions</span>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? '600px' : 'auto' }}>
@@ -120,10 +128,10 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
                   </tr>
                 </thead>
                 <tbody>
-                  {(activityData.recentLogs || []).length === 0 && (
+                  {logs.length === 0 && (
                     <tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#71717A', fontSize: '14px' }}>Aucune activité sur cette période</td></tr>
                   )}
-                  {(activityData.recentLogs || []).map((log, i) => {
+                  {logs.map((log, i) => {
                     const actionColors = {
                       CREATION: { bg: '#EAF3DE', color: '#3B6D11' },
                       MODIFICATION: { bg: '#FAEEDA', color: '#854F0B' },
@@ -133,7 +141,7 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
                     }
                     const deviceIcons = { iOS: '📱', Android: '🤖', Windows: '🖥', Mac: '🍎', Linux: '🐧', Inconnu: '❓', Autre: '💻' }
                     const ac = actionColors[log.action] || { bg: '#F4F4F5', color: '#71717A' }
-                    const clientNom = (activityData.clients || []).find(c => c.id === log.client_id)?.nom_etablissement || log.client_id?.slice(0, 8) || '—'
+                    const clientNom = clients.find(c => c.id === log.client_id)?.nom_etablissement || log.client_id?.slice(0, 8) || '—'
                     const heure = new Date(log.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
                     return (
                       <tr key={log.id || i} style={{ borderBottom: '0.5px solid #F4F4F5' }}>
@@ -157,7 +165,8 @@ export default function ActivityDashboard({ activityData, activityLoading, isMob
             </div>
           </div>
         </>
-      )}
+        )
+      })()}
 
       {!activityLoading && !activityData && (
         <div style={{ background: 'white', borderRadius: '12px', border: '0.5px solid #E4E4E7', padding: '60px', textAlign: 'center', color: '#71717A' }}>

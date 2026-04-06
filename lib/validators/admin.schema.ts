@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { uuidSchema, clientIdSchema } from './achats.schema'
 
 // ── Roles ──────────────────────────────────────────────────────────────────
-const roleSchema = z.enum(['admin', 'cuisine', 'bar', 'directeur'])
+const roleSchema = z.enum(['admin', 'cuisine', 'bar', 'directeur', 'consultant'])
 
 // ── Create user ────────────────────────────────────────────────────────────
 export const createUserSchema = z.object({

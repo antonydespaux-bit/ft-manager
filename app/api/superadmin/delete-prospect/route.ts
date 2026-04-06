@@ -2,7 +2,7 @@ import { apiHandler } from '../../../../lib/apiHandler'
 import { z } from 'zod'
 
 const schema = z.object({
-  prospectId: z.string().uuid(),
+  id: z.string().uuid(),
 })
 
 export const DELETE = apiHandler({
@@ -12,7 +12,7 @@ export const DELETE = apiHandler({
     const { error } = await db
       .from('prospects')
       .delete()
-      .eq('id', data.prospectId)
+      .eq('id', data.id)
 
     if (error) throw new Error(error.message)
     return Response.json({ deleted: true })
