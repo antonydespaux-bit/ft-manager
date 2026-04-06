@@ -17,9 +17,9 @@ export type CreateUserInput = z.infer<typeof createUserSchema>
 
 // ── Invite admin ───────────────────────────────────────────────────────────
 export const inviteAdminSchema = z.object({
-  email:    z.string().email('Email invalide'),
-  nom:      z.string().min(1, 'Nom requis').max(255),
-  clientId: clientIdSchema,
+  email:        z.string().email('Email invalide'),
+  nom_complet:  z.string().min(1, 'Nom requis').max(255),
+  client_id:    clientIdSchema,
 })
 
 // ── List users query ───────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export const listUsersQuerySchema = z.object({
 
 // ── Update user (superadmin) ───────────────────────────────────────────────
 export const updateUserSchema = z.object({
-  userId:           uuidSchema,
+  user_id:          uuidSchema,
   email:            z.string().email().optional(),
   nom:              z.string().min(1).max(255).optional(),
   role:             roleSchema.optional(),
@@ -43,16 +43,16 @@ export type UpdateUserInput = z.infer<typeof updateUserSchema>
 
 // ── Delete user ────────────────────────────────────────────────────────────
 export const deleteUserSchema = z.object({
-  userId: uuidSchema,
+  user_id: uuidSchema,
 })
 
 // ── Create global user (superadmin) ────────────────────────────────────────
 export const createGlobalUserSchema = z.object({
   email:            z.string().email('Email invalide'),
-  password:         z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+  password:         z.string().min(8, 'Mot de passe : 8 caractères minimum').optional(),
   nom:              z.string().min(1, 'Nom requis').max(255),
   role:             roleSchema.default('admin'),
-  clientIds:        z.array(uuidSchema).optional().default([]),
+  client_ids:       z.array(uuidSchema).optional().default([]),
   telephone:        z.string().max(20).optional().nullable(),
   site_web:         z.string().max(255).optional().nullable(),
   siret_personnel:  z.string().regex(/^\d{14}$/, 'SIRET invalide').optional().nullable(),

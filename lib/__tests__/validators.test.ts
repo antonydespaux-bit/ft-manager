@@ -239,7 +239,7 @@ describe('createGlobalUserSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('defaults clientIds to empty array', () => {
+  it('defaults client_ids to empty array', () => {
     const result = createGlobalUserSchema.safeParse({
       email: 'test@example.com',
       password: 'validpassword123',
@@ -247,7 +247,7 @@ describe('createGlobalUserSchema', () => {
     })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.clientIds).toEqual([])
+      expect(result.data.client_ids).toEqual([])
     }
   })
 })

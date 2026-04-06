@@ -6,7 +6,7 @@ export const POST = apiHandler({
   schema: deleteUserSchema,
   guard: 'superadmin',
   handler: async ({ data, user, db }) => {
-    const result = await deleteUser(db, data.userId, user!.id)
+    const result = await deleteUser(db, data.user_id, user!.id)
     return Response.json(result)
   },
 })

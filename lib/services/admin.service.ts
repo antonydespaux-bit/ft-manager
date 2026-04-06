@@ -105,11 +105,12 @@ export async function createUser(db: SupabaseClient, input: CreateUserInput) {
 // ── Create global user (superadmin) ────────────────────────────────────────
 
 export async function createGlobalUser(db: SupabaseClient, input: CreateGlobalUserInput) {
-  const { email, password, nom, role, clientIds, telephone, site_web, siret_personnel, adresse_pro } = input
+  const { email, password, nom, role, client_ids: clientIds, telephone, site_web, siret_personnel, adresse_pro } = input
+  const finalPassword = password || generateTempPassword()
 
   const { data: authData, error: authErr } = await db.auth.admin.createUser({
     email,
-    password,
+    password: finalPassword,
     email_confirm: true,
     user_metadata: { nom },
   })
@@ -189,7 +190,7 @@ export async function inviteAdmin(db: SupabaseClient, email: string, nom: string
 // ── Update user ────────────────────────────────────────────────────────────
 
 export async function updateUser(db: SupabaseClient, input: UpdateUserInput) {
-  const { userId, email, nom, role, telephone, site_web, siret_personnel, adresse_pro } = input
+  const { user_id: userId, email, nom, role, telephone, site_web, siret_personnel, adresse_pro } = input
 
   // Update auth user if email changed
   if (email) {
