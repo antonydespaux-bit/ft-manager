@@ -307,7 +307,65 @@ export async function getActivityLogs(
   const { data: logs, error } = await query
   if (error) throw new Error(error.message)
 
-  return { logs: logs ?? [] }
+  const allLogs = logs ?? []
+
+  // Build KPIs
+  const now24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const todayIso = todayStart.toISOString()
+
+  const activeUsers24h = new Set(allLogs.filter(l => l.created_at >= now24h).map(l => l.user_id)).size
+  const modificationsToday = allLogs.filter(l => l.created_at >= todayIso).length
+
+  // Top client
+  const clientCounts: Record<string, number> = {}
+  for (const l of allLogs) {
+    if (l.client_id) clientCounts[l.client_id] = (clientCounts[l.client_id] || 0) + 1
+  }
+  const topClientId = Object.entries(clientCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null
+
+  // Load clients + users for dropdowns
+  const [clientsRes, profilsRes] = await Promise.all([
+    db.from('clients').select('id, nom_etablissement').order('nom_etablissement'),
+    db.from('profils').select('id, nom, email').order('nom'),
+  ])
+
+  const clientsList = clientsRes.data ?? []
+  const topClientName = topClientId ? clientsList.find(c => c.id === topClientId)?.nom_etablissement : null
+
+  // Chart data: group by day (last 7 days)
+  const chartMap: Record<string, number> = {}
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+    chartMap[d.toISOString().slice(0, 10)] = 0
+  }
+  for (const l of allLogs) {
+    const day = l.created_at?.slice(0, 10)
+    if (day && chartMap[day] !== undefined) chartMap[day]++
+  }
+  const chartData = Object.entries(chartMap).map(([date, actions]) => ({
+    date: new Date(date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+    actions,
+  }))
+
+  // Enrich logs with user names
+  const profilMap = new Map((profilsRes.data ?? []).map(p => [p.id, p]))
+  const recentLogs = allLogs.map(l => ({
+    ...l,
+    user_nom: profilMap.get(l.user_id)?.nom || profilMap.get(l.user_id)?.email || l.user_id?.slice(0, 8) || '—',
+  }))
+
+  return {
+    kpis: {
+      activeUsers24h,
+      modificationsToday,
+      topClient: topClientName || '—',
+    },
+    chartData,
+    recentLogs,
+    clients: clientsList,
+    users: (profilsRes.data ?? []).map(p => ({ user_id: p.id, user_nom: p.nom || p.email })),
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
