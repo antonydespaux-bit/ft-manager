@@ -8,6 +8,7 @@ import { useTheme } from '../../../../lib/useTheme'
 import { useRole } from '../../../../lib/useRole'
 import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
+import { AllergenesBlock } from '../../../../components/FicheDetailShared'
 
 export default function BarFicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -250,41 +251,7 @@ const loadFiche = async () => {
           {fiche.description && (
             <p style={{ fontSize: '14px', color: c.texteMuted, lineHeight: '1.6', marginTop: '8px' }}>{fiche.description}</p>
           )}
-          {((fiche.allergenes && fiche.allergenes.length > 0) || allergenesCascade.length > 0) && (
-            <div style={{ background: '#FCEBEB', borderRadius: '8px', padding: '12px', marginTop: '12px', border: '0.5px solid #F09595' }}>
-              <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Allergènes présents</div>
-              {fiche.allergenes && fiche.allergenes.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: allergenesCascade.length > 0 ? '8px' : 0 }}>
-                  {fiche.allergenes.map(id => {
-                    const a = ALLERGENES.find(al => al.id === id)
-                    return a ? (
-                      <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500' }}>
-                        {a.emoji} {a.label}
-                      </span>
-                    ) : null
-                  })}
-                </div>
-              )}
-              {allergenesCascade.length > 0 && (
-                <>
-                  <div style={{ fontSize: '10px', color: '#A32D2D', opacity: 0.7, marginBottom: '6px' }}>Issus des sous-fiches</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {allergenesCascade.filter(id => !(fiche.allergenes || []).includes(id)).map(id => {
-                      const a = ALLERGENES.find(al => al.id === id)
-                      return a ? (
-                        <span key={id} style={{ background: '#FFF3F3', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500', opacity: 0.8 }}>
-                          {a.emoji} {a.label}
-                        </span>
-                      ) : null
-                    })}
-                    {allergenesCascade.filter(id => !(fiche.allergenes || []).includes(id)).length === 0 && (
-                      <span style={{ fontSize: '12px', color: '#A32D2D', opacity: 0.6 }}>Tous déjà listés ci-dessus</span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <AllergenesBlock allergenes={fiche.allergenes} allergenesCascade={allergenesCascade} c={c} />
         </div>
 
         {/* Ingrédients */}

@@ -9,6 +9,7 @@ import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
 import FichePhoto, { FicheHeaderInfo, FicheHeaderInfoStyles } from '../../../components/FichePhoto'
+import { AllergenesBlock, FicheDetailNavbar } from '../../../components/FicheDetailShared'
 
 export default function FicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -257,40 +258,7 @@ export default function FicheDetail() {
             </FicheHeaderInfo>
           )}
 
-          {((fiche.allergenes && fiche.allergenes.length > 0) || allergenesCascade.length > 0) && (
-            <div style={{ background: '#FCEBEB', borderRadius: '8px', padding: '12px', marginTop: '12px', border: '0.5px solid #F09595' }}>
-              <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Allergènes présents</div>
-              {fiche.allergenes && fiche.allergenes.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: allergenesCascade.filter(id => !(fiche.allergenes || []).includes(id)).length > 0 ? '10px' : '0' }}>
-                  {fiche.allergenes.map(id => {
-                    const allergene = ALLERGENES.find(a => a.id === id)
-                    if (!allergene) return null
-                    return (
-                      <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500' }}>
-                        {allergene.emoji} {allergene.label}
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
-              {allergenesCascade.filter(id => !(fiche.allergenes || []).includes(id)).length > 0 && (
-                <>
-                  <div style={{ fontSize: '10px', color: '#A32D2D', opacity: 0.7, marginBottom: '6px' }}>Issus des sous-fiches</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {allergenesCascade.filter(id => !(fiche.allergenes || []).includes(id)).map(id => {
-                      const allergene = ALLERGENES.find(a => a.id === id)
-                      if (!allergene) return null
-                      return (
-                        <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500', opacity: 0.85 }}>
-                          {allergene.emoji} {allergene.label}
-                        </span>
-                      )
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <AllergenesBlock allergenes={fiche.allergenes} allergenesCascade={allergenesCascade} c={c} />
           {peutModifier && isMobile && (
             <button onClick={handleDelete} style={{ marginTop: '12px', width: '100%', padding: '10px', background: 'transparent', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
               Supprimer cette fiche
