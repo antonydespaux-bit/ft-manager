@@ -124,7 +124,8 @@ export default function FicheDetail() {
   const foodCost = () => {
     const cout = calculerCout()
     if (!fiche?.prix_ttc || !cout || !fiche?.nb_portions) return null
-    return (cout / fiche.nb_portions / (fiche.prix_ttc / 1.10) * 100).toFixed(1)
+    const tva = 1 + parseFloat(params['tva_restauration'] || 10) / 100
+    return (cout / fiche.nb_portions / (fiche.prix_ttc / tva) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
@@ -331,7 +332,7 @@ export default function FicheDetail() {
           </div>
           <div style={{ background: c.fond, borderRadius: '8px', padding: '12px' }}>
             <div style={{ fontSize: '10px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase' }}>Prix HT</div>
-            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{fiche.prix_ttc ? `${(fiche.prix_ttc / 1.10).toFixed(2)} €` : '—'}</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '4px', color: c.texte }}>{fiche.prix_ttc ? `${(fiche.prix_ttc / (1 + parseFloat(params['tva_restauration'] || 10) / 100)).toFixed(2)} €` : '—'}</div>
           </div>
           {prixIndic && !fiche.categorie?.includes('Sous-fiche') && (
             <div style={{ background: c.vertClair, borderRadius: '8px', padding: '12px' }}>
@@ -447,7 +448,7 @@ export default function FicheDetail() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
           {[
             { label: `Coût / ${uniteLabel.slice(0, -1)}`, value: cout && fiche.nb_portions ? `${(cout / fiche.nb_portions).toFixed(2)} €` : '—' },
-            { label: 'Prix HT', value: fiche.prix_ttc ? `${(fiche.prix_ttc / 1.10).toFixed(2)} €` : '—' },
+            { label: 'Prix HT', value: fiche.prix_ttc ? `${(fiche.prix_ttc / (1 + parseFloat(params['tva_restauration'] || 10) / 100)).toFixed(2)} €` : '—' },
             { label: 'Prix TTC', value: fiche.prix_ttc ? `${Number(fiche.prix_ttc).toFixed(2)} €` : '—' },
             {
               label: 'Food cost', value: fc ? `${fc} %` : '—',
