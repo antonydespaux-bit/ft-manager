@@ -250,7 +250,49 @@ Ne pas essayer de copier les modules RH/Marketing/Recrutement de Pauco — ce so
 
 ---
 
-## 7. Annexe : Donnees techniques brutes
+## 7. Roadmap inspiree de l'analyse
+
+### Quick wins (a integrer rapidement)
+1. **Saisie rapide du soir** — Page mobile simplifiee pour saisir le CA en fin de service
+2. **Widget feedback** — Bouton flottant "?" pour bug reports et suggestions utilisateurs
+3. **Skeleton loaders + countup animations** — Sur les dashboards pour perception de vitesse
+
+### V3 — Dashboard personnalisable (idee strategique)
+**Concept** : Le directeur du restaurant choisit les widgets/KPIs qu'il voit a sa connexion.
+
+**Pourquoi c'est un avantage competitif majeur** :
+- Pauco a un dashboard fige — meme vue pour tout le monde
+- Un directeur veut voir CA + marges, un chef veut voir fiches + allergenes, un gerant multi-sites veut la vue consolidee
+- Ca combine parfaitement avec le multi-etablissement (chaque role, chaque etablissement = un dashboard different)
+
+**Implementation envisagee** :
+- Systeme de widgets drag & drop (CA du jour, marges par categorie, alertes stock, ratio MP, top fiches, graph evolution, inventaire en cours, etc.)
+- Layout sauvegarde par utilisateur dans Supabase (`dashboard_config` par user/role/etablissement)
+- Presets par role : "Vue Directeur", "Vue Chef", "Vue Gerant groupe"
+- Responsive : reflow automatique des widgets sur mobile
+
+**Widgets possibles** :
+| Widget | Source de donnees existante |
+|--------|---------------------------|
+| CA du jour / semaine / mois | `ventes_journalieres` |
+| Ratio MP global | `fiches` + `achats` |
+| Top 5 fiches par marge | `fiches` |
+| Alertes stock critique | `inventaire` |
+| Derniers achats | `achats` |
+| Graphe evolution CA | `ventes_journalieres` (Recharts) |
+| Pareto 80/20 | `inventaire` + `achats` |
+| Allergenes a verifier | `fiches` + cascade |
+| Score e-reputation | API avis (futur) |
+| Checklist HACCP du jour | `checklists` (futur) |
+
+### V3 — Module HACCP minimal
+- Releves de temperatures (frigos, livraisons)
+- Checklists quotidiennes (ouverture, fermeture, nettoyage)
+- Obligation legale = retention client
+
+---
+
+## 8. Annexe : Donnees techniques brutes
 
 ### Google Analytics Pauco
 - Property : G-KTW42QRBBX
