@@ -4,7 +4,7 @@ import { getReconciliationData } from '../../../../lib/services/achats.service'
 
 export const GET = apiHandler({
   schema: reconciliationQuerySchema,
-  guard: 'adminOrSuperadmin',
+  guard: 'memberOfClient',
   clientIdFrom: 'body.client_id',
   handler: async ({ data, db }) => {
     const result = await getReconciliationData(db, data.client_id)

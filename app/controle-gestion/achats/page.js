@@ -48,10 +48,8 @@ export default function AchatsListPage() {
     return () => { cancelled = true }
   }, [router])
 
-  useEffect(() => {
-    if (roleLoading || !role) return
-    if (role !== 'admin' && role !== 'directeur') router.replace('/dashboard')
-  }, [role, roleLoading, router])
+  // Section consultable par tous les membres de l'établissement.
+  // Les actions de modification sont gardees par `role === 'admin'` ci-dessous.
 
   const loadFactures = useCallback(async () => {
     setLoading(true)

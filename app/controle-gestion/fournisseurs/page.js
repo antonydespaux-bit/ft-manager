@@ -58,10 +58,7 @@ export default function FournisseursPage() {
     return () => { cancelled = true }
   }, [router])
 
-  useEffect(() => {
-    if (roleLoading || !role) return
-    if (role !== 'admin' && role !== 'directeur') router.replace('/dashboard')
-  }, [role, roleLoading, router])
+  // Section consultable par tous les membres. Modifications gardees par `role === 'admin'`.
 
   const loadFournisseurs = useCallback(async () => {
     setLoading(true)

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase, getClientId } from '../../../../lib/supabase'
 import { useIsMobile } from '../../../../lib/useIsMobile'
 import { useTheme } from '../../../../lib/useTheme'
+import { useRole } from '../../../../lib/useRole'
 import Navbar from '../../../../components/Navbar'
 import { normDesig, todayIso, yesterdayIso, fmtPrix, fmtDelta, fileToBase64, makeLigneId, enrichLigne } from '../../../../lib/achatsHelpers'
 
@@ -14,6 +15,7 @@ export default function AchatsImportPage() {
   const router = useRouter()
   const { c } = useTheme()
   const isMobile = useIsMobile()
+  const { role, loading: roleLoading } = useRole()
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const [authReady, setAuthReady] = useState(false)
@@ -100,6 +102,12 @@ export default function AchatsImportPage() {
     })()
     return () => { cancelled = true }
   }, [router])
+
+  // Import facture = action de modification → admin uniquement.
+  useEffect(() => {
+    if (roleLoading || !role) return
+    if (role !== 'admin') router.replace('/controle-gestion/achats')
+  }, [role, roleLoading, router])
 
   // Chargement mapping fournisseur + ingrédients une fois authentifié
   const loadReconciliation = useCallback(async () => {

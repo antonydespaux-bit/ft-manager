@@ -70,11 +70,7 @@ export default function MercurialePage() {
     return () => { cancelled = true }
   }, [router])
 
-  useEffect(() => {
-    if (!roleLoading && role !== 'admin' && role !== 'directeur') {
-      router.replace('/dashboard')
-    }
-  }, [role, roleLoading, router])
+  // Section consultable par tous les membres. Modifications gardees par `role === 'admin'`.
 
   // ─── Chargement ───────────────────────────────────────────────────────────
   const load = useCallback(async () => {

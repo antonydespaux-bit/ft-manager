@@ -4,7 +4,7 @@ import { getMercuriale } from '../../../../lib/services/achats.service'
 
 export const GET = apiHandler({
   schema: mercurialeQuerySchema,
-  guard: 'adminOrSuperadmin',
+  guard: 'memberOfClient',
   clientIdFrom: 'body.client_id',
   handler: async ({ data, db }) => {
     const result = await getMercuriale(db, data.client_id)
