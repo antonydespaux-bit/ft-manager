@@ -148,7 +148,7 @@ export default function NouvelInventairePage() {
         {step === 1 && (
           <>
             <h1 style={{ fontSize: '18px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Quel inventaire faire ?</h1>
-            <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '24px' }}>Choisissez le type d'inventaire à réaliser.</p>
+            <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '24px' }}>Choisissez le type d&apos;inventaire à réaliser.</p>
 
             <div style={{ display: 'flex', gap: '12px', flexDirection: isMobile ? 'column' : 'row' }}>
               <div onClick={() => !creating && selectType('tournant')} style={cardStyle(type === 'tournant')}>
@@ -200,7 +200,7 @@ export default function NouvelInventairePage() {
         {/* Étape catégories : uniquement pour Flash */}
         {((canChooseSection && step === 3) || (!canChooseSection && step === 2)) && type === 'tournant' && (
           <>
-            <h1 style={{ fontSize: '18px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Catégories d'ingrédients</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Catégories d&apos;ingrédients</h1>
             <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '20px' }}>
               Choisissez 1 ou 2 catégories à inventorier (max 25 produits), ou ignorez pour utiliser le Pareto par défaut.
             </p>
@@ -268,7 +268,7 @@ export default function NouvelInventairePage() {
                   cursor: creating || selectedCategorieIds.length === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
-                Créer l'inventaire flash →
+                Créer l&apos;inventaire flash →
               </button>
             </div>
           </>
@@ -276,7 +276,7 @@ export default function NouvelInventairePage() {
 
         {creating && (
           <div style={{ textAlign: 'center', padding: '24px', color: c.texteMuted, fontSize: '14px' }}>
-            Préparation de l'inventaire en cours...
+            Préparation de l&apos;inventaire en cours...
           </div>
         )}
       </div>
