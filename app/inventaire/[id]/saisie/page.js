@@ -111,9 +111,9 @@ export default function SaisieInventairePage() {
         'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        ligne_id: ligneId,
+        ligneId,
         quantite_reelle: value === '' ? null : Number(value),
-        client_id: clientId,
+        clientId,
       })
     })
 
@@ -142,7 +142,7 @@ export default function SaisieInventairePage() {
       const res = await fetch('/api/inventaire/valider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ inventaire_id: inventaireId, client_id: clientId })
+        body: JSON.stringify({ inventaireId, clientId })
       })
       if (res.ok) {
         router.push(`/inventaire/${inventaireId}`)
@@ -169,7 +169,7 @@ export default function SaisieInventairePage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ inventaire_id: inventaireId, ingredient_id: ingredientId, client_id: clientId })
+        body: JSON.stringify({ inventaireId, ingredientId, clientId })
       })
       const json = await res.json()
       if (json.ligne) {
