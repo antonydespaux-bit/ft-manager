@@ -62,10 +62,37 @@ export function apiHandler<T>(options: ApiHandlerOptions<T>) {
       // ── 1. Parse & validate body or query ─────────────────────────────
       if (options.schema) {
         const method = request.method.toUpperCase()
+        // GET: query params only
+        // DELETE: body si présent, sinon query params (compat clients qui passent les ids en query)
+        // Autres méthodes: body JSON
         if (method === 'GET') {
           const url = new URL(request.url)
           const rawQuery = Object.fromEntries(url.searchParams.entries())
           const result = options.schema.safeParse(rawQuery)
+          if (!result.success) {
+            return Response.json(
+              { error: 'Données invalides', details: result.error.flatten() },
+              { status: 400 }
+            )
+          }
+          data = result.data
+        } else if (method === 'DELETE') {
+          let payload: unknown = undefined
+          const contentType = request.headers.get('content-type') || ''
+          const contentLength = request.headers.get('content-length')
+          const hasBody = contentType.includes('application/json') && contentLength !== '0'
+          if (hasBody) {
+            try {
+              payload = await request.json()
+            } catch {
+              payload = undefined
+            }
+          }
+          if (payload == null) {
+            const url = new URL(request.url)
+            payload = Object.fromEntries(url.searchParams.entries())
+          }
+          const result = options.schema.safeParse(payload)
           if (!result.success) {
             return Response.json(
               { error: 'Données invalides', details: result.error.flatten() },

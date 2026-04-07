@@ -64,6 +64,7 @@ export default function AchatsListPage() {
       .from('achats_factures')
       .select('id, fournisseur, numero_facture, date_facture, total_ht, statut, created_at')
       .eq('client_id', cid)
+      .is('deleted_at', null)
       .order('date_facture', { ascending: false })
 
     if (fErr) {
