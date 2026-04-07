@@ -94,7 +94,7 @@ export default function AchatsImportPage() {
     if (!clientId) return
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`/api/achats/reconciliation-data?clientId=${clientId}`, {
+      const res = await fetch(`/api/achats/reconciliation-data?client_id=${clientId}`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` },
       })
       if (!res.ok) return

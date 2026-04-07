@@ -83,7 +83,7 @@ export default function MercurialePage() {
     setError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`/api/achats/mercuriale?clientId=${clientId}`, {
+      const res = await fetch(`/api/achats/mercuriale?client_id=${clientId}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       const result = await res.json()
