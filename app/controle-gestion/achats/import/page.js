@@ -159,9 +159,10 @@ export default function AchatsImportPage() {
           `/api/achats/check-duplicate?clientId=${clientId}&numeroFacture=${encodeURIComponent(result.numero_facture.trim())}`,
           { headers: { 'Authorization': `Bearer ${session.access_token}` } }
         )
-        if (dupRes.ok) {
-          const { existing } = await dupRes.json()
-          if (existing) setDuplicateWarning(existing)
+        // 200 = pas de doublon, 409 = doublon trouvé (avec body { duplicate, existing })
+        if (dupRes.ok || dupRes.status === 409) {
+          const payload = await dupRes.json().catch(() => null)
+          if (payload?.existing) setDuplicateWarning(payload.existing)
         }
       }
 
