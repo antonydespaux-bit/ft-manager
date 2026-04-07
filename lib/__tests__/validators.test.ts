@@ -197,7 +197,7 @@ describe('createUserSchema', () => {
 describe('updateClientSchema', () => {
   it('validates SIRET format (14 digits)', () => {
     const result = updateClientSchema.safeParse({
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
+      id: '550e8400-e29b-41d4-a716-446655440000',
       siret: '12345',
     })
     expect(result.success).toBe(false)
@@ -205,7 +205,7 @@ describe('updateClientSchema', () => {
 
   it('accepts valid SIRET', () => {
     const result = updateClientSchema.safeParse({
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
+      id: '550e8400-e29b-41d4-a716-446655440000',
       siret: '12345678901234',
     })
     expect(result.success).toBe(true)
@@ -213,16 +213,16 @@ describe('updateClientSchema', () => {
 
   it('validates TVA format', () => {
     const result = updateClientSchema.safeParse({
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
-      numero_tva: 'invalid',
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      num_tva: 'invalid',
     })
     expect(result.success).toBe(false)
   })
 
   it('accepts valid TVA', () => {
     const result = updateClientSchema.safeParse({
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
-      numero_tva: 'FR12345678901',
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      num_tva: 'FR12345678901',
     })
     expect(result.success).toBe(true)
   })

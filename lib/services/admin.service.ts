@@ -258,7 +258,7 @@ export async function getUserDetail(db: SupabaseClient, userId: string) {
 // ── Update client ──────────────────────────────────────────────────────────
 
 export async function updateClient(db: SupabaseClient, input: UpdateClientInput) {
-  const { clientId, ...updates } = input
+  const { id, ...updates } = input
 
   const dbUpdates: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(updates)) {
@@ -269,7 +269,7 @@ export async function updateClient(db: SupabaseClient, input: UpdateClientInput)
     throw new ValidationError('Aucun champ à mettre à jour.')
   }
 
-  const { error } = await db.from('clients').update(dbUpdates).eq('id', clientId)
+  const { error } = await db.from('clients').update(dbUpdates).eq('id', id)
   if (error) throw new Error(error.message)
 
   return { updated: true }

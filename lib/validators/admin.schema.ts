@@ -66,13 +66,13 @@ export type CreateGlobalUserInput = z.infer<typeof createGlobalUserSchema>
 
 // ── Update client (legal info) ─────────────────────────────────────────────
 export const updateClientSchema = z.object({
-  clientId:          clientIdSchema,
+  id:                clientIdSchema,
   siret:             z.string().regex(/^\d{14}$/, 'SIRET invalide (14 chiffres)').optional().nullable(),
-  numero_tva:        z.string().regex(/^[A-Z]{2}\d+$/, 'Format TVA invalide').optional().nullable(),
-  adresse:           z.string().max(500).optional().nullable(),
+  num_tva:           z.string().regex(/^[A-Z]{2}\d+$/, 'Format TVA invalide').optional().nullable(),
+  adresse_siege:     z.string().max(500).optional().nullable(),
   code_naf:          z.string().max(10).optional().nullable(),
-  kbis_url:          z.string().max(500).optional().nullable(),
-  rib_url:           z.string().max(500).optional().nullable(),
+  url_kbis:          z.string().max(500).optional().nullable(),
+  url_rib:           z.string().max(500).optional().nullable(),
   email_contact:     z.string().email().optional().nullable(),
   telephone_contact: z.string().max(20).optional().nullable(),
 })
