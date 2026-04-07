@@ -133,7 +133,7 @@ export default function InventairePage() {
               {hasDashboardData ? `Dernier inventaire validé · ${formatDate(inventaires.find(i => i.statut === 'valide')?.date_inventaire)}` : 'Aucun inventaire validé'}
             </p>
           </div>
-          {role === 'admin' && (
+          {(role === 'admin' || role === 'cuisine' || role === 'bar') && (
             <button
               onClick={() => router.push('/inventaire/nouveau')}
               style={{ padding: '10px 20px', background: c.accent, color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
@@ -300,7 +300,7 @@ export default function InventairePage() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {role === 'admin' && inv.statut === 'brouillon' && (
+                  {(role === 'admin' || role === 'cuisine' || role === 'bar') && inv.statut === 'brouillon' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); router.push(`/inventaire/${inv.id}/saisie`) }}
                       style={{
