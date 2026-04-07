@@ -163,19 +163,22 @@ export default function SaisieInventairePage() {
     try {
       const clientId = await getClientId()
       const { data: { session } } = await supabase.auth.getSession()
+      const ingMeta = allIngredients.find(i => i.id === ingredientId)
+      const section = ingMeta?._section || (inventaire?.section === 'bar' ? 'bar' : 'cuisine')
       const res = await fetch('/api/inventaire/add-ligne', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ inventaireId, ingredientId, clientId })
+        body: JSON.stringify({ inventaireId, ingredientId, clientId, section })
       })
-      const json = await res.json()
-      if (json.ligne) {
-        const ingMeta = allIngredients.find(i => i.id === ingredientId)
-        setLignes(prev => [...prev, { ...json.ligne, _categorie_id: ingMeta?.categorie_id || null }])
+      const ligne = await res.json()
+      if (res.ok && ligne?.id) {
+        setLignes(prev => [...prev, { ...ligne, _categorie_id: ingMeta?.categorie_id || null }])
         setShowAddPanel(false)
+      } else {
+        alert(ligne?.error || 'Erreur lors de l\'ajout.')
       }
     } finally {
       setAddingIngredient(false)
