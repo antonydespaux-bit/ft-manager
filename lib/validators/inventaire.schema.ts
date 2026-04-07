@@ -10,6 +10,7 @@ export const createInventaireSchema = z.object({
   section:   z.enum(['cuisine', 'bar', 'global'], {
     error: 'section invalide.',
   }).default('cuisine'),
+  categorie_ids: z.array(uuidSchema).max(2, 'Maximum 2 catégories.').optional(),
 })
 
 export type CreateInventaireInput = z.infer<typeof createInventaireSchema>

@@ -14,6 +14,7 @@ interface IngredientRow {
   nom: string
   unite: string
   prix_kg: number
+  categorie_id: string | null
 }
 
 interface InventaireIngredient {
@@ -23,6 +24,7 @@ interface InventaireIngredient {
   unite: string
   prix_kg: number
   quantite_theorique: number
+  categorie_id: string | null
   est_critique?: boolean
 }
 
@@ -41,7 +43,7 @@ export async function calculateStockTheorique(
 
   // Load ingredients + last validated inventory in parallel
   const [ingredientsRes, dernierInvRes] = await Promise.all([
-    db.from(ingredientTable).select('id, nom, unite, prix_kg').eq('client_id', clientId),
+    db.from(ingredientTable).select('id, nom, unite, prix_kg, categorie_id').eq('client_id', clientId),
     db
       .from('inventaires')
       .select('id, date_inventaire')
@@ -74,6 +76,7 @@ export async function calculateStockTheorique(
       nom: ing.nom,
       unite: ing.unite,
       prix_kg: ing.prix_kg,
+      categorie_id: ing.categorie_id ?? null,
       stock_depart: round3(sd),
       achats: round3(a),
       consommation: round3(co),
@@ -263,7 +266,8 @@ export async function createInventaire(
   db: SupabaseClient,
   clientId: string,
   type: 'tournant' | 'complet',
-  section: 'cuisine' | 'bar' | 'global'
+  section: 'cuisine' | 'bar' | 'global',
+  categorieIds?: string[]
 ) {
   const sections = section === 'global' ? ['cuisine', 'bar'] as const : [section] as const
 
@@ -281,6 +285,7 @@ export async function createInventaire(
         unite: item.unite,
         prix_kg: item.prix_kg,
         quantite_theorique: item.quantite_theorique,
+        categorie_id: item.categorie_id,
       })
     }
   }
@@ -300,9 +305,13 @@ export async function createInventaire(
     if (!periodeDebut || (pd && pd < periodeDebut)) periodeDebut = pd
   }
 
-  // Filter for tournant (Pareto)
+  // Filter for tournant
   if (type === 'tournant') {
-    allIngredients = await filterPareto(db, clientId, allIngredients)
+    if (categorieIds && categorieIds.length > 0) {
+      allIngredients = filterByCategories(allIngredients, categorieIds)
+    } else {
+      allIngredients = await filterPareto(db, clientId, allIngredients)
+    }
   }
 
   // Create inventory header
@@ -347,6 +356,19 @@ export async function createInventaire(
     nb_lignes: allIngredients.length,
     message: `Inventaire ${type} créé avec ${allIngredients.length} ligne(s).`,
   }
+}
+
+function filterByCategories(
+  allIngredients: InventaireIngredient[],
+  categorieIds: string[]
+): InventaireIngredient[] {
+  const FLASH_MAX = 25
+  const wanted = new Set(categorieIds)
+  const filtered = allIngredients
+    .filter((ing) => ing.categorie_id && wanted.has(ing.categorie_id))
+    .map((ing) => ({ ...ing, est_critique: true }))
+    .sort((a, b) => (b.prix_kg || 0) - (a.prix_kg || 0))
+  return filtered.slice(0, FLASH_MAX)
 }
 
 async function filterPareto(

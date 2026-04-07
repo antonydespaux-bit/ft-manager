@@ -11,6 +11,8 @@ export default function NouvelInventairePage() {
   const [step, setStep] = useState(1)
   const [type, setType] = useState(null)
   const [section, setSection] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [selectedCategorieIds, setSelectedCategorieIds] = useState([])
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -20,7 +22,7 @@ export default function NouvelInventairePage() {
 
   const canChooseSection = role === 'admin' || role === 'directeur'
 
-  const handleCreate = async (chosenSection, chosenType) => {
+  const handleCreate = async (chosenSection, chosenType, chosenCategorieIds) => {
     setCreating(true)
     setError('')
     try {
@@ -28,17 +30,22 @@ export default function NouvelInventairePage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session || !clientId) { router.push('/'); return }
 
+      const body = {
+        client_id: clientId,
+        type: chosenType,
+        section: chosenSection,
+      }
+      if (chosenType === 'tournant' && chosenCategorieIds && chosenCategorieIds.length > 0) {
+        body.categorie_ids = chosenCategorieIds
+      }
+
       const res = await fetch('/api/inventaire/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({
-          client_id: clientId,
-          type: chosenType,
-          section: chosenSection,
-        })
+        body: JSON.stringify(body)
       })
 
       const data = await res.json()
@@ -55,21 +62,54 @@ export default function NouvelInventairePage() {
     }
   }
 
+  const goToCategoryStep = async (chosenSection, chosenType) => {
+    setSection(chosenSection)
+    if (chosenType !== 'tournant') {
+      handleCreate(chosenSection, chosenType, [])
+      return
+    }
+    try {
+      const clientId = await getClientId()
+      if (!clientId) return
+      const sections = chosenSection === 'global' ? ['cuisine', 'bar'] : [chosenSection]
+      const { data } = await supabase
+        .from('categories_ingredients')
+        .select('id, nom, emoji, section')
+        .eq('client_id', clientId)
+        .in('section', sections)
+        .order('ordre')
+      setCategories(data || [])
+      setSelectedCategorieIds([])
+      setStep(canChooseSection ? 3 : 2)
+    } catch {
+      setError('Erreur chargement des catégories.')
+    }
+  }
+
   const selectType = (t) => {
     setType(t)
     if (!canChooseSection) {
-      // Déterminer automatiquement la section selon le rôle
-      // Passer t directement : setType est asynchrone, le state n'est pas encore mis à jour
       const sec = role === 'bar' ? 'bar' : 'cuisine'
-      handleCreate(sec, t)
+      goToCategoryStep(sec, t)
     } else {
       setStep(2)
     }
   }
 
   const selectSection = (s) => {
-    setSection(s)
-    handleCreate(s, type)
+    goToCategoryStep(s, type)
+  }
+
+  const toggleCategorie = (id) => {
+    setSelectedCategorieIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length >= 2) return prev
+      return [...prev, id]
+    })
+  }
+
+  const confirmCategories = () => {
+    handleCreate(section, type, selectedCategorieIds)
   }
 
   const cardStyle = (selected) => ({
@@ -131,7 +171,7 @@ export default function NouvelInventairePage() {
         )}
 
         {/* Étape 2 : Choix de la section */}
-        {step === 2 && (
+        {step === 2 && canChooseSection && (
           <>
             <h1 style={{ fontSize: '18px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Quelle section ?</h1>
             <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '24px' }}>
@@ -153,6 +193,83 @@ export default function NouvelInventairePage() {
                 <div style={{ fontSize: '28px', marginBottom: '8px' }}>📋</div>
                 <div style={{ fontSize: '15px', fontWeight: '500', color: c.texte }}>Les deux</div>
               </div>
+            </div>
+          </>
+        )}
+
+        {/* Étape catégories : uniquement pour Flash */}
+        {((canChooseSection && step === 3) || (!canChooseSection && step === 2)) && type === 'tournant' && (
+          <>
+            <h1 style={{ fontSize: '18px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Catégories d'ingrédients</h1>
+            <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '20px' }}>
+              Choisissez 1 ou 2 catégories à inventorier (max 25 produits), ou ignorez pour utiliser le Pareto par défaut.
+            </p>
+
+            {categories.length === 0 ? (
+              <div style={{ padding: '16px', background: c.fond, borderRadius: '10px', fontSize: '13px', color: c.texteMuted, marginBottom: '16px' }}>
+                Aucune catégorie disponible.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
+                {categories.map((cat) => {
+                  const selected = selectedCategorieIds.includes(cat.id)
+                  const disabled = !selected && selectedCategorieIds.length >= 2
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => !creating && !disabled && toggleCategorie(cat.id)}
+                      disabled={creating || disabled}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: '20px',
+                        border: `1px solid ${selected ? c.accent : c.bordure}`,
+                        background: selected ? c.accentClair : c.blanc,
+                        color: selected ? c.accent : c.texte,
+                        fontSize: '13px',
+                        cursor: creating || disabled ? 'not-allowed' : 'pointer',
+                        opacity: disabled ? 0.4 : 1,
+                      }}
+                    >
+                      {cat.emoji} {cat.nom}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <div style={{ fontSize: '12px', color: c.texteMuted, marginBottom: '12px' }}>
+              {selectedCategorieIds.length} / 2 sélectionnée{selectedCategorieIds.length > 1 ? 's' : ''}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', flexDirection: isMobile ? 'column' : 'row' }}>
+              <button
+                type="button"
+                onClick={() => !creating && handleCreate(section, type, [])}
+                disabled={creating}
+                style={{
+                  flex: 1, padding: '14px', background: c.blanc,
+                  border: `0.5px solid ${c.bordure}`, borderRadius: '12px',
+                  color: c.texte, fontSize: '14px',
+                  cursor: creating ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Pareto par défaut
+              </button>
+              <button
+                type="button"
+                onClick={() => !creating && confirmCategories()}
+                disabled={creating || selectedCategorieIds.length === 0}
+                style={{
+                  flex: 2, padding: '14px',
+                  background: selectedCategorieIds.length === 0 ? c.bordure : c.accent,
+                  color: 'white', border: 'none', borderRadius: '12px',
+                  fontSize: '14px', fontWeight: '500',
+                  cursor: creating || selectedCategorieIds.length === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Créer l'inventaire flash →
+              </button>
             </div>
           </>
         )}
