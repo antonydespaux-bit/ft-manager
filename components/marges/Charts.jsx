@@ -49,8 +49,8 @@ export default function Charts({ chartData, menuEngineeringData }) {
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12, fontSize: 11 }}>
             <span style={{ color: '#3B6D11', fontWeight: 500 }}>⭐ Stars</span>
-            <span style={{ color: '#6366F1', fontWeight: 500 }}>🐄 Vaches à lait</span>
             <span style={{ color: '#D97706', fontWeight: 500 }}>❓ Dilemmes</span>
+            <span style={{ color: '#6366F1', fontWeight: 500 }}>🐄 Vaches à lait</span>
             <span style={{ color: '#A32D2D', fontWeight: 500 }}>🐕 Poids morts</span>
           </div>
           <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
@@ -60,7 +60,8 @@ export default function Charts({ chartData, menuEngineeringData }) {
                 type="number"
                 dataKey="x"
                 name="Popularité"
-                label={{ value: 'Popularité →', position: 'insideBottom', offset: -18, fontSize: 10, fill: c.texteMuted }}
+                reversed
+                label={{ value: '+  Popularité  −', position: 'insideBottom', offset: -18, fontSize: 10, fill: c.texteMuted }}
                 tick={{ fontSize: 9, fill: c.texteMuted }}
                 axisLine={false}
                 tickLine={false}
@@ -69,7 +70,7 @@ export default function Charts({ chartData, menuEngineeringData }) {
                 type="number"
                 dataKey="y"
                 name="Marge %"
-                label={{ value: 'Marge %', angle: -90, position: 'insideLeft', offset: 14, fontSize: 10, fill: c.texteMuted }}
+                label={{ value: '+  Marge %  −', angle: -90, position: 'insideLeft', offset: 14, fontSize: 10, fill: c.texteMuted }}
                 tick={{ fontSize: 9, fill: c.texteMuted }}
                 axisLine={false}
                 tickLine={false}
