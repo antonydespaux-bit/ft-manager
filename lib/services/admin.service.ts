@@ -70,7 +70,7 @@ export async function listAllUsers(db: SupabaseClient, roleFilter?: string) {
 // ── Create user ────────────────────────────────────────────────────────────
 
 export async function createUser(db: SupabaseClient, input: CreateUserInput) {
-  const { email, password, nom, role, clientId } = input
+  const { email, password, nom, role, client_id: clientId } = input
 
   // Create auth user
   const { data: authData, error: authErr } = await db.auth.admin.createUser({

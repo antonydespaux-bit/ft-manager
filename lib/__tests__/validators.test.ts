@@ -165,7 +165,7 @@ describe('createUserSchema', () => {
       email: 'test@example.com',
       password: 'short',
       nom: 'John',
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
+      client_id: '550e8400-e29b-41d4-a716-446655440000',
     })
     expect(result.success).toBe(false)
   })
@@ -175,7 +175,7 @@ describe('createUserSchema', () => {
       email: 'not-an-email',
       password: 'validpassword123',
       nom: 'John',
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
+      client_id: '550e8400-e29b-41d4-a716-446655440000',
     })
     expect(result.success).toBe(false)
   })
@@ -185,7 +185,7 @@ describe('createUserSchema', () => {
       email: 'test@example.com',
       password: 'validpassword123',
       nom: 'John Doe',
-      clientId: '550e8400-e29b-41d4-a716-446655440000',
+      client_id: '550e8400-e29b-41d4-a716-446655440000',
     })
     expect(result.success).toBe(true)
     if (result.success) {

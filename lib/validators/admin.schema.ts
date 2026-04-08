@@ -9,11 +9,11 @@ const emptyToNull = z.string().transform(v => v.trim() === '' ? null : v.trim())
 
 // ── Create user ────────────────────────────────────────────────────────────
 export const createUserSchema = z.object({
-  email:    z.string().email('Email invalide'),
-  password: z.string().min(8, 'Mot de passe : 8 caractères minimum'),
-  nom:      z.string().min(1, 'Nom requis').max(255),
-  role:     roleSchema.default('cuisine'),
-  clientId: clientIdSchema,
+  email:     z.string().email('Email invalide'),
+  password:  z.string().min(8, 'Mot de passe : 8 caractères minimum'),
+  nom:       z.string().min(1, 'Nom requis').max(255),
+  role:      roleSchema.default('cuisine'),
+  client_id: clientIdSchema,
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

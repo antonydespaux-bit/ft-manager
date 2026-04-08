@@ -551,14 +551,9 @@ export default function LandingClient({ markup }) {
       if (txt) txt.textContent = '...'
 
       try {
-        const res = await fetch(SUPABASE_URL + '/rest/v1/prospects', {
+        const res = await fetch('/api/prospects', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
-            Prefer: 'return=minimal',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             nom,
             email,
@@ -567,7 +562,6 @@ export default function LandingClient({ markup }) {
             nom_etablissement: document.getElementById('fEtab')?.value.trim() || null,
             message: document.getElementById('fMessage')?.value.trim() || null,
             langue: document.documentElement.lang || 'fr',
-            statut: 'nouveau',
           }),
         })
 

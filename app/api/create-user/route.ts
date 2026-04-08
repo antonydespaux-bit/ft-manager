@@ -4,7 +4,8 @@ import { createUser } from '../../../lib/services/admin.service'
 
 export const POST = apiHandler({
   schema: createUserSchema,
-  guard: 'superadmin',
+  guard: 'adminOrSuperadmin',
+  clientIdFrom: 'body.client_id',
   handler: async ({ data, db }) => {
     const result = await createUser(db, data)
     return Response.json(result, { status: 201 })
