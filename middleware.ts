@@ -166,18 +166,20 @@ export async function middleware(req: NextRequest) {
   // CSP: 'unsafe-inline' for TailwindCSS, 'unsafe-eval' + 'wasm-unsafe-eval' for Lottie WebAssembly.
   // blob: in script-src/worker-src for Lottie web workers.
   // Skip CSP for file-serving routes (they set their own permissive CSP).
+  // vercel.live + ws-us3.pusher.com are nécessaires pour le widget feedback
+  // injecté automatiquement sur les preview deployments Vercel.
   if (!isFileRoute) {
     res.headers.set(
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com https://static.axept.io https://axept.io https://www.googletagmanager.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://fonts.axept.io https://*.axept.io",
-        "font-src 'self' https://fonts.gstatic.com https://fonts.axept.io",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com https://static.axept.io https://axept.io https://www.googletagmanager.com https://vercel.live",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://fonts.axept.io https://*.axept.io https://vercel.live",
+        "font-src 'self' https://fonts.gstatic.com https://fonts.axept.io https://vercel.live https://assets.vercel.com",
         "img-src 'self' data: blob: https:",
-        "frame-src 'self' blob: data:",
+        "frame-src 'self' blob: data: https://vercel.live",
         "worker-src 'self' blob:",
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://static.axept.io https://axept.io https://*.axept.io https://cdn.jsdelivr.net https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://lottie.host",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://static.axept.io https://axept.io https://*.axept.io https://cdn.jsdelivr.net https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://www.googletagmanager.com https://lottie.host https://vercel.live wss://ws-us3.pusher.com",
         "frame-ancestors 'self'",
       ].join('; ')
     )
