@@ -1,0 +1,149 @@
+'use client'
+
+import { ALLERGENES } from '../lib/allergenes'
+
+/**
+ * Shared allergen display block for fiche detail pages.
+ * Used by both cuisine and bar fiche detail views.
+ */
+export function AllergenesBlock({ allergenes = [], allergenesCascade = [], c }) {
+  if ((!allergenes || allergenes.length === 0) && allergenesCascade.length === 0) return null
+
+  const directAllergens = allergenes || []
+  const cascadeOnly = allergenesCascade.filter(id => !directAllergens.includes(id))
+
+  return (
+    <div style={{ background: '#FCEBEB', borderRadius: '8px', padding: '12px', marginTop: '12px', border: '0.5px solid #F09595' }}>
+      <div style={{ fontSize: '11px', color: '#A32D2D', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+        Allergènes présents
+      </div>
+      {directAllergens.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: cascadeOnly.length > 0 ? '10px' : 0 }}>
+          {directAllergens.map(id => {
+            const a = ALLERGENES.find(al => al.id === id)
+            return a ? (
+              <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500' }}>
+                {a.emoji} {a.label}
+              </span>
+            ) : null
+          })}
+        </div>
+      )}
+      {cascadeOnly.length > 0 && (
+        <>
+          <div style={{ fontSize: '10px', color: '#A32D2D', opacity: 0.7, marginBottom: '6px' }}>Issus des sous-fiches</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {cascadeOnly.map(id => {
+              const a = ALLERGENES.find(al => al.id === id)
+              return a ? (
+                <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500', opacity: 0.85 }}>
+                  {a.emoji} {a.label}
+                </span>
+              ) : null
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Shared financial recap block for fiche detail pages.
+ * Shows cost, food cost %, recommended price, benefit.
+ */
+export function FicheFinancialRecap({ cout, fc, prixIndic, fiche, seuilVert, seuilOrange, c, tvaLabel }) {
+  const nbPortions = fiche?.nb_portions || 1
+  const coutPortion = nbPortions > 0 ? cout / nbPortions : 0
+  const prixTTC = fiche?.prix_ttc ? Number(fiche.prix_ttc) : null
+
+  const fcColor = fc ? (fc < seuilVert ? '#3B6D11' : fc < seuilOrange ? '#854F0B' : '#A32D2D') : null
+  const fcBg = fc ? (fc < seuilVert ? '#EAF3DE' : fc < seuilOrange ? '#FAEEDA' : '#FCEBEB') : null
+
+  return (
+    <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, marginBottom: '12px', overflow: 'hidden' }}>
+      <div style={{ padding: '14px 16px', borderBottom: `0.5px solid ${c.bordure}`, fontSize: '13px', fontWeight: '500', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        Récap financier
+      </div>
+      <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+        <div>
+          <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>Coût total</div>
+          <div style={{ fontSize: '18px', fontWeight: '500', color: c.texte }}>{cout > 0 ? `${cout.toFixed(2)} €` : '—'}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>Coût / portion</div>
+          <div style={{ fontSize: '18px', fontWeight: '500', color: c.texte }}>{coutPortion > 0 ? `${coutPortion.toFixed(2)} €` : '—'}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>Prix TTC</div>
+          <div style={{ fontSize: '18px', fontWeight: '500', color: c.texte }}>{prixTTC ? `${prixTTC.toFixed(2)} €` : '—'}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>
+            Food Cost {tvaLabel ? `(TVA ${tvaLabel})` : ''}
+          </div>
+          {fc ? (
+            <span style={{ background: fcBg, color: fcColor, borderRadius: '20px', padding: '4px 12px', fontSize: '16px', fontWeight: '600' }}>
+              {fc} %
+            </span>
+          ) : (
+            <div style={{ fontSize: '18px', fontWeight: '500', color: c.texteMuted }}>—</div>
+          )}
+        </div>
+        {prixIndic && (
+          <div>
+            <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase', marginBottom: '4px' }}>Prix indicatif TTC</div>
+            <div style={{ fontSize: '18px', fontWeight: '500', color: '#6366F1' }}>{prixIndic} €</div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Shared detail page navbar for fiche pages.
+ */
+export function FicheDetailNavbar({
+  ficheNom, section, peutModifier, isMobile,
+  onBack, onPrint, onModifier, onDelete,
+  navBg, navBorder, printBg, printColor, logoComponent
+}) {
+  return (
+    <div className="no-print" style={{
+      background: navBg, borderBottom: `0.5px solid ${navBorder}`,
+      padding: '0 16px', display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', height: '56px',
+      position: 'sticky', top: 0, zIndex: 100
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {logoComponent}
+        <button onClick={onBack} style={{
+          background: 'transparent', border: '0.5px solid rgba(255,255,255,0.2)',
+          borderRadius: '8px', padding: '6px 10px', fontSize: '13px', cursor: 'pointer', color: 'rgba(255,255,255,0.7)'
+        }}>← {!isMobile && 'Retour'}</button>
+        {!isMobile && <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{ficheNom}</span>}
+      </div>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <button onClick={onPrint} style={{
+          background: printBg, color: printColor, border: 'none',
+          borderRadius: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+        }}>{isMobile ? '🖨️' : '🖨️ Imprimer'}</button>
+        {peutModifier && (
+          <button onClick={onModifier} style={{
+            background: 'transparent', color: 'rgba(255,255,255,0.7)',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+          }}>{isMobile ? '✏️' : 'Modifier'}</button>
+        )}
+        {peutModifier && !isMobile && (
+          <button onClick={onDelete} style={{
+            background: 'transparent', color: '#F09595',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+          }}>Supprimer</button>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -7,6 +7,7 @@ import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../../lib/foodCost'
 import Navbar from '../../../components/Navbar'
+import ChefLoader from '../../../components/ChefLoader'
 
 export default function BarDashboardPage() {
   const [fiches, setFiches] = useState([])
@@ -74,7 +75,7 @@ export default function BarDashboardPage() {
 
   if (loading || roleLoading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
-      <div style={{ fontSize: '14px', color: c.texteMuted }}>Chargement...</div>
+      <ChefLoader />
     </div>
   )
 
@@ -105,7 +106,7 @@ export default function BarDashboardPage() {
           gap: isMobile ? '10px' : '16px', marginBottom: '24px'
         }}>
           <div style={{ background: foodCostMoyen ? fichesFCColor(foodCostMoyen).bg : c.blanc, borderRadius: '12px', padding: isMobile ? '14px' : '20px', border: `0.5px solid ${c.bordure}` }}>
-            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', marginBottom: '8px' }}>Food cost moyen</div>
+            <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', marginBottom: '8px' }}>Bev cost moyen</div>
             <div style={{ fontSize: isMobile ? '28px' : '36px', fontWeight: '500', color: foodCostMoyen ? fichesFCColor(foodCostMoyen).color : c.texte }}>
               {foodCostMoyen ? `${foodCostMoyen.toFixed(1)}%` : '—'}
             </div>
@@ -119,7 +120,7 @@ export default function BarDashboardPage() {
           <div style={{ background: fichesAlerte.length > 0 ? '#FCEBEB' : '#EAF3DE', borderRadius: '12px', padding: isMobile ? '14px' : '20px', border: `0.5px solid ${c.bordure}` }}>
             <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', marginBottom: '8px' }}>Fiches en alerte</div>
             <div style={{ fontSize: isMobile ? '28px' : '36px', fontWeight: '500', color: fichesAlerte.length > 0 ? '#A32D2D' : '#3B6D11' }}>{fichesAlerte.length}</div>
-            <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '4px' }}>Food cost {'>'} {seuilOrange}%</div>
+            <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '4px' }}>Bev cost {'>'} {seuilOrange}%</div>
           </div>
           <div style={{ background: ingredientsPrixHausse.length > 0 ? '#FAEEDA' : c.blanc, borderRadius: '12px', padding: isMobile ? '14px' : '20px', border: `0.5px solid ${c.bordure}` }}>
             <div style={{ fontSize: '11px', color: c.texteMuted, fontWeight: '500', textTransform: 'uppercase', marginBottom: '8px' }}>Prix modifiés</div>
@@ -132,7 +133,7 @@ export default function BarDashboardPage() {
           <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: `0.5px solid ${c.bordure}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>🚨 Fiches en alerte</div>
-              <span style={{ fontSize: '11px', color: c.texteMuted }}>Food cost {'>'} {seuilOrange}%</span>
+              <span style={{ fontSize: '11px', color: c.texteMuted }}>Bev cost {'>'} {seuilOrange}%</span>
             </div>
             {fichesAlerte.length === 0 ? (
               <div style={{ padding: '24px', textAlign: 'center', color: c.texteMuted, fontSize: '13px' }}>✓ Aucune fiche en alerte</div>

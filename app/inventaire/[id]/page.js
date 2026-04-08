@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useTheme } from '../../../lib/useTheme'
 import { useIsMobile } from '../../../lib/useIsMobile'
 import Navbar from '../../../components/Navbar'
+import ChefLoader from '../../../components/ChefLoader'
 
 export default function DetailInventairePage() {
   const params = useParams()
@@ -49,7 +50,7 @@ export default function DetailInventairePage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ inventaire_id: inventaireId, client_id: clientId })
+        body: JSON.stringify({ inventaireId, clientId })
       })
 
       const data = await res.json()
@@ -67,7 +68,7 @@ export default function DetailInventairePage() {
   if (loading) return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
       <Navbar section="cuisine" />
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
+      <ChefLoader />
     </div>
   )
 

@@ -6,6 +6,7 @@ import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { useIsMobile } from '../../lib/useIsMobile'
 import { Logo } from '../../lib/theme.jsx'
+import ChefLoader from '../../components/ChefLoader'
 
 const TABS = [
   { id: 'profil',        label: 'Mon Profil' },
@@ -36,6 +37,8 @@ export default function MonCompte() {
 
   const [showResil,  setShowResil]  = useState(false)
   const [resilConf,  setResilConf]  = useState('')
+
+  const [importing,  setImporting]  = useState(false)
 
   function showToast(type, msg) {
     setToast({ type, msg })
@@ -157,6 +160,43 @@ export default function MonCompte() {
     }
   }
 
+  const importData = async (e) => {
+    const fichier = e.target.files?.[0]
+    e.target.value = ''
+    if (!fichier || !clientId) return
+    if (!window.confirm("Importer ce fichier ? Les lignes existantes (même id) seront écrasées.")) return
+    setImporting(true)
+    try {
+      const text = await fichier.text()
+      let payload
+      try {
+        payload = JSON.parse(text)
+      } catch {
+        showToast('err', 'Fichier JSON invalide.')
+        setImporting(false)
+        return
+      }
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/import-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ client_id: clientId, payload }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        showToast('err', json.error || "Erreur lors de l'import.")
+      } else if (json.total_errors > 0) {
+        showToast('err', `Import partiel : ${json.total_upserted} lignes importées, ${json.total_errors} erreurs.`)
+      } else {
+        showToast('ok', `Import réussi : ${json.total_upserted} lignes restaurées.`)
+      }
+    } catch {
+      showToast('err', "Erreur lors de l'import.")
+    } finally {
+      setImporting(false)
+    }
+  }
+
   const confirmerResiliation = async () => {
     if (!clientId) return
     if (resilConf.trim().toLowerCase() !== 'résilier') {
@@ -195,7 +235,7 @@ export default function MonCompte() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
-      <div style={{ fontSize: '14px', color: c.texteMuted }}>Chargement...</div>
+      <ChefLoader />
     </div>
   )
 
@@ -355,14 +395,22 @@ export default function MonCompte() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}` }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Portabilité des données</h2>
-              <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '16px', lineHeight: '1.6' }}>Conformément au RGPD (article 20), vous pouvez télécharger l'ensemble des données de votre établissement au format JSON.</p>
-              <button onClick={exportData} style={{ background: c.accent, color: 'white', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Télécharger mes données (JSON)</button>
+              <p style={{ fontSize: '13px', color: c.texteMuted, marginBottom: '16px', lineHeight: '1.6' }}>Conformément au RGPD (article 20), vous pouvez télécharger l'ensemble des données de votre établissement au format JSON{isAdmin ? ', et les restaurer depuis un export' : ''}.</p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button onClick={exportData} style={{ background: c.accent, color: 'white', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Télécharger mes données (JSON)</button>
+                {isAdmin && (
+                  <label style={{ background: c.blanc, color: c.accent, border: `0.5px solid ${c.accent}`, borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: '600', cursor: importing ? 'not-allowed' : 'pointer', opacity: importing ? 0.6 : 1 }}>
+                    {importing ? 'Import en cours…' : 'Importer un fichier JSON'}
+                    <input type="file" accept="application/json,.json" onChange={importData} disabled={importing} style={{ display: 'none' }} />
+                  </label>
+                )}
+              </div>
             </div>
             <div style={{ background: c.blanc, borderRadius: '12px', padding: isMobile ? '16px' : '24px', border: `0.5px solid ${c.bordure}` }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', color: c.texte, marginBottom: '8px' }}>Responsable du traitement</h2>
               <div style={{ fontSize: '13px', color: c.texteMuted, lineHeight: '1.8' }}>
                 <div><strong style={{ color: c.texte }}>Éditeur :</strong> Skalcook SAS</div>
-                <div><strong style={{ color: c.texte }}>Contact DPO :</strong> <a href="mailto:privacy@skalcook.fr" style={{ color: c.accent }}>privacy@skalcook.fr</a></div>
+                <div><strong style={{ color: c.texte }}>Contact DPO :</strong> <a href="mailto:contact@skalcook.fr" style={{ color: c.accent }}>contact@skalcook.fr</a></div>
                 <div><strong style={{ color: c.texte }}>Délai de réponse :</strong> 30 jours maximum (RGPD)</div>
               </div>
               <a href="/politique-confidentialite" target="_blank" rel="noopener noreferrer" style={{ color: c.accent, fontSize: '13px', textDecoration: 'none', fontWeight: '500', display: 'inline-block', marginTop: '12px' }}>Politique de confidentialité →</a>

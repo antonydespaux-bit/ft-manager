@@ -6,6 +6,7 @@ import { useTheme } from '../../lib/useTheme'
 import { useRole } from '../../lib/useRole'
 import { useIsMobile } from '../../lib/useIsMobile'
 import Navbar from '../../components/Navbar'
+import ChefLoader from '../../components/ChefLoader'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -21,11 +22,6 @@ export default function InventairePage() {
   const { c } = useTheme()
   const { role } = useRole()
   const isMobile = useIsMobile()
-
-  useEffect(() => {
-    if (!role) return
-    if (role !== 'admin' && role !== 'directeur') router.replace('/dashboard')
-  }, [role, router])
 
   useEffect(() => { loadInventaires() }, [])
 
@@ -72,7 +68,7 @@ export default function InventairePage() {
       await fetch('/api/inventaire/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ inventaire_id: inv.id, client_id: clientId })
+        body: JSON.stringify({ inventaireId: inv.id, clientId })
       })
       await loadInventaires()
     } finally {
@@ -119,7 +115,7 @@ export default function InventairePage() {
   if (loading) return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
       <Navbar section="cuisine" />
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
+      <ChefLoader />
     </div>
   )
 
@@ -137,7 +133,7 @@ export default function InventairePage() {
               {hasDashboardData ? `Dernier inventaire validé · ${formatDate(inventaires.find(i => i.statut === 'valide')?.date_inventaire)}` : 'Aucun inventaire validé'}
             </p>
           </div>
-          {role === 'admin' && (
+          {(role === 'admin' || role === 'cuisine' || role === 'bar') && (
             <button
               onClick={() => router.push('/inventaire/nouveau')}
               style={{ padding: '10px 20px', background: c.accent, color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
@@ -304,7 +300,7 @@ export default function InventairePage() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {role === 'admin' && inv.statut === 'brouillon' && (
+                  {(role === 'admin' || role === 'cuisine' || role === 'bar') && inv.statut === 'brouillon' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); router.push(`/inventaire/${inv.id}/saisie`) }}
                       style={{

@@ -10,6 +10,7 @@ import { log } from '../../../../lib/useLog'
 import { ALLERGENES } from '../../../../lib/allergenes'
 import IngredientSearch from '../../../../components/IngredientSearch'
 import FichePhoto from '../../../../components/FichePhoto'
+import ChefLoader from '../../../../components/ChefLoader'
 
 import { isIngredientPossible } from '../../../../lib/foodCost'
 import { UNITES_PRODUCTION } from '../../../../lib/constants'
@@ -190,7 +191,8 @@ export default function ModifierFiche() {
   const foodCost = () => {
     const cout = calculerCoutAvecPerte()
     if (!prixTTC || !cout || !nbPortions) return null
-    return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / 1.10) * 100).toFixed(1)
+    const tva = 1 + parseFloat(params['tva_restauration'] || 10) / 100
+    return (cout / parseFloat(nbPortions) / (parseFloat(prixTTC) / tva) * 100).toFixed(1)
   }
 
   const prixIndicatif = () => {
@@ -280,7 +282,7 @@ export default function ModifierFiche() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.fond }}>
-      <div style={{ fontSize: '14px', color: c.texteMuted }}>Chargement...</div>
+      <ChefLoader />
     </div>
   )
 

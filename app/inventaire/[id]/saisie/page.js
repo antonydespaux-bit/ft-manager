@@ -7,6 +7,7 @@ import { useRole } from '../../../../lib/useRole'
 import { useIsMobile } from '../../../../lib/useIsMobile'
 import Navbar from '../../../../components/Navbar'
 import IngredientSearch from '../../../../components/IngredientSearch'
+import ChefLoader from '../../../../components/ChefLoader'
 
 export default function SaisieInventairePage() {
   const params = useParams()
@@ -31,7 +32,7 @@ export default function SaisieInventairePage() {
 
   useEffect(() => {
     if (!role) return
-    if (role !== 'admin') router.replace('/inventaire')
+    if (role !== 'admin' && role !== 'cuisine' && role !== 'bar') router.replace('/inventaire')
   }, [role, router])
 
   useEffect(() => { loadData() }, [])
@@ -111,9 +112,9 @@ export default function SaisieInventairePage() {
         'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        ligne_id: ligneId,
+        ligneId,
         quantite_reelle: value === '' ? null : Number(value),
-        client_id: clientId,
+        clientId,
       })
     })
 
@@ -142,7 +143,7 @@ export default function SaisieInventairePage() {
       const res = await fetch('/api/inventaire/valider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ inventaire_id: inventaireId, client_id: clientId })
+        body: JSON.stringify({ inventaireId, clientId })
       })
       if (res.ok) {
         router.push(`/inventaire/${inventaireId}`)
@@ -163,19 +164,22 @@ export default function SaisieInventairePage() {
     try {
       const clientId = await getClientId()
       const { data: { session } } = await supabase.auth.getSession()
+      const ingMeta = allIngredients.find(i => i.id === ingredientId)
+      const section = ingMeta?._section || (inventaire?.section === 'bar' ? 'bar' : 'cuisine')
       const res = await fetch('/api/inventaire/add-ligne', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ inventaire_id: inventaireId, ingredient_id: ingredientId, client_id: clientId })
+        body: JSON.stringify({ inventaireId, ingredientId, clientId, section })
       })
-      const json = await res.json()
-      if (json.ligne) {
-        const ingMeta = allIngredients.find(i => i.id === ingredientId)
-        setLignes(prev => [...prev, { ...json.ligne, _categorie_id: ingMeta?.categorie_id || null }])
+      const ligne = await res.json()
+      if (res.ok && ligne?.id) {
+        setLignes(prev => [...prev, { ...ligne, _categorie_id: ingMeta?.categorie_id || null }])
         setShowAddPanel(false)
+      } else {
+        alert(ligne?.error || 'Erreur lors de l\'ajout.')
       }
     } finally {
       setAddingIngredient(false)
@@ -200,7 +204,7 @@ export default function SaisieInventairePage() {
   if (loading) return (
     <div style={{ minHeight: '100vh', background: c.fond }}>
       <Navbar section="cuisine" />
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
+      <ChefLoader />
     </div>
   )
 

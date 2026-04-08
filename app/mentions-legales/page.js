@@ -36,7 +36,7 @@ export default function MentionsLegales() {
       <section style={{ marginBottom: '32px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', borderBottom: '1px solid #E4E4E7', paddingBottom: '8px' }}>Données personnelles</h2>
         <p>Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données personnelles.</p>
-        <p>Pour exercer ces droits, contactez notre DPO à : <a href="mailto:privacy@skalcook.fr" style={{ color: '#6366F1' }}>privacy@skalcook.fr</a></p>
+        <p>Pour exercer ces droits, contactez notre DPO à : <a href="mailto:contact@skalcook.fr" style={{ color: '#6366F1' }}>contact@skalcook.fr</a></p>
       </section>
 
       <section style={{ marginBottom: '32px' }}>

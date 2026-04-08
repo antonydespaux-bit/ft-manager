@@ -8,6 +8,7 @@ import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import { log } from '../../../lib/useLog'
 import Navbar from '../../../components/Navbar'
+import ChefLoader from '../../../components/ChefLoader'
 
 export default function BarIngredientsPage() {
   const [ingredients, setIngredients] = useState([])
@@ -192,6 +193,26 @@ export default function BarIngredientsPage() {
           <span style={{ fontSize: '12px', color: c.texteMuted, whiteSpace: 'nowrap' }}>
             {ingredientsFiltres.length}{selection.length > 0 && ` — ${selection.length} sél.`}
           </span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+            {selection.length > 0 && peutModifier && (
+              <button onClick={supprimerSelection} disabled={saving} style={{
+                background: '#DC2626', color: 'white', border: 'none',
+                borderRadius: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+              }}>{saving ? '...' : `🗑 Supprimer (${selection.length})`}</button>
+            )}
+            {peutModifier && (
+              <button onClick={() => router.push('/bar/import')} style={{
+                background: c.blanc, color: c.texteMuted, border: `0.5px solid ${c.bordure}`,
+                borderRadius: '8px', padding: '8px 12px', fontSize: '13px', cursor: 'pointer'
+              }}>{isMobile ? '📥' : '📥 Import Excel'}</button>
+            )}
+            {peutModifier && (
+              <button onClick={() => setAjoutVisible(!ajoutVisible)} style={{
+                background: '#7F77DD', color: 'white', border: 'none',
+                borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: '500', cursor: 'pointer'
+              }}>+ {!isMobile && 'Nouvel ingrédient'}</button>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
@@ -221,7 +242,7 @@ export default function BarIngredientsPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: c.texteMuted }}>Chargement...</div>
+          <ChefLoader />
         ) : isMobile ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '8px 12px', background: c.blanc, borderRadius: '8px', border: `0.5px solid ${c.bordure}` }}>

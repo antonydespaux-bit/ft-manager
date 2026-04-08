@@ -31,6 +31,8 @@ export default function AchatsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [recherche, setRecherche] = useState('')
+  const [dateDebut, setDateDebut] = useState('')
+  const [dateFin, setDateFin] = useState('')
   const [deleting, setDeleting] = useState(null)
 
   useEffect(() => {
@@ -48,10 +50,8 @@ export default function AchatsListPage() {
     return () => { cancelled = true }
   }, [router])
 
-  useEffect(() => {
-    if (roleLoading || !role) return
-    if (role !== 'admin' && role !== 'directeur') router.replace('/dashboard')
-  }, [role, roleLoading, router])
+  // Section consultable par tous les membres de l'établissement.
+  // Les actions de modification sont gardees par `role === 'admin'` ci-dessous.
 
   const loadFactures = useCallback(async () => {
     setLoading(true)
@@ -64,6 +64,7 @@ export default function AchatsListPage() {
       .from('achats_factures')
       .select('id, fournisseur, numero_facture, date_facture, total_ht, statut, created_at')
       .eq('client_id', cid)
+      .is('deleted_at', null)
       .order('date_facture', { ascending: false })
 
     if (fErr) {
@@ -120,13 +121,51 @@ export default function AchatsListPage() {
     )
   }
 
+  const applyPreset = (preset) => {
+    const today = new Date()
+    const iso = (d) => d.toISOString().slice(0, 10)
+    if (preset === 'mois') {
+      const debut = new Date(today.getFullYear(), today.getMonth(), 1)
+      setDateDebut(iso(debut))
+      setDateFin(iso(today))
+    } else if (preset === 'mois-precedent') {
+      const debut = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+      const fin = new Date(today.getFullYear(), today.getMonth(), 0)
+      setDateDebut(iso(debut))
+      setDateFin(iso(fin))
+    } else if (preset === '30j') {
+      const debut = new Date(today)
+      debut.setDate(debut.getDate() - 30)
+      setDateDebut(iso(debut))
+      setDateFin(iso(today))
+    } else if (preset === '90j') {
+      const debut = new Date(today)
+      debut.setDate(debut.getDate() - 90)
+      setDateDebut(iso(debut))
+      setDateFin(iso(today))
+    } else if (preset === 'annee') {
+      setDateDebut(`${today.getFullYear()}-01-01`)
+      setDateFin(iso(today))
+    } else {
+      setDateDebut('')
+      setDateFin('')
+    }
+  }
+
   const facturesFiltrees = factures.filter((f) => {
-    if (!recherche.trim()) return true
-    const q = recherche.toLowerCase()
-    return (
-      (f.fournisseur || '').toLowerCase().includes(q) ||
-      (f.numero_facture || '').toLowerCase().includes(q)
-    )
+    // Filtre texte
+    if (recherche.trim()) {
+      const q = recherche.toLowerCase()
+      const match = (
+        (f.fournisseur || '').toLowerCase().includes(q) ||
+        (f.numero_facture || '').toLowerCase().includes(q)
+      )
+      if (!match) return false
+    }
+    // Filtre date (sur date_facture)
+    if (dateDebut && (!f.date_facture || f.date_facture < dateDebut)) return false
+    if (dateFin && (!f.date_facture || f.date_facture > dateFin)) return false
+    return true
   })
 
   const totalHT = facturesFiltrees.reduce((s, f) => s + (Number(f.total_ht) || 0), 0)
@@ -195,9 +234,54 @@ export default function AchatsListPage() {
             width: '100%', boxSizing: 'border-box',
             padding: '9px 14px', borderRadius: 8, fontSize: 13,
             border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte,
-            marginBottom: 16, outline: 'none',
+            marginBottom: 10, outline: 'none',
           }}
         />
+
+        {/* Filtre par date */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: c.texteMuted }}>
+            Du
+            <input
+              type="date"
+              value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 8, fontSize: 13, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, outline: 'none' }}
+            />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: c.texteMuted }}>
+            au
+            <input
+              type="date"
+              value={dateFin}
+              onChange={(e) => setDateFin(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: 8, fontSize: 13, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, outline: 'none' }}
+            />
+          </label>
+          {[
+            { k: 'mois',           label: 'Ce mois' },
+            { k: 'mois-precedent', label: 'Mois préc.' },
+            { k: '30j',            label: '30 j' },
+            { k: '90j',            label: '90 j' },
+            { k: 'annee',          label: 'Année' },
+          ].map((p) => (
+            <button
+              key={p.k}
+              onClick={() => applyPreset(p.k)}
+              style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${c.bordure}`, background: c.blanc, color: c.texte, cursor: 'pointer' }}
+            >
+              {p.label}
+            </button>
+          ))}
+          {(dateDebut || dateFin) && (
+            <button
+              onClick={() => applyPreset('clear')}
+              style={{ padding: '6px 10px', borderRadius: 8, fontSize: 12, border: `1px solid ${c.bordure}`, background: 'transparent', color: c.texteMuted, cursor: 'pointer' }}
+            >
+              ✕ Effacer
+            </button>
+          )}
+        </div>
 
         {error && <p style={{ color: '#B91C1C', fontSize: 14, marginBottom: 16 }}>{error}</p>}
 

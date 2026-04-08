@@ -7,7 +7,7 @@ export default function PolitiqueConfidentialite() {
       <section style={{ marginBottom: '28px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '10px' }}>1. Responsable du traitement</h2>
         <p><strong>Skalcook SAS</strong> est responsable du traitement des données personnelles collectées via l'application Skalcook.</p>
-        <p><strong>Contact DPO :</strong> <a href="mailto:privacy@skalcook.fr" style={{ color: '#6366F1' }}>privacy@skalcook.fr</a></p>
+        <p><strong>Contact DPO :</strong> <a href="mailto:contact@skalcook.fr" style={{ color: '#6366F1' }}>contact@skalcook.fr</a></p>
       </section>
 
       <section style={{ marginBottom: '28px' }}>
@@ -68,7 +68,7 @@ export default function PolitiqueConfidentialite() {
           <li><strong>Droit à la portabilité (art. 20) :</strong> exporter vos données (disponible dans Mon Compte)</li>
           <li><strong>Droit d'opposition (art. 21) :</strong> vous opposer à certains traitements</li>
         </ul>
-        <p>Contact : <a href="mailto:privacy@skalcook.fr" style={{ color: '#6366F1' }}>privacy@skalcook.fr</a> — Délai de réponse : 30 jours maximum.</p>
+        <p>Contact : <a href="mailto:contact@skalcook.fr" style={{ color: '#6366F1' }}>contact@skalcook.fr</a> — Délai de réponse : 30 jours maximum.</p>
         <p>En cas de réclamation non traitée, vous pouvez saisir la <strong>CNIL</strong> (www.cnil.fr).</p>
       </section>
 
