@@ -197,3 +197,18 @@ body {
   letter-spacing: 0.04em;
   margin-bottom: var(--sk-pad-xs);
 }
+
+/* ─── Badge ─── */
+.sk-badge {
+  border-radius: var(--sk-radius-pill);
+  padding: 3px 12px;
+  font-size: var(--sk-fs-sm);
+  font-weight: var(--sk-fw-med);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* background + color injectés via style={} (dynamique) */
+}
+.sk-badge--sm { padding: 2px 8px; font-size: 11px; }
+.sk-badge--lg { padding: 4px 14px; }

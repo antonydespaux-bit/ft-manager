@@ -12,7 +12,7 @@ import FichePhoto, { FicheHeaderInfo, FicheHeaderInfoStyles } from '../../../com
 import { AllergenesBlock, FicheDetailNavbar } from '../../../components/FicheDetailShared'
 import ChefLoader from '../../../components/ChefLoader'
 import BackButton from '../../../components/BackButton'
-import { Card } from '../../../components/ui'
+import { Card , Badge } from '../../../components/ui'
 
 export default function FicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -225,8 +225,8 @@ export default function FicheDetail() {
           <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '500', marginBottom: '10px', color: c.texte, width: '100%' }}>{fiche.nom}</h1>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0 }}>
-              {fiche.categorie && <span style={{ background: c.accentClair, color: c.accent, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{fiche.categorie}</span>}
-              {fiche.saison && <span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>{fiche.saison}</span>}
+              {fiche.categorie && <Badge bg={c.accentClair} color={c.accent}>{fiche.categorie}</Badge>}
+              {fiche.saison && <Badge bg={c.fond} color={c.texteMuted} border={`0.5px solid ${c.bordure}`}>{fiche.saison}</Badge>}
             </div>
             <div style={{ background: c.principal, color: c.accent, borderRadius: '10px', padding: '8px 14px', textAlign: 'center', flexShrink: 0, minWidth: '70px' }}>
               <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{uniteLabel}</div>

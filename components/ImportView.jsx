@@ -8,6 +8,7 @@ import { log } from '../lib/useLog'
 import * as XLSX from 'xlsx'
 import Navbar from './Navbar'
 import ChefLoader from './ChefLoader'
+import { Badge } from './ui'
 
 const CONFIG = {
   cuisine: {
@@ -513,13 +514,9 @@ export default function ImportView({ section = 'cuisine' }) {
                         {cfg.showCategoryInPreview && (
                           <td style={{ padding: '8px 12px', border: `0.5px solid ${c.bordure}` }}>
                             {ing.categorieNom ? (
-                              <span style={{
-                                background: ing.categorieNonTrouvee ? '#FEF3C7' : accentBg,
-                                color: ing.categorieNonTrouvee ? '#92400E' : accent,
-                                borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500'
-                              }}>
+                              <Badge bg={ing.categorieNonTrouvee ? '#FEF3C7' : accentBg} color={ing.categorieNonTrouvee ? '#92400E' : accent} size="sm">
                                 {ing.categorieNonTrouvee ? '\u26a0\ufe0f ' : '\u2713 '}{ing.categorieNom}
-                              </span>
+                              </Badge>
                             ) : (
                               <span style={{ color: c.texteMuted, fontSize: '12px' }}>—</span>
                             )}

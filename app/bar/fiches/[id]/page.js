@@ -11,7 +11,7 @@ import { ALLERGENES } from '../../../../lib/allergenes'
 import { AllergenesBlock } from '../../../../components/FicheDetailShared'
 import ChefLoader from '../../../../components/ChefLoader'
 import BackButton from '../../../../components/BackButton'
-import { Card } from '../../../../components/ui'
+import { Card , Badge } from '../../../../components/ui'
 
 export default function BarFicheDetail() {
   const [fiche, setFiche] = useState(null)
@@ -239,8 +239,8 @@ const loadFiche = async () => {
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '500', marginBottom: '8px', color: c.texte }}>{fiche.nom}</h1>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {fiche.categorie && <span style={{ background: '#EEEDFE', color: '#3C3489', borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{fiche.categorie}</span>}
-                {fiche.saison && <span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>{fiche.saison}</span>}
+                {fiche.categorie && <Badge bg={'#EEEDFE'} color={'#3C3489'}>{fiche.categorie}</Badge>}
+                {fiche.saison && <Badge bg={c.fond} color={c.texteMuted} border={`0.5px solid ${c.bordure}`}>{fiche.saison}</Badge>}
               </div>
             </div>
             <div style={{ background: '#3C3489', color: '#C4956A', borderRadius: '10px', padding: '8px 14px', textAlign: 'center', flexShrink: 0, marginLeft: '12px' }}>

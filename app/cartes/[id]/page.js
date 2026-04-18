@@ -8,7 +8,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { log } from '../../../lib/useLog'
 import { ALLERGENES } from '../../../lib/allergenes'
 import ChefLoader from '../../../components/ChefLoader'
-import { Alert } from '../../../components/ui'
+import { Alert , Badge } from '../../../components/ui'
 
 const genId = () => crypto.randomUUID()
 
@@ -408,7 +408,7 @@ export default function CarteDetailPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
                   <div style={{ fontSize: '20px', fontWeight: '500', color: c.texte }}>{carte.nom}</div>
-                  {carte.saison && <span style={{ background: c.accentClair, color: c.principal, borderRadius: '20px', padding: '2px 10px', fontSize: '11px', fontWeight: '500' }}>{carte.saison}</span>}
+                  {carte.saison && <Badge bg={c.accentClair} color={c.principal} size="sm">{carte.saison}</Badge>}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '10px', color: c.texteMuted, textTransform: 'uppercase' }}>{vueSupp ? 'Prix + suppl.' : 'Prix base'}</div>

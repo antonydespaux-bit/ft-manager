@@ -8,6 +8,7 @@ import { useRole } from '../../lib/useRole'
 import Navbar from '../../components/Navbar'
 import { ALLERGENES } from '../../lib/allergenes'
 import ChefLoader from '../../components/ChefLoader'
+import { Badge } from '../../components/ui'
 
 export default function SousFichesPage() {
   const [fiches, setFiches] = useState([])
@@ -108,9 +109,9 @@ export default function SousFichesPage() {
                       {fiche.allergenes.map(id => {
                         const a = ALLERGENES.find(al => al.id === id)
                         return a ? (
-                          <span key={id} title={a.label} style={{ background: '#FCEBEB', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>
+                          <Badge key={id} title={a.label} bg={'#FCEBEB'} color={'#A32D2D'} border="0.5px solid #F09595" size="sm">
                             {a.emoji} {a.label}
-                          </span>
+                          </Badge>
                         ) : null
                       })}
                     </div>
