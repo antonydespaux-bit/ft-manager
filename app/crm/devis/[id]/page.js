@@ -38,6 +38,8 @@ export default function CrmDevisDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [sendModalOpen, setSendModalOpen] = useState(false)
+  const [linkSaving, setLinkSaving] = useState(false)
+  const [showEvenementPicker, setShowEvenementPicker] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -225,6 +227,48 @@ export default function CrmDevisDetailPage() {
     await load()
   }
 
+  async function handleLinkEvenement(evenementId) {
+    setLinkSaving(true)
+    setError('')
+    const { error: err } = await supabase
+      .from('crm_devis')
+      .update({ crm_evenement_id: evenementId || null })
+      .eq('id', id)
+      .eq('client_id', clientId)
+    setLinkSaving(false)
+    if (err) { setError(err.message); return }
+    setShowEvenementPicker(false)
+    await load()
+  }
+
+  async function handleCreateEvenementFromDevis() {
+    if (!devis?.crm_client_id) { setError('Aucun client lié à ce devis.'); return }
+    setLinkSaving(true)
+    setError('')
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: newEv, error: eErr } = await supabase
+      .from('crm_evenements')
+      .insert({
+        client_id: clientId,
+        crm_client_id: devis.crm_client_id,
+        titre: `Événement ${devis.numero}`,
+        statut: 'devis_envoye',
+        montant_devis: devis.total_ttc,
+        created_by: user?.id || null,
+      })
+      .select('id')
+      .single()
+    if (eErr) { setLinkSaving(false); setError(eErr.message); return }
+    const { error: uErr } = await supabase
+      .from('crm_devis')
+      .update({ crm_evenement_id: newEv.id })
+      .eq('id', id)
+      .eq('client_id', clientId)
+    setLinkSaving(false)
+    if (uErr) { setError(uErr.message); return }
+    router.push(`/crm/evenements/${newEv.id}`)
+  }
+
   const statut = useMemo(() => STATUTS_DEVIS_MAP[devis?.statut], [devis])
   const allergenesAgreges = useMemo(() => {
     const set = new Set()
@@ -232,6 +276,12 @@ export default function CrmDevisDetailPage() {
     return Array.from(set)
   }, [lignes])
   const tauxTvaMap = useMemo(() => Object.fromEntries(TAUX_TVA.map((t) => [t.key, t.label])), [])
+  const evenementsPourClient = useMemo(
+    () => (devis?.crm_client_id
+      ? evenementsDispo.filter((ev) => ev.crm_client_id === devis.crm_client_id)
+      : []),
+    [evenementsDispo, devis?.crm_client_id]
+  )
 
   if (!authReady || roleLoading) {
     return (
@@ -289,18 +339,6 @@ export default function CrmDevisDetailPage() {
                       {clientDisplayName(clientCrm)}
                     </button>
                   )}
-                  {evenement && (
-                    <>
-                      <span>·</span>
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/crm/evenements/${evenement.id}`)}
-                        style={{ background: 'transparent', border: 'none', color: c.accent, cursor: 'pointer', padding: 0, fontSize: 13, textDecoration: 'underline' }}
-                      >
-                        {evenement.titre}
-                      </button>
-                    </>
-                  )}
                 </p>
               </div>
               <div className="crm-actions">
@@ -333,6 +371,81 @@ export default function CrmDevisDetailPage() {
                 </div>
               </Card>
             )}
+
+            {/* Événement lié */}
+            <Card c={c} padding="md" style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                <div className="sk-label-muted" style={{ color: c.texteMuted }}>Événement lié</div>
+                {evenement ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/crm/evenements/${evenement.id}`)}
+                      style={{ background: 'transparent', border: 'none', color: c.accent, cursor: 'pointer', padding: 0, fontSize: 14, fontWeight: 500, textDecoration: 'underline' }}
+                    >
+                      {evenement.titre}
+                    </button>
+                    {evenement.date_evenement && (
+                      <span style={{ color: c.texteMuted, fontSize: 13 }}>
+                        · {formatDateFr(evenement.date_evenement)}
+                      </span>
+                    )}
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                      <Button c={c} variant="ghost" size="sm" onClick={() => setShowEvenementPicker(true)} disabled={linkSaving}>
+                        Changer
+                      </Button>
+                      <Button c={c} variant="ghost" size="sm" onClick={() => handleLinkEvenement(null)} disabled={linkSaving}>
+                        Détacher
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: c.texteMuted, fontSize: 13 }}>Aucun événement lié</span>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                      <Button c={c} variant="ghost" size="sm" onClick={() => setShowEvenementPicker(true)} disabled={linkSaving || evenementsPourClient.length === 0}>
+                        Lier à un événement
+                      </Button>
+                      <Button c={c} variant="ghost" size="sm" onClick={handleCreateEvenementFromDevis} disabled={linkSaving}>
+                        + Créer un événement
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+              {showEvenementPicker && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `0.5px solid ${c.bordure}` }}>
+                  <select
+                    className="sk-select"
+                    style={{ background: c.blanc, border: `0.5px solid ${c.bordure}`, color: c.texte, width: '100%', maxWidth: 400 }}
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) handleLinkEvenement(e.target.value) }}
+                    disabled={linkSaving}
+                  >
+                    <option value="">Choisir un événement…</option>
+                    {evenementsPourClient
+                      .filter((ev) => ev.id !== devis.crm_evenement_id)
+                      .map((ev) => (
+                        <option key={ev.id} value={ev.id}>
+                          {ev.titre}{ev.date_evenement ? ` — ${ev.date_evenement}` : ''}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowEvenementPicker(false)}
+                    style={{ background: 'transparent', border: 'none', color: c.texteMuted, cursor: 'pointer', padding: '6px 0', fontSize: 12, marginLeft: 8 }}
+                  >
+                    Annuler
+                  </button>
+                  {evenementsPourClient.length === 0 && (
+                    <div style={{ color: c.texteMuted, fontSize: 12, marginTop: 6 }}>
+                      Aucun événement disponible pour ce client.
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
 
             {/* Statut */}
             <Card c={c} padding="md" style={{ marginBottom: 20 }}>
