@@ -9,6 +9,7 @@ import { useRole } from '../lib/useRole'
 import { log } from '../lib/useLog'
 import Navbar from './Navbar'
 import Pagination from './Pagination'
+import { Badge } from './ui'
 
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 const PAGE_SIZE = 24
@@ -299,11 +300,11 @@ export default function FichesList({ section = 'cuisine' }) {
                       ) : null}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', fontSize: '12px', color: c.texteMuted, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {fiche.lieux && <span style={{ background: cfg.colors.lieuBg, color: cfg.colors.lieuColor, borderRadius: '20px', padding: '1px 7px', fontSize: '10px', fontWeight: '500' }}>{fiche.lieux.emoji} {fiche.lieux.nom}</span>}
+                      {fiche.lieux && <Badge bg={cfg.colors.lieuBg} color={cfg.colors.lieuColor}>{fiche.lieux.emoji} {fiche.lieux.nom}</Badge>}
                       {fiche.saison && <span style={{ fontSize: '11px' }}>{fiche.saison}</span>}
                       {fiche.nb_portions && <span>{fiche.nb_portions} portions</span>}
                       {fiche.prix_ttc && <span style={{ fontWeight: '500', color: c.texte }}>{Number(fiche.prix_ttc).toFixed(2)} €</span>}
-                      {fc && <span style={{ background: fcBgColor, color: fcColor, borderRadius: '20px', padding: '1px 7px', fontSize: '11px', fontWeight: '500' }}>{fc}%</span>}
+                      {fc && <Badge bg={fcBgColor} color={fcColor}>{fc}%</Badge>}
                     </div>
                   </div>
                 </div>

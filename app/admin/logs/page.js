@@ -9,6 +9,7 @@ import { useTheme } from '../../../lib/useTheme'
 import { useRole } from '../../../lib/useRole'
 import Navbar from '../../../components/Navbar'
 import ChefLoader from '../../../components/ChefLoader'
+import { Badge } from '../../../components/ui'
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([])
@@ -111,13 +112,9 @@ export default function LogsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte }}>{user.nom}</div>
-                    <span style={{
-                      background: user.role === 'admin' ? '#F0E8E0' : user.role === 'cuisine' ? '#EAF3DE' : user.role === 'bar' ? '#EEEDFE' : '#FAEEDA',
-                      color: user.role === 'admin' ? '#2C1810' : user.role === 'cuisine' ? '#3B6D11' : user.role === 'bar' ? '#3C3489' : '#854F0B',
-                      borderRadius: '20px', padding: '2px 8px', fontSize: '10px', fontWeight: '500'
-                    }}>
+                    <Badge bg={user.role === 'admin' ? '#F0E8E0' : user.role === 'cuisine' ? '#EAF3DE' : user.role === 'bar' ? '#EEEDFE' : '#FAEEDA'} color={user.role === 'admin' ? '#2C1810' : user.role === 'cuisine' ? '#3B6D11' : user.role === 'bar' ? '#3C3489' : '#854F0B'} size="sm">
                       {user.role}
-                    </span>
+                    </Badge>
                   </div>
                   <div style={{ fontSize: '24px', fontWeight: '500', color: c.texte }}>{user.total}</div>
                 </div>
@@ -191,8 +188,8 @@ export default function LogsPage() {
                 <div key={log.id} style={{ background: c.blanc, borderRadius: '10px', padding: '14px', border: `0.5px solid ${c.bordure}`, marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ background: ac.bg, color: ac.color, borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>{log.action}</span>
-                      <span style={{ background: sc.bg, color: sc.color, borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>{log.section}</span>
+                      <Badge bg={ac.bg} color={ac.color} size="sm">{log.action}</Badge>
+                      <Badge bg={sc.bg} color={sc.color} size="sm">{log.section}</Badge>
                     </div>
                     <span style={{ fontSize: '11px', color: c.texteMuted }}>{formatDate(log.created_at)}</span>
                   </div>
@@ -231,10 +228,10 @@ export default function LogsPage() {
                         <div style={{ fontSize: '11px', color: c.texteMuted }}>{log.user_role}</div>
                       </td>
                       <td style={{ padding: '10px 16px' }}>
-                        <span style={{ background: ac.bg, color: ac.color, borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '600' }}>{log.action}</span>
+                        <Badge bg={ac.bg} color={ac.color}>{log.action}</Badge>
                       </td>
                       <td style={{ padding: '10px 16px' }}>
-                        <span style={{ background: sc.bg, color: sc.color, borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '500' }}>{log.section}</span>
+                        <Badge bg={sc.bg} color={sc.color}>{log.section}</Badge>
                       </td>
                       <td style={{ padding: '10px 16px', fontWeight: '500', color: c.texte }}>{log.entite_nom || '—'}</td>
                       <td style={{ padding: '10px 16px', color: c.texteMuted, fontSize: '12px' }}>{log.details || '—'}</td>

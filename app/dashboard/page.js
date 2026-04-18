@@ -12,6 +12,7 @@ import Navbar from '../../components/Navbar'
 import InventaireBanner from '../../components/InventaireBanner'
 import * as XLSX from 'xlsx'
 import ChefLoader from '../../components/ChefLoader'
+import { Badge } from '../../components/ui'
 
 export default function DashboardPage() {
   const [fiches, setFiches] = useState([])
@@ -131,13 +132,9 @@ export default function DashboardPage() {
           {nom && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '12px', color: c.texteMuted }}>Bonjour, <strong style={{ color: c.texte }}>{nom}</strong></span>
-              <span style={{
-                background: role === 'admin' ? '#F0E8E0' : role === 'cuisine' ? '#EAF3DE' : '#FAEEDA',
-                color: role === 'admin' ? '#2C1810' : role === 'cuisine' ? '#3B6D11' : '#854F0B',
-                borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '500'
-              }}>
+              <Badge bg={role === 'admin' ? '#F0E8E0' : role === 'cuisine' ? '#EAF3DE' : '#FAEEDA'} color={role === 'admin' ? '#2C1810' : role === 'cuisine' ? '#3B6D11' : '#854F0B'}>
                 {role === 'admin' ? 'Administrateur' : role === 'cuisine' ? 'Cuisine' : 'Directeur'}
-              </span>
+              </Badge>
             </div>
           )}
         </div>
@@ -193,7 +190,7 @@ export default function DashboardPage() {
                         <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>{fiche.nom}</div>
                         <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '2px' }}>{fiche.categorie}</div>
                       </div>
-                      <span style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{fc.toFixed(1)}%</span>
+                      <Badge bg={'#FCEBEB'} color={'#A32D2D'}>{fc.toFixed(1)}%</Badge>
                     </div>
                   )
                 })}
@@ -233,9 +230,9 @@ export default function DashboardPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>📈 Ingrédients avec prix modifiés récemment</div>
-                <span style={{ background: '#FAEEDA', color: '#854F0B', borderRadius: '20px', padding: '2px 10px', fontSize: '11px', fontWeight: '600' }}>
+                <Badge bg={'#FAEEDA'} color={'#854F0B'} size="sm">
                   {ingredientsPrixHausse.length} alertes
-                </span>
+                </Badge>
               </div>
               <div style={{ fontSize: '16px', color: c.texteMuted, fontWeight: '300' }}>
                 {isPrixExpanded ? '− Masquer' : '+ Développer'}
@@ -262,9 +259,9 @@ export default function DashboardPage() {
                           <td style={{ padding: '10px 16px', textAlign: 'right', color: c.texte }}>{ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'}</td>
                           <td style={{ padding: '10px 16px', textAlign: 'right' }}>
                             {variation !== null && (
-                              <span style={{ background: hausse ? '#FCEBEB' : '#EAF3DE', color: hausse ? '#A32D2D' : '#3B6D11', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '500' }}>
+                              <Badge bg={hausse ? '#FCEBEB' : '#EAF3DE'} color={hausse ? '#A32D2D' : '#3B6D11'} size="sm">
                                 {hausse ? '+' : ''}{variation.toFixed(1)}%
-                              </span>
+                              </Badge>
                             )}
                           </td>
                           <td style={{ padding: '10px 16px', textAlign: 'right', color: c.texteMuted, fontSize: '12px' }}>
@@ -288,9 +285,9 @@ export default function DashboardPage() {
               style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
             >
               <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>⚠️ Tableau des allergènes</div>
-              <span style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>
+              <Badge bg={'#FCEBEB'} color={'#A32D2D'} size="sm">
                 {fichesAvecAllergenes.length} fiche{fichesAvecAllergenes.length > 1 ? 's' : ''}
-              </span>
+              </Badge>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
               {isAllergenesExpanded && (

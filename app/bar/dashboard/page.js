@@ -8,6 +8,7 @@ import { useRole } from '../../../lib/useRole'
 import { calculerFoodCost, foodCostColor, getSeuilsFromParams } from '../../../lib/foodCost'
 import Navbar from '../../../components/Navbar'
 import ChefLoader from '../../../components/ChefLoader'
+import { Badge } from '../../../components/ui'
 
 export default function BarDashboardPage() {
   const [fiches, setFiches] = useState([])
@@ -93,9 +94,9 @@ export default function BarDashboardPage() {
           {nom && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '12px', color: c.texteMuted }}>Bonjour, <strong style={{ color: c.texte }}>{nom}</strong></span>
-              <span style={{ background: '#EEEDFE', color: '#3C3489', borderRadius: '20px', padding: '3px 10px', fontSize: '11px', fontWeight: '500' }}>
+              <Badge bg={'#EEEDFE'} color={'#3C3489'}>
                 {role === 'admin' ? 'Administrateur' : role === 'bar' ? 'Bar' : 'Directeur'}
-              </span>
+              </Badge>
             </div>
           )}
         </div>
@@ -151,7 +152,7 @@ export default function BarDashboardPage() {
                         <div style={{ fontSize: '13px', fontWeight: '500', color: c.texte }}>{fiche.nom}</div>
                         <div style={{ fontSize: '11px', color: c.texteMuted, marginTop: '2px' }}>{fiche.categorie}</div>
                       </div>
-                      <span style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '600' }}>{fc.toFixed(1)}%</span>
+                      <Badge bg={'#FCEBEB'} color={'#A32D2D'}>{fc.toFixed(1)}%</Badge>
                     </div>
                   )
                 })}
@@ -193,9 +194,9 @@ export default function BarDashboardPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ fontSize: '13px', fontWeight: '500', color: '#3C3489' }}>📈 Ingrédients Bar avec prix modifiés</div>
-                <span style={{ background: '#EEEDFE', color: '#3C3489', borderRadius: '20px', padding: '2px 10px', fontSize: '11px', fontWeight: '600' }}>
+                <Badge bg={'#EEEDFE'} color={'#3C3489'} size="sm">
                   {ingredientsPrixHausse.length} alertes
-                </span>
+                </Badge>
               </div>
               <div style={{ fontSize: '14px', color: '#3C3489', fontWeight: '500' }}>
                 {isPrixExpanded ? '− Masquer' : '+ Développer'}
@@ -222,9 +223,9 @@ export default function BarDashboardPage() {
                           <td style={{ padding: '10px 16px', textAlign: 'right', color: c.texte }}>{ing.prix_kg ? `${Number(ing.prix_kg).toFixed(2)} €` : '—'}</td>
                           <td style={{ padding: '10px 16px', textAlign: 'right' }}>
                             {variation !== null && (
-                              <span style={{ background: hausse ? '#FCEBEB' : '#EAF3DE', color: hausse ? '#A32D2D' : '#3B6D11', borderRadius: '20px', padding: '2px 8px', fontSize: '12px', fontWeight: '500' }}>
+                              <Badge bg={hausse ? '#FCEBEB' : '#EAF3DE'} color={hausse ? '#A32D2D' : '#3B6D11'} size="sm">
                                 {hausse ? '+' : ''}{variation.toFixed(1)}%
-                              </span>
+                              </Badge>
                             )}
                           </td>
                           <td style={{ padding: '10px 16px', textAlign: 'right', color: c.texteMuted, fontSize: '12px' }}>

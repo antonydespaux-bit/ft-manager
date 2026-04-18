@@ -9,6 +9,7 @@ import { log } from '../../lib/useLog'
 import Navbar from '../../components/Navbar'
 import Pagination from '../../components/Pagination'
 import ChefLoader from '../../components/ChefLoader'
+import { Badge } from '../../components/ui'
 
 const PAGE_SIZE = 30
 
@@ -479,9 +480,9 @@ export default function IngredientsPage() {
                               {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.emoji} {cat.nom}</option>)}
                             </select>
                           ) : ing.categories_ingredients ? (
-                            <span style={{ background: c.accentClair, color: c.accent, borderRadius: '20px', padding: '2px 10px', fontSize: '11px', fontWeight: '500' }}>
+                            <Badge bg={c.accentClair} color={c.accent} size="sm">
                               {ing.categories_ingredients.emoji} {ing.categories_ingredients.nom}
-                            </span>
+                            </Badge>
                           ) : (
                             <span style={{ color: c.texteMuted, fontSize: '12px' }}>—</span>
                           )}
@@ -642,11 +643,7 @@ export default function IngredientsPage() {
                         <td style={{ padding: '14px 16px', textAlign: 'right', color: '#16A34A' }}>{stat.prixMin.toFixed(2)} €</td>
                         <td style={{ padding: '14px 16px', textAlign: 'right', color: '#DC2626' }}>{stat.prixMax.toFixed(2)} €</td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          <span style={{
-                            background: ecartPct > 50 ? '#FEE2E2' : ecartPct > 20 ? '#FEF3C7' : '#DCFCE7',
-                            color: ecartPct > 50 ? '#DC2626' : ecartPct > 20 ? '#D97706' : '#16A34A',
-                            borderRadius: '20px', padding: '2px 10px', fontSize: '12px', fontWeight: '500'
-                          }}>{ecart.toFixed(2)} € ({ecartPct}%)</span>
+                          <Badge bg={ecartPct > 50 ? '#FEE2E2' : ecartPct > 20 ? '#FEF3C7' : '#DCFCE7'} color={ecartPct > 50 ? '#DC2626' : ecartPct > 20 ? '#D97706' : '#16A34A'} size="sm">{ecart.toFixed(2)} € ({ecartPct}%)</Badge>
                         </td>
                       </tr>
                     )

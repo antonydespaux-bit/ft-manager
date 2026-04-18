@@ -8,6 +8,7 @@ import { useIsMobile } from '../../../lib/useIsMobile'
 import { log } from '../../../lib/useLog'
 import ChefLoader from '../../../components/ChefLoader'
 import BackButton from '../../../components/BackButton'
+import { Badge } from '../../../components/ui'
 
 export default function MenuDetail() {
   const { nomEtablissement } = useTheme()
@@ -290,9 +291,9 @@ useEffect(() => {
                   <h1 style={{ fontSize: '22px', fontWeight: '500', color: c.texte, marginBottom: '8px' }}>{menu.nom}</h1>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {menu.saison && (
-                      <span style={{ background: c.accentClair, color: c.principal, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>
+                      <Badge bg={c.accentClair} color={c.principal}>
                         {menu.saison}
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { ALLERGENES } from '../lib/allergenes'
-import { Alert } from './ui'
+import { Alert, Badge } from './ui'
 
 /**
  * Shared allergen display block for fiche detail pages.
@@ -20,9 +20,9 @@ export function AllergenesBlock({ allergenes = [], allergenesCascade = [], c }) 
           {directAllergens.map(id => {
             const a = ALLERGENES.find(al => al.id === id)
             return a ? (
-              <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500' }}>
+              <Badge key={id} bg={'white'} color={'#A32D2D'} border="0.5px solid #F09595">
                 {a.emoji} {a.label}
-              </span>
+              </Badge>
             ) : null
           })}
         </div>
@@ -34,9 +34,9 @@ export function AllergenesBlock({ allergenes = [], allergenesCascade = [], c }) 
             {cascadeOnly.map(id => {
               const a = ALLERGENES.find(al => al.id === id)
               return a ? (
-                <span key={id} style={{ background: 'white', color: '#A32D2D', border: '0.5px solid #F09595', borderRadius: '20px', padding: '4px 10px', fontSize: '12px', fontWeight: '500', opacity: 0.85 }}>
+                <Badge key={id} bg={'white'} color={'#A32D2D'} border="0.5px solid #F09595" style={{ opacity: 0.85 }}>
                   {a.emoji} {a.label}
-                </span>
+                </Badge>
               ) : null
             })}
           </div>
@@ -81,9 +81,9 @@ export function FicheFinancialRecap({ cout, fc, prixIndic, fiche, seuilVert, seu
             Food Cost {tvaLabel ? `(TVA ${tvaLabel})` : ''}
           </div>
           {fc ? (
-            <span style={{ background: fcBg, color: fcColor, borderRadius: '20px', padding: '4px 12px', fontSize: '16px', fontWeight: '600' }}>
+            <Badge bg={fcBg} color={fcColor} size="lg">
               {fc} %
-            </span>
+            </Badge>
           ) : (
             <div style={{ fontSize: '18px', fontWeight: '500', color: c.texteMuted }}>—</div>
           )}

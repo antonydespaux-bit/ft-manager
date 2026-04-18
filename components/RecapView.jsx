@@ -9,6 +9,7 @@ import { useRole } from '../lib/useRole'
 import { log } from '../lib/useLog'
 import * as XLSX from 'xlsx'
 import Navbar from './Navbar'
+import { Badge } from './ui'
 
 const CATEGORIES_ALCOOL = ['Cocktails', 'Vins', 'Champagnes', 'Bières', 'Spiritueux']
 
@@ -207,7 +208,7 @@ export default function RecapView({ section = 'cuisine' }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
           <div style={{ fontSize: '14px', fontWeight: '500', color: c.texte, cursor: 'pointer', flex: 1 }} onClick={() => router.push(url)}>{item.nom}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {fc && <span style={{ background: fcBg(fc), color: fcColor(fc), borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>{fc}%</span>}
+            {fc && <Badge bg={fcBg(fc)} color={fcColor(fc)} size="sm">{fc}%</Badge>}
             {peutModifier && <input type="checkbox" checked={aArchiver} onChange={() => toggleArchive(item.id)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: cfg.colors.accentCheckbox }} />}
           </div>
         </div>
@@ -215,7 +216,7 @@ export default function RecapView({ section = 'cuisine' }) {
           {cout ? <span>Coût : {Number(cout).toFixed(2)} €</span> : null}
           {prixTTC ? <span>Prix : {Number(prixTTC).toFixed(2)} €</span> : null}
           {item.saison ? <span>{item.saison}</span> : null}
-          {vue === 'categorie' && item.lieux && <span style={{ background: cfg.colors.lieuBg, color: cfg.colors.lieuColor, borderRadius: '20px', padding: '1px 8px', fontSize: '10px' }}>{item.lieux.emoji} {item.lieux.nom}</span>}
+          {vue === 'categorie' && item.lieux && <Badge bg={cfg.colors.lieuBg} color={cfg.colors.lieuColor}>{item.lieux.emoji} {item.lieux.nom}</Badge>}
         </div>
       </div>
     ) : (
@@ -223,7 +224,7 @@ export default function RecapView({ section = 'cuisine' }) {
         <td style={{ padding: '8px 10px', fontWeight: '500', color: c.texte, cursor: 'pointer' }} onClick={() => router.push(url)}>{item.nom}</td>
         {vue === 'categorie' && (
           <td style={{ padding: '8px 10px' }}>
-            {item.lieux && <span style={{ background: cfg.colors.lieuBg, color: cfg.colors.lieuColor, borderRadius: '20px', padding: '2px 8px', fontSize: '11px' }}>{item.lieux.emoji} {item.lieux.nom}</span>}
+            {item.lieux && <Badge bg={cfg.colors.lieuBg} color={cfg.colors.lieuColor} size="sm">{item.lieux.emoji} {item.lieux.nom}</Badge>}
           </td>
         )}
         <td style={{ padding: '8px 10px', textAlign: 'right', color: c.texteMuted }}>{item.saison || '—'}</td>
@@ -232,7 +233,7 @@ export default function RecapView({ section = 'cuisine' }) {
         <td style={{ padding: '8px 10px', textAlign: 'right' }}>{prixTTC ? `${Number(prixTTC).toFixed(2)} €` : '—'}</td>
         <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '500', color: benefice ? (benefice > 0 ? '#3B6D11' : '#A32D2D') : c.texteMuted }}>{benefice ? `${benefice.toFixed(2)} €` : '—'}</td>
         <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-          {fc ? <span style={{ background: fcBg(fc), color: fcColor(fc), borderRadius: '20px', padding: '2px 8px', fontSize: '11px', fontWeight: '500' }}>{fc} %</span> : '—'}
+          {fc ? <Badge bg={fcBg(fc)} color={fcColor(fc)} size="sm">{fc} %</Badge> : '—'}
         </td>
         {peutModifier && <td style={{ padding: '8px 10px', textAlign: 'right' }}><input type="checkbox" checked={aArchiver} onChange={() => toggleArchive(item.id)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: cfg.colors.accentCheckbox }} /></td>}
       </tr>
@@ -280,7 +281,7 @@ export default function RecapView({ section = 'cuisine' }) {
               <td style={{ padding: '14px 16px', textAlign: 'right' }}>{stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)} €` : '—'}</td>
               <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: '500', color: stats.beneficeMoyen > 0 ? '#3B6D11' : c.texteMuted }}>{stats.beneficeMoyen !== 0 ? `${stats.beneficeMoyen.toFixed(2)} €` : '—'}</td>
               <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                {stats.ratioMoyen > 0 ? <span style={{ background: fcBg(stats.ratioMoyen), color: fcColor(stats.ratioMoyen), borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '500' }}>{stats.ratioMoyen.toFixed(1)} %</span> : '—'}
+                {stats.ratioMoyen > 0 ? <Badge bg={fcBg(stats.ratioMoyen)} color={fcColor(stats.ratioMoyen)}>{stats.ratioMoyen.toFixed(1)} %</Badge> : '—'}
               </td>
             </tr></tbody></table>
           )}
@@ -334,9 +335,7 @@ export default function RecapView({ section = 'cuisine' }) {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ background: cfg.colors.lieuBg, color: cfg.colors.lieuColor, borderRadius: '20px', padding: '4px 14px', fontSize: '12px', fontWeight: '500' }}>
-                    {lieu.emoji} {lieu.nom}
-                  </div>
+                  <Badge bg={cfg.colors.lieuBg} color={cfg.colors.lieuColor} size="lg">{lieu.emoji} {lieu.nom}</Badge>
                   <span style={{ fontSize: '12px', color: c.texteMuted }}>{fichesLieu.length} fiche{fichesLieu.length > 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'flex', gap: isMobile ? '12px' : '24px', alignItems: 'center' }}>
@@ -355,12 +354,12 @@ export default function RecapView({ section = 'cuisine' }) {
                 <div style={{ border: `0.5px solid ${c.bordure}`, borderTop: 'none', borderRadius: '0 0 12px 12px', background: c.fond, padding: '12px' }}>
                   {catsLieu.map(cat => {
                     const fichesCat = fichesLieu.filter(f => f.categorie_plat_id === cat.id)
-                    return <Accordeon key={cat.id} id={`${lieu.id}-${cat.id}`} badge={<span style={{ background: cfg.colors.catBg, color: cfg.colors.catColor, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{cat.emoji} {cat.nom}</span>} stats={statsListe(fichesCat)} fiches={fichesCat} />
+                    return <Accordeon key={cat.id} id={`${lieu.id}-${cat.id}`} badge={<Badge bg={cfg.colors.catBg} color={cfg.colors.catColor}>{cat.emoji} {cat.nom}</Badge>} stats={statsListe(fichesCat)} fiches={fichesCat} />
                   })}
                   {(() => {
                     const sansCat = fichesLieu.filter(f => !f.categorie_plat_id)
                     if (!sansCat.length) return null
-                    return <Accordeon id={`${lieu.id}-sans-cat`} badge={<span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>Sans catégorie</span>} stats={statsListe(sansCat)} fiches={sansCat} />
+                    return <Accordeon id={`${lieu.id}-sans-cat`} badge={<Badge bg={c.fond} color={c.texteMuted} border={`0.5px solid ${c.bordure}`}>Sans catégorie</Badge>} stats={statsListe(sansCat)} fiches={sansCat} />
                   })()}
                 </div>
               )}
@@ -368,7 +367,7 @@ export default function RecapView({ section = 'cuisine' }) {
           )
         })}
         {sanslieu.length > 0 && (
-          <Accordeon id="sans-lieu" badge={<span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>Sans lieu</span>} stats={statsListe(sanslieu)} fiches={sanslieu} />
+          <Accordeon id="sans-lieu" badge={<Badge bg={c.fond} color={c.texteMuted} border={`0.5px solid ${c.bordure}`}>Sans lieu</Badge>} stats={statsListe(sanslieu)} fiches={sanslieu} />
         )}
       </div>
     )
@@ -387,9 +386,9 @@ export default function RecapView({ section = 'cuisine' }) {
           <div>
             {catsAvecFiches.map(cat => {
               const fichesCat = fichesFiltrees.filter(f => f.categorie_plat_id === cat.id)
-              return <Accordeon key={cat.id} id={`cat-${cat.id}`} badge={<span style={{ background: cfg.colors.catBg, color: cfg.colors.catColor, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{cat.emoji} {cat.nom}</span>} stats={statsListe(fichesCat)} fiches={fichesCat} avecLieu={true} />
+              return <Accordeon key={cat.id} id={`cat-${cat.id}`} badge={<Badge bg={cfg.colors.catBg} color={cfg.colors.catColor}>{cat.emoji} {cat.nom}</Badge>} stats={statsListe(fichesCat)} fiches={fichesCat} avecLieu={true} />
             })}
-            {sansCat.length > 0 && <Accordeon id="cat-sans" badge={<span style={{ background: c.fond, color: c.texteMuted, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', border: `0.5px solid ${c.bordure}` }}>Sans catégorie</span>} stats={statsListe(sansCat)} fiches={sansCat} avecLieu={true} />}
+            {sansCat.length > 0 && <Accordeon id="cat-sans" badge={<Badge bg={c.fond} color={c.texteMuted} border={`0.5px solid ${c.bordure}`}>Sans catégorie</Badge>} stats={statsListe(sansCat)} fiches={sansCat} avecLieu={true} />}
           </div>
         ) : (
           <div style={{ background: c.blanc, borderRadius: '12px', border: `0.5px solid ${c.bordure}`, overflow: 'hidden' }}>
@@ -409,7 +408,7 @@ export default function RecapView({ section = 'cuisine' }) {
                         onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = c.blanc }}>
                         <td style={{ padding: '14px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ background: cfg.colors.catBg, color: cfg.colors.catColor, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{cat.emoji} {cat.nom}</span>
+                            <Badge bg={cfg.colors.catBg} color={cfg.colors.catColor}>{cat.emoji} {cat.nom}</Badge>
                             <span style={{ fontSize: '11px', color: c.texteMuted }}>{stats.nb} fiche{stats.nb > 1 ? 's' : ''}</span>
                             <span style={{ fontSize: '11px', color: c.accent, marginLeft: 'auto' }}>{isOpen ? '▲' : '▼'}</span>
                           </div>
@@ -420,7 +419,7 @@ export default function RecapView({ section = 'cuisine' }) {
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>{stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)} €` : '—'}</td>
                         <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: '500', color: stats.beneficeMoyen > 0 ? '#3B6D11' : c.texteMuted }}>{stats.beneficeMoyen !== 0 ? `${stats.beneficeMoyen.toFixed(2)} €` : '—'}</td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          {stats.ratioMoyen > 0 ? <span style={{ background: fcBg(stats.ratioMoyen), color: fcColor(stats.ratioMoyen), borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '500' }}>{stats.ratioMoyen.toFixed(1)} %</span> : '—'}
+                          {stats.ratioMoyen > 0 ? <Badge bg={fcBg(stats.ratioMoyen)} color={fcColor(stats.ratioMoyen)}>{stats.ratioMoyen.toFixed(1)} %</Badge> : '—'}
                         </td>
                       </tr>
                       {isOpen && (
@@ -480,13 +479,13 @@ export default function RecapView({ section = 'cuisine' }) {
                 if (!stats) return null
                 return (
                   <tr key={lieu.id} style={{ borderBottom: `0.5px solid ${c.bordure}` }}>
-                    <td style={{ padding: '12px 16px' }}><span style={{ background: cfg.colors.lieuBg, color: cfg.colors.lieuColor, borderRadius: '20px', padding: '3px 12px', fontSize: '12px', fontWeight: '500' }}>{lieu.emoji} {lieu.nom}</span></td>
+                    <td style={{ padding: '12px 16px' }}><Badge bg={cfg.colors.lieuBg} color={cfg.colors.lieuColor}>{lieu.emoji} {lieu.nom}</Badge></td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>{stats.nb}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>{stats.coutMoyen > 0 ? `${stats.coutMoyen.toFixed(2)} €` : '—'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>{stats.prixTTCMoyen > 0 ? `${stats.prixTTCMoyen.toFixed(2)} €` : '—'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '500', color: stats.beneficeMoyen > 0 ? '#3B6D11' : c.texteMuted }}>{stats.beneficeMoyen > 0 ? `${stats.beneficeMoyen.toFixed(2)} €` : '—'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      {stats.ratioMoyen > 0 ? <span style={{ background: fcBg(stats.ratioMoyen), color: fcColor(stats.ratioMoyen), borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '500' }}>{stats.ratioMoyen.toFixed(1)} %</span> : '—'}
+                      {stats.ratioMoyen > 0 ? <Badge bg={fcBg(stats.ratioMoyen)} color={fcColor(stats.ratioMoyen)}>{stats.ratioMoyen.toFixed(1)} %</Badge> : '—'}
                     </td>
                   </tr>
                 )
@@ -499,7 +498,7 @@ export default function RecapView({ section = 'cuisine' }) {
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '500' }}>{statsTotal.prixTTCMoyen > 0 ? `${statsTotal.prixTTCMoyen.toFixed(2)} €` : '—'}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '500', color: statsTotal.beneficeMoyen > 0 ? '#3B6D11' : c.texteMuted }}>{statsTotal.beneficeMoyen > 0 ? `${statsTotal.beneficeMoyen.toFixed(2)} €` : '—'}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    {statsTotal.ratioMoyen > 0 ? <span style={{ background: fcBg(statsTotal.ratioMoyen), color: fcColor(statsTotal.ratioMoyen), borderRadius: '20px', padding: '3px 10px', fontSize: '12px', fontWeight: '500' }}>{statsTotal.ratioMoyen.toFixed(1)} %</span> : '—'}
+                    {statsTotal.ratioMoyen > 0 ? <Badge bg={fcBg(statsTotal.ratioMoyen)} color={fcColor(statsTotal.ratioMoyen)}>{statsTotal.ratioMoyen.toFixed(1)} %</Badge> : '—'}
                   </td>
                 </tr>
               )}
