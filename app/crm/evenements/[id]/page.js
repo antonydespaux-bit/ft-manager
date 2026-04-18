@@ -10,6 +10,7 @@ import { Card, Button, Badge, Alert } from '../../../../components/ui'
 import EvenementForm from '../../../../components/crm/EvenementForm'
 import {
   STATUTS, STATUTS_MAP, TYPES_PRESTATION_MAP, LIEUX_TYPES_MAP,
+  STATUTS_DEVIS_MAP,
   formatDateFr, formatMontant, clientDisplayName, hexToRgba,
 } from '../../../../lib/crmConstants'
 
@@ -30,6 +31,10 @@ export default function CrmEvenementDetailPage() {
   const [mode, setMode] = useState('view')
   const [statutSaving, setStatutSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [devisLies, setDevisLies] = useState([])
+  const [devisDetachables, setDevisDetachables] = useState([])
+  const [linkSaving, setLinkSaving] = useState(false)
+  const [showDevisPicker, setShowDevisPicker] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -80,6 +85,17 @@ export default function CrmEvenementDetailPage() {
       .select('id, type, nom, prenom, raison_sociale')
       .eq('client_id', cid)
     setClientsDispo(allClients || [])
+
+    // Devis du tenant (filtrés après en mémoire : liés vs détachables du client courant)
+    const { data: allDevis } = await supabase
+      .from('crm_devis')
+      .select('id, numero, crm_client_id, crm_evenement_id, statut, total_ttc, date_emission, sent_at')
+      .eq('client_id', cid)
+      .order('date_emission', { ascending: false })
+    const devAll = allDevis || []
+    setDevisLies(devAll.filter((d) => d.crm_evenement_id === id))
+    setDevisDetachables(devAll.filter((d) => !d.crm_evenement_id && d.crm_client_id === ev?.crm_client_id))
+
     setLoading(false)
   }, [id])
 
@@ -109,6 +125,34 @@ export default function CrmEvenementDetailPage() {
     if (!err) setEvenement((ev) => ({ ...ev, statut: newStatut }))
     else setError(err.message)
     setStatutSaving(false)
+  }
+
+  async function handleAttachDevis(devisId) {
+    if (!devisId) return
+    setLinkSaving(true)
+    setError('')
+    const { error: err } = await supabase
+      .from('crm_devis')
+      .update({ crm_evenement_id: id })
+      .eq('id', devisId)
+      .eq('client_id', clientId)
+    setLinkSaving(false)
+    if (err) { setError(err.message); return }
+    setShowDevisPicker(false)
+    await load()
+  }
+
+  async function handleDetachDevis(devisId) {
+    setLinkSaving(true)
+    setError('')
+    const { error: err } = await supabase
+      .from('crm_devis')
+      .update({ crm_evenement_id: null })
+      .eq('id', devisId)
+      .eq('client_id', clientId)
+    setLinkSaving(false)
+    if (err) { setError(err.message); return }
+    await load()
   }
 
   async function handleDelete() {
@@ -246,6 +290,87 @@ export default function CrmEvenementDetailPage() {
                 </div>
               </Card>
             )}
+
+            {/* Devis liés */}
+            <Card c={c} padding="md" style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                <div className="sk-panel-header" style={{ color: c.texte, margin: 0 }}>
+                  Devis {devisLies.length > 0 && <span style={{ color: c.texteMuted, fontWeight: 400 }}>· {devisLies.length}</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {devisDetachables.length > 0 && (
+                    <Button c={c} variant="ghost" size="sm" onClick={() => setShowDevisPicker((v) => !v)} disabled={linkSaving}>
+                      {showDevisPicker ? 'Fermer' : 'Lier un devis existant'}
+                    </Button>
+                  )}
+                  <Button c={c} variant="ghost" size="sm" onClick={() => router.push(`/crm/devis/nouveau?evenement=${id}`)}>
+                    + Nouveau devis
+                  </Button>
+                </div>
+              </div>
+
+              {showDevisPicker && devisDetachables.length > 0 && (
+                <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: `0.5px solid ${c.bordure}` }}>
+                  <select
+                    className="sk-select"
+                    style={{ background: c.blanc, border: `0.5px solid ${c.bordure}`, color: c.texte, width: '100%', maxWidth: 400 }}
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) handleAttachDevis(e.target.value) }}
+                    disabled={linkSaving}
+                  >
+                    <option value="">Choisir un devis non lié…</option>
+                    {devisDetachables.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.numero} — {formatMontant(d.total_ttc)} TTC ({STATUTS_DEVIS_MAP[d.statut]?.label || d.statut})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {devisLies.length === 0 ? (
+                <div style={{ color: c.texteMuted, fontSize: 13, padding: '4px 0' }}>
+                  Aucun devis lié à cet événement.
+                </div>
+              ) : (
+                <div className="crm-list">
+                  {devisLies.map((d) => {
+                    const st = STATUTS_DEVIS_MAP[d.statut]
+                    return (
+                      <div
+                        key={d.id}
+                        className="crm-row"
+                        style={{ background: c.blanc, borderColor: c.bordure, color: c.texte, cursor: 'default' }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/crm/devis/${d.id}`)}
+                          style={{ background: 'transparent', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', flex: 1, minWidth: 0 }}
+                        >
+                          <div className="crm-row__primary" style={{ color: c.texte }}>{d.numero}</div>
+                          <div className="crm-row__secondary" style={{ color: c.texteMuted }}>
+                            {formatDateFr(d.date_emission)} · {formatMontant(d.total_ttc)} TTC
+                            {d.sent_at && ` · Envoyé le ${formatDateFr(d.sent_at)}`}
+                          </div>
+                        </button>
+                        <div className="crm-row__meta" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {st && <Badge bg={hexToRgba(st.couleur, 0.12)} color={st.couleur} size="sm">{st.label}</Badge>}
+                          <button
+                            type="button"
+                            onClick={() => handleDetachDevis(d.id)}
+                            disabled={linkSaving}
+                            title="Détacher ce devis de l'événement"
+                            style={{ background: 'transparent', border: 'none', color: c.texteMuted, cursor: 'pointer', padding: 4, fontSize: 16, lineHeight: 1 }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </Card>
 
             {/* Zone danger */}
             <div style={{ marginTop: 32, paddingTop: 16, borderTop: `0.5px solid ${c.bordure}` }}>
