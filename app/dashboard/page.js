@@ -23,6 +23,7 @@ import SectionPrixModifies from '../../components/dashboard/widgets/SectionPrixM
 import SectionAllergenes from '../../components/dashboard/widgets/SectionAllergenes'
 import KpiCaMtd from '../../components/dashboard/widgets/KpiCaMtd'
 import KpiMargeMtd from '../../components/dashboard/widgets/KpiMargeMtd'
+import KpiAvisNote from '../../components/dashboard/widgets/KpiAvisNote'
 import SectionCrmEvenements from '../../components/dashboard/widgets/SectionCrmEvenements'
 import DashboardCustomizeModal from '../../components/dashboard/DashboardCustomizeModal'
 
@@ -129,6 +130,8 @@ export default function DashboardPage() {
         return <KpiCaMtd c={c} isMobile={isMobile} />
       case 'kpi-marge-mtd':
         return <KpiMargeMtd c={c} isMobile={isMobile} />
+      case 'kpi-avis-note':
+        return <KpiAvisNote c={c} isMobile={isMobile} />
       case 'section-crm-evenements':
         return <SectionCrmEvenements c={c} />
       default:
