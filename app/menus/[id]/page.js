@@ -11,7 +11,7 @@ import BackButton from '../../../components/BackButton'
 import { Badge } from '../../../components/ui'
 
 export default function MenuDetail() {
-  const { nomEtablissement } = useTheme()
+  const { nomEtablissement, logoUrl } = useTheme()
   const isMobile = useIsMobile()
   const [menu, setMenu] = useState(null)
   const [menuFiches, setMenuFiches] = useState([])
@@ -185,7 +185,7 @@ useEffect(() => {
         justifyContent: 'space-between', height: '56px', minWidth: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push('/fiches')} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push('/fiches')} />
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>|</span>}
           <BackButton fallback="/menus" style={{ padding: isMobile ? '5px 8px' : '6px 12px', flexShrink: 0 }} />
           <span style={{

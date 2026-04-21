@@ -191,7 +191,7 @@ export default function FicheDetail() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/dashboard")} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push("/dashboard")} />
           <BackButton fallback="/fiches" label={isMobile ? '←' : '← Retour'} />
           {!isMobile && <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>}
         </div>

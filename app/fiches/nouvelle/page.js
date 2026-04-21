@@ -37,7 +37,7 @@ export default function NouvelleFiche() {
   const [error, setError] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
   const router = useRouter()
-  const { c, nomEtablissement } = useTheme()
+  const { c, logoUrl, nomEtablissement } = useTheme()
   const saisons = theme.saisons
   const isMobile = useIsMobile()
 
@@ -246,7 +246,7 @@ export default function NouvelleFiche() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/dashboard")} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push("/dashboard")} />
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)' }}>|</span>}
           <BackButton fallback="/fiches" />
           {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>{isSousFiche ? 'Nouvelle sous-fiche' : 'Nouvelle fiche technique'}</span>}

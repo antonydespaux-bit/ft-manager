@@ -8,7 +8,7 @@ import { log } from '../../../lib/useLog'
 import BackButton from '../../../components/BackButton'
 
 export default function NouveauMenu() {
-  const { nomEtablissement } = useTheme()
+  const { nomEtablissement, logoUrl } = useTheme()
   const [nom, setNom] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
   const [prixVente, setPrixVente] = useState('')
@@ -134,7 +134,7 @@ export default function NouveauMenu() {
         justifyContent: 'space-between', height: '56px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Logo height={30} couleur="white" nom={nomEtablissement} onClick={() => router.push("/fiches")} />
+          <Logo height={30} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push("/fiches")} />
           <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>
           <BackButton fallback="/menus" style={{ padding: '6px 12px' }} />
           <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>Nouveau menu</span>

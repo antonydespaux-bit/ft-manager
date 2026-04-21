@@ -19,7 +19,7 @@ const TABS = [
 
 export default function MonCompte() {
   const router    = useRouter()
-  const { c, nomEtablissement } = useTheme()
+  const { c, logoUrl, nomEtablissement } = useTheme()
   const { role }  = useRole()
   const isMobile  = useIsMobile()
   const isAdmin   = role === 'admin'
@@ -258,7 +258,7 @@ export default function MonCompte() {
         position: 'sticky', top: 0, zIndex: 100,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push('/dashboard')} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push('/dashboard')} />
           <BackButton fallback="/dashboard" />
           {!isMobile && <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>Mon Compte</span>}
         </div>

@@ -204,7 +204,7 @@ const loadFiche = async () => {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/bar/dashboard")} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push("/bar/dashboard")} />
           <BackButton fallback="/bar/fiches" label={isMobile ? '←' : '← Retour'} />
           {!isMobile && <span style={{ fontSize: '15px', fontWeight: '500', color: 'white' }}>{fiche.nom}</span>}
         </div>

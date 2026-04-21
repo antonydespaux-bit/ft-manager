@@ -12,7 +12,7 @@ import { Alert } from '../../../components/ui'
 const genId = () => crypto.randomUUID()
 
 export default function NouvelleCarte() {
-  const { nomEtablissement } = useTheme()
+  const { nomEtablissement, logoUrl } = useTheme()
   const isMobile = useIsMobile()
   const [nom, setNom] = useState('')
   const [saison, setSaison] = useState('Printemps 2026')
@@ -248,7 +248,7 @@ export default function NouvelleCarte() {
           minWidth: 0, flex: '1 1 160px', maxWidth: '100%',
         }}>
           <div style={{ flexShrink: 0 }}>
-            <Logo height={isMobile ? 26 : 30} couleur="white" nom={nomEtablissement} onClick={() => router.push('/fiches')} />
+            <Logo height={isMobile ? 26 : 30} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push('/fiches')} />
           </div>
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>}
           <BackButton fallback="/cartes" style={{ padding: isMobile ? '6px 10px' : '6px 12px', fontSize: isMobile ? '12px' : '13px', flexShrink: 0 }} />
