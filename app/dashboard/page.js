@@ -166,28 +166,30 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: c.fond }}>
+    <div style={{ minHeight: '100vh', background: c.fond, overflowX: 'hidden' }}>
       <Navbar section="cuisine" />
       <InventaireBanner />
 
       <div className="no-print" style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '500' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '500', flex: '1 1 auto', minWidth: 0 }}>
             Tableau de bord Cuisine — {params['nom_etablissement'] || 'La Fantaisie'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {nom && (
-              <>
-                <span style={{ fontSize: '12px', color: c.texteMuted }}>
-                  Bonjour, <strong style={{ color: c.texte }}>{nom}</strong>
-                </span>
-                <Badge
-                  bg={role === 'admin' ? '#F0E8E0' : role === 'cuisine' ? '#EAF3DE' : '#FAEEDA'}
-                  color={role === 'admin' ? '#2C1810' : role === 'cuisine' ? '#3B6D11' : '#854F0B'}
-                >
-                  {role === 'admin' ? 'Administrateur' : role === 'cuisine' ? 'Cuisine' : 'Directeur'}
-                </Badge>
-              </>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {nom && !isMobile && (
+              <span style={{ fontSize: '12px', color: c.texteMuted }}>
+                Bonjour, <strong style={{ color: c.texte }}>{nom}</strong>
+              </span>
+            )}
+            {role && (
+              <Badge
+                bg={role === 'admin' ? '#F0E8E0' : role === 'cuisine' ? '#EAF3DE' : '#FAEEDA'}
+                color={role === 'admin' ? '#2C1810' : role === 'cuisine' ? '#3B6D11' : '#854F0B'}
+              >
+                {isMobile
+                  ? (role === 'admin' ? 'Admin' : role === 'cuisine' ? 'Cuisine' : 'Dir.')
+                  : (role === 'admin' ? 'Administrateur' : role === 'cuisine' ? 'Cuisine' : 'Directeur')}
+              </Badge>
             )}
             <button
               onClick={() => setShowCustomize(true)}
