@@ -51,7 +51,6 @@ export default function Navbar({ section = 'cuisine' }) {
       const id = await getClientId()
       if (!alive) return
       setNavClientId(id)
-      if (id) console.log("Navigation vers établissement :", id)
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('tenant_refresh'))
     })()
     return () => { alive = false }
@@ -79,7 +78,6 @@ export default function Navbar({ section = 'cuisine' }) {
 
   const pushWithClient = (path) => {
     const finalPath = hrefWithClient(path, navClientId)
-    console.log('Lien cliqué vers :', finalPath)
     router.push(finalPath)
   }
 
