@@ -37,7 +37,7 @@ export default function ModifierBarFiche() {
   const [draftRestored, setDraftRestored] = useState(false)
   const router = useRouter()
   const params_route = useParams()
-  const { c, nomEtablissement } = useTheme()
+  const { c, logoUrl, nomEtablissement } = useTheme()
   const isMobile = useIsMobile()
 
   const catSelectionnee = categoriesDyn.find(cat => cat.id === categoriePlat)
@@ -281,7 +281,7 @@ export default function ModifierBarFiche() {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/bar/dashboard")} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push("/bar/dashboard")} />
           <BackButton fallback={`/bar/fiches/${params_route.id}`} />
           {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Modifier — {nom}</span>}
         </div>

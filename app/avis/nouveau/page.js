@@ -21,7 +21,7 @@ export default function NouvelAvisPage() {
   const [error, setError] = useState('')
   const router = useRouter()
   const isMobile = useIsMobile()
-  const { c, nomEtablissement } = useTheme()
+  const { c, logoUrl, nomEtablissement } = useTheme()
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
 
@@ -54,7 +54,7 @@ const handleSubmit = async () => {
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo height={28} couleur="white" nom={nomEtablissement} onClick={() => router.push("/dashboard")} />
+          <Logo height={28} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push("/dashboard")} />
           <BackButton fallback="/dashboard" />
           {!isMobile && <span style={{ fontSize: '14px', fontWeight: '500', color: 'white' }}>Nouvel avis client</span>}
         </div>

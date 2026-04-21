@@ -331,7 +331,7 @@ export default function CarteDetailPage() {
           minWidth: 0, flex: '1 1 160px', maxWidth: '100%',
         }}>
           <div style={{ flexShrink: 0 }}>
-            <Logo height={isMobile ? 26 : 30} couleur="white" nom={nomEtablissement} onClick={() => router.push('/fiches')} />
+            <Logo height={isMobile ? 26 : 30} couleur="white" nom={nomEtablissement} logoUrl={logoUrl} onClick={() => router.push('/fiches')} />
           </div>
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>|</span>}
           <button type="button" onClick={() => router.push('/cartes')} style={{
