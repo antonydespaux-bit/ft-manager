@@ -184,8 +184,6 @@ export default function NouvelleFiche() {
       client_id: clientId
     }
 
-    console.log('Données fiche envoyées:', newFiche)
-
     const { data: fiche, error: errFiche } = await supabase
       .from('fiches')
       .insert([newFiche])

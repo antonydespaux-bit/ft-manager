@@ -17,11 +17,8 @@ export default function ChoixEtablissementPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const { data: userData, error: userErr } = await supabase.auth.getUser()
+        const { data: userData } = await supabase.auth.getUser()
         const user = userData?.user
-        if (userErr) {
-          console.log('choix-etablissement:getUser error', userErr)
-        }
         if (!user) {
           router.push('/login')
           return
@@ -33,9 +30,6 @@ export default function ChoixEtablissementPage() {
           .select('client_id, role, clients(id, nom_etablissement, nom, slug, actif)')
           .eq('user_id', user.id)
 
-        console.log('choix-etablissement:acces_clients raw data', accesData)
-        console.log('choix-etablissement:acces_clients error', accesErr)
-
         if (accesErr) {
           setError('Impossible de charger vos établissements.')
           setLoading(false)
@@ -44,7 +38,6 @@ export default function ChoixEtablissementPage() {
 
         const rows = (accesData || []).filter((r) => r?.client_id && r?.clients)
 
-        console.log('choix-etablissement:merged rows', rows)
         setEtablissements(rows)
 
         // Evite un écran "vide" : si un seul établissement, on le sélectionne automatiquement.
@@ -67,7 +60,6 @@ export default function ChoixEtablissementPage() {
           setError('Aucun établissement associé')
         }
       } catch (e) {
-        console.log('choix-etablissement:init exception', e)
         setError('Une erreur est survenue.')
       } finally {
         setLoading(false)
