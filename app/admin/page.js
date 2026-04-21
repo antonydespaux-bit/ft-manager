@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSuperadmin, setIsSuperadmin] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState(null)
   const [editingNomId, setEditingNomId] = useState(null)
   const [editNomValue, setEditNomValue] = useState('')
   const [savingNom, setSavingNom] = useState(false)
@@ -44,6 +45,7 @@ export default function AdminPage() {
       const { data: { user } } = await supabase.auth.getUser()
       const email = (user?.email || '').toLowerCase().trim()
       setIsSuperadmin(isSuperadminEmail(email))
+      setCurrentUserId(user?.id || null)
     } catch {
       setIsSuperadmin(false)
     }
@@ -149,7 +151,7 @@ export default function AdminPage() {
     setSuccess('')
     try {
       const clientId = await getClientId()
-      if (!clientId) { setError('client_id introuvable'); return }
+      if (!clientId) { setError('client_id introuvable — recharge la page.'); window.scrollTo({ top: 0, behavior: 'smooth' }); return }
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/admin/update-user-name', {
         method: 'POST',
@@ -162,6 +164,7 @@ export default function AdminPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data?.error || 'Erreur lors de la mise à jour du nom.')
+        window.scrollTo({ top: 0, behavior: 'smooth' })
         return
       }
       setSuccess('Nom mis à jour.')
@@ -175,7 +178,9 @@ export default function AdminPage() {
 
   const changerRole = async (id, newRole) => {
     const clientId = await getClientId()
-    if (!clientId) return
+    if (!clientId) { setError('client_id introuvable — recharge la page.'); window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    setError('')
+    setSuccess('')
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/admin/update-user-access', {
       method: 'POST',
@@ -188,15 +193,25 @@ export default function AdminPage() {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setError(data?.error || 'Erreur lors du changement de rôle.')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
+    setSuccess('Rôle mis à jour.')
     await loadProfils()
   }
 
-  const supprimerUtilisateur = async (id, nom) => {
-    if (!confirm(`Retirer l'accès de ${nom || 'cet utilisateur'} à cet établissement ?`)) return
+  const supprimerUtilisateur = async (id, nom, role) => {
+    if (id === currentUserId) {
+      setError('Vous ne pouvez pas retirer votre propre accès.')
+      return
+    }
+    const baseMsg = `Retirer l'accès de ${nom || 'cet utilisateur'} à cet établissement ?`
+    const strongMsg = role === 'admin'
+      ? `${baseMsg}\n\n⚠️ Cet utilisateur est administrateur. Son accès admin sera définitivement retiré.`
+      : baseMsg
+    if (!confirm(strongMsg)) return
     const clientId = await getClientId()
-    if (!clientId) return
+    if (!clientId) { setError("client_id introuvable — recharge la page."); return }
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/admin/remove-user-access', {
       method: 'POST',
@@ -209,8 +224,10 @@ export default function AdminPage() {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       setError(data?.error || "Erreur lors du retrait de l'accès.")
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
+    setSuccess(`Accès de ${nom || 'utilisateur'} retiré.`)
     await loadProfils()
   }
 
@@ -432,12 +449,16 @@ export default function AdminPage() {
                       <option value="directeur">Directeur</option>
                       <option value="admin">Admin</option>
                     </select>
-                    {profil.role !== 'admin' && (
-                      <button onClick={() => supprimerUtilisateur(profil.id, profil.nom)} style={{
-                        background: 'transparent', color: '#F09595',
-                        border: `0.5px solid #F09595`, borderRadius: '8px',
-                        padding: '6px 10px', fontSize: '12px', cursor: 'pointer'
-                      }}>🗑️</button>
+                    {profil.id !== currentUserId && (
+                      <button
+                        onClick={() => supprimerUtilisateur(profil.id, profil.nom, profil.role)}
+                        title={profil.role === 'admin' ? 'Retirer l\'accès admin de cet utilisateur' : 'Retirer l\'accès'}
+                        style={{
+                          background: 'transparent', color: '#F09595',
+                          border: `0.5px solid #F09595`, borderRadius: '8px',
+                          padding: '6px 10px', fontSize: '12px', cursor: 'pointer'
+                        }}
+                      >🗑️</button>
                     )}
                   </div>
                 </div>
