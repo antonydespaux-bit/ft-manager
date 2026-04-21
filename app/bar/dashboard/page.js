@@ -81,21 +81,25 @@ export default function BarDashboardPage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: c.fond }}>
+    <div style={{ minHeight: '100vh', background: c.fond, overflowX: 'hidden' }}>
 
       <Navbar section="bar" />
 
       <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '500' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '500', flex: '1 1 auto', minWidth: 0 }}>
             🍸 Dashboard Bar — {params['nom_etablissement'] || 'La Fantaisie'}
           </div>
           {nom && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '12px', color: c.texteMuted }}>Bonjour, <strong style={{ color: c.texte }}>{nom}</strong></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {!isMobile && (
+                <span style={{ fontSize: '12px', color: c.texteMuted }}>Bonjour, <strong style={{ color: c.texte }}>{nom}</strong></span>
+              )}
               <Badge bg={'#EEEDFE'} color={'#3C3489'}>
-                {role === 'admin' ? 'Administrateur' : role === 'bar' ? 'Bar' : 'Directeur'}
+                {isMobile
+                  ? (role === 'admin' ? 'Admin' : role === 'bar' ? 'Bar' : 'Dir.')
+                  : (role === 'admin' ? 'Administrateur' : role === 'bar' ? 'Bar' : 'Directeur')}
               </Badge>
             </div>
           )}
