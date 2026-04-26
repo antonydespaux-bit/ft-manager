@@ -84,7 +84,6 @@ export default function FicheDetail() {
       setFiche(ficheData)
       setPhotoPath(ficheData.photo_url || null)
 
-      // Chargement ingrédients SANS filtre client_id sur la table de jointure
       const { data: ingsData, error: errIngs } = await supabase
         .from('fiche_ingredients')
         .select(`quantite, unite, ingredients (id, nom, prix_kg, unite, est_sous_fiche, fiche_id)`)
