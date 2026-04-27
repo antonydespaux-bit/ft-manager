@@ -163,18 +163,6 @@ export default function FichesList({ section = 'cuisine' }) {
       <Navbar section={section} />
       <div style={{ padding: isMobile ? '16px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* KPIs par lieu */}
-        {lieux.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(lieux.length, 4)}, 1fr)`, gap: '12px', marginBottom: '24px' }}>
-            {lieux.slice(0, 4).map(lieu => (
-              <div key={lieu.id} style={{ background: c.blanc, borderRadius: '10px', padding: '16px', border: `0.5px solid ${c.bordure}` }}>
-                <div className="sk-label-muted" style={{ fontSize: '10px', color: c.texteMuted, marginBottom: '4px' }}>{lieu.emoji} {lieu.nom}</div>
-                <div style={{ fontSize: '24px', fontWeight: '500', color: c.texte }}>{fiches.filter(f => f.lieu_id === lieu.id).length}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Filters */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           <input type="text" placeholder="Rechercher..." value={recherche} onChange={e => setRecherche(e.target.value)}
