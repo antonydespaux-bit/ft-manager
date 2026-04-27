@@ -145,8 +145,9 @@ export default function Navbar({ section = 'cuisine' }) {
           label: 'Contenus',
           paths: ['/menus', '/cartes', '/recap', '/ingredients', '/import', '/avis'],
           items: [
-            ...(hasModule('menus')                     ? [{ label: 'Menus',           path: '/menus' }]        : []),
-            ...(hasModule('cartes')                    ? [{ label: 'Cartes',          path: '/cartes' }]       : []),
+            ...(hasModule('menus') || hasModule('cartes')
+              ? [{ label: 'Menus & Cartes', path: '/menus' }]
+              : []),
             ...(hasModule('recap')                     ? [{ label: 'Récap food cost', path: '/recap' }]        : []),
             ...(hasModule('ingredients') && peutModifier ? [{ label: 'Ingrédients',  path: '/ingredients' }] : []),
             ...(hasModule('avis')                      ? [{ label: 'Avis clients',    path: '/avis' }]         : []),
