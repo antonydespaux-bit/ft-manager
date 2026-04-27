@@ -26,7 +26,14 @@ export default function ClientsList({
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? '16px' : '0',
+        marginBottom: '24px'
+      }}>
         <div>
           <h1 style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', fontWeight: '600', color: '#18181B', marginBottom: '4px' }}>
             Établissements
@@ -38,7 +45,8 @@ export default function ClientsList({
         <button onClick={onNouveauClick} style={{
           background: '#6366F1', color: 'white', border: 'none', borderRadius: '8px',
           padding: '10px 20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: '6px'
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+          width: isMobile ? '100%' : 'auto', whiteSpace: 'nowrap'
         }}>
           <span style={{ fontSize: '18px', lineHeight: 1 }}>+</span>
           Nouvel établissement
