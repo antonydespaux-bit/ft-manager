@@ -5,7 +5,8 @@ import { Badge } from '../../ui'
 import { ALLERGENES } from '../../../lib/allergenes'
 import { theme } from '../../../lib/theme.jsx'
 
-export default function SectionAllergenes({ c, fiches, lieux, params }) {
+export default function SectionAllergenes({ c, fiches, lieux, params, categories = [] }) {
+  const categoriesList = categories.length > 0 ? categories : theme.categories.map((nom) => ({ id: nom, nom, emoji: '' }))
   const [filtreCategorie, setFiltreCategorie] = useState('toutes')
   const [filtreSaison, setFiltreSaison] = useState('toutes')
   const [filtreLieu, setFiltreLieu] = useState('tous')
@@ -51,7 +52,7 @@ export default function SectionAllergenes({ c, fiches, lieux, params }) {
               <>
                 <select value={filtreCategorie} onChange={(e) => setFiltreCategorie(e.target.value)} style={{ padding: '6px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '12px', background: c.blanc, outline: 'none', color: c.texte, cursor: 'pointer' }}>
                   <option value="toutes">Toutes les catégories</option>
-                  {theme.categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                  {categoriesList.map((cat) => <option key={cat.id} value={cat.nom}>{cat.emoji ? `${cat.emoji} ${cat.nom}` : cat.nom}</option>)}
                 </select>
                 <select value={filtreSaison} onChange={(e) => setFiltreSaison(e.target.value)} style={{ padding: '6px 10px', borderRadius: '8px', border: `0.5px solid ${c.bordure}`, fontSize: '12px', background: c.blanc, outline: 'none', color: c.texte, cursor: 'pointer' }}>
                   <option value="toutes">Toutes les saisons</option>

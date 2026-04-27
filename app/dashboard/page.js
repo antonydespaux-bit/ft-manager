@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [ingredientsPrixHausse, setIngredientsPrixHausse] = useState([])
   const [params, setParams] = useState({})
   const [lieux, setLieux] = useState([])
+  const [categories, setCategories] = useState([])
   const [layout, setLayout] = useState(null)
   const [showCustomize, setShowCustomize] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -64,7 +65,7 @@ export default function DashboardPage() {
     if (!clientId) { setLoading(false); return }
     const p = await getParametres()
     setParams(p)
-    const [{ data: fichesData }, { data: lieuxData }, { data: menusData }, { data: prixData }, layoutData] = await Promise.all([
+    const [{ data: fichesData }, { data: lieuxData }, { data: menusData }, { data: prixData }, { data: catsData }, layoutData] = await Promise.all([
       supabase.from('fiches').select('*').eq('client_id', clientId).neq('categorie', 'Sous-fiche').eq('archive', false),
       supabase.from('lieux').select('id, nom, emoji').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
       supabase.from('menus').select('*').eq('client_id', clientId).eq('archive', false),
@@ -72,12 +73,14 @@ export default function DashboardPage() {
         .not('prix_precedent', 'is', null)
         .order('prix_updated_at', { ascending: false })
         .limit(20),
+      supabase.from('categories_plats').select('id, nom, emoji').eq('client_id', clientId).eq('section', 'cuisine').order('ordre'),
       getDashboardLayout(),
     ])
     setFiches(fichesData || [])
     setLieux(lieuxData || [])
     setMenus(menusData || [])
     setIngredientsPrixHausse(prixData || [])
+    setCategories(catsData || [])
     setLayout(layoutData)
     setLoading(false)
   }
@@ -125,7 +128,7 @@ export default function DashboardPage() {
       case 'section-prix-modifies':
         return <SectionPrixModifies c={c} ingredientsPrixHausse={ingredientsPrixHausse} />
       case 'section-allergenes':
-        return <SectionAllergenes c={c} fiches={fiches} lieux={lieux} params={params} />
+        return <SectionAllergenes c={c} fiches={fiches} lieux={lieux} params={params} categories={categories} />
       case 'kpi-ca-mtd':
         return <KpiCaMtd c={c} isMobile={isMobile} />
       case 'kpi-marge-mtd':
