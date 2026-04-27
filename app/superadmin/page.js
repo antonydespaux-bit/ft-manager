@@ -249,7 +249,7 @@ export default function SuperAdminPage() {
   const labelStyle = { fontSize: '12px', color: '#71717A', fontWeight: '500', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F4F4F5' }}>
+    <div style={{ minHeight: '100vh', background: '#F4F4F5', overflowX: 'clip' }}>
 
       {/* ── Navbar ── */}
       <div style={{

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import { Badge } from '../../ui'
 import { ALLERGENES } from '../../../lib/allergenes'
@@ -9,6 +10,8 @@ export default function SectionAllergenes({ c, fiches, lieux, params }) {
   const [filtreSaison, setFiltreSaison] = useState('toutes')
   const [filtreLieu, setFiltreLieu] = useState('tous')
   const [isExpanded, setIsExpanded] = useState(true)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const fichesAvecAllergenes = fiches.filter((f) => f.allergenes && f.allergenes.length > 0)
   const fichesFiltreesAllergenes = fichesAvecAllergenes
@@ -119,7 +122,8 @@ export default function SectionAllergenes({ c, fiches, lieux, params }) {
         )}
       </div>
 
-      {/* Version impression */}
+      {/* Version impression — portal vers <body> pour échapper au wrapper .no-print du dashboard */}
+      {mounted && createPortal(
       <div className="print-only dashboard-allergenes-print" style={{ fontFamily: 'sans-serif', color: '#1a1a1a', background: 'white', padding: '0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #2C1810', paddingBottom: '12px', marginBottom: '16px' }}>
           <div>
@@ -168,7 +172,9 @@ export default function SectionAllergenes({ c, fiches, lieux, params }) {
         <div style={{ marginTop: '10px', borderTop: '1px solid #e8e4dc', paddingTop: '8px', fontSize: '7px', color: '#8B7355' }}>
           <strong>Allergènes :</strong> {ALLERGENES.map((a) => `${a.emoji} ${a.label}`).join(' — ')}
         </div>
-      </div>
+      </div>,
+      document.body
+      )}
     </>
   )
 }
