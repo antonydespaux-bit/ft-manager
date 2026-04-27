@@ -81,7 +81,7 @@ export default function BarDashboardPage() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: c.fond, overflowX: 'hidden' }}>
+    <div className="no-print" style={{ minHeight: '100vh', background: c.fond, overflowX: 'hidden' }}>
 
       <Navbar section="bar" />
 

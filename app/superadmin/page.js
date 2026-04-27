@@ -254,42 +254,97 @@ export default function SuperAdminPage() {
       {/* ── Navbar ── */}
       <div style={{
         background: '#18181B', borderBottom: '0.5px solid rgba(255,255,255,0.06)',
-        padding: isMobile ? '10px 14px' : '0 24px',
-        minHeight: '56px',
+        padding: isMobile ? '0 12px' : '0 24px',
+        height: '56px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: '10px',
+        gap: '10px',
         position: 'sticky', top: 0, zIndex: 100
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>⚡</div>
           <span style={{ fontSize: '14px', fontWeight: '600', color: 'white', whiteSpace: 'nowrap' }}>Super Admin</span>
-          <div style={{ padding: '2px 10px', borderRadius: '20px', background: 'rgba(99,102,241,0.2)', border: '0.5px solid rgba(99,102,241,0.3)' }}>
-            <span style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: '500' }}>Skalcook</span>
-          </div>
+          {!isMobile && (
+            <div style={{ padding: '2px 10px', borderRadius: '20px', background: 'rgba(99,102,241,0.2)', border: '0.5px solid rgba(99,102,241,0.3)' }}>
+              <span style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: '500' }}>Skalcook</span>
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+        {isMobile ? (
+          <button onClick={() => setMobileNavOpen(!mobileNavOpen)} style={{
+            background: mobileNavOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
+            border: '0.5px solid rgba(255,255,255,0.15)',
+            borderRadius: '8px', padding: '8px 12px', cursor: 'pointer',
+            color: 'white', fontSize: '16px'
+          }}>☰</button>
+        ) : (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '3px', border: '0.5px solid rgba(255,255,255,0.1)' }}>
+              {[{ id: 'gestion', label: '🏗 Gestion' }, { id: 'activite', label: '📊 Activité' }].map(tab => (
+                <button key={tab.id} onClick={() => basculerOnglet(tab.id)} style={{
+                  background: onglet === tab.id ? 'rgba(99,102,241,0.85)' : 'transparent',
+                  color: onglet === tab.id ? 'white' : 'rgba(255,255,255,0.55)',
+                  border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px',
+                  fontWeight: onglet === tab.id ? '600' : '400', cursor: 'pointer', whiteSpace: 'nowrap'
+                }}>{tab.label}</button>
+              ))}
+            </div>
+            {onglet === 'gestion' && vue !== 'liste' && (
+              <button onClick={() => { setVue('liste'); resetForm() }} style={{
+                background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)',
+                border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap'
+              }}>← Retour</button>
+            )}
+            <button onClick={() => handleNavigation('/superadmin/prospects')} style={{ background: 'rgba(99,102,241,0.2)', color: '#A5B4FC', border: '0.5px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>👥 Prospects</button>
+            <button onClick={() => handleNavigation('/superadmin/utilisateurs')} style={{ background: 'rgba(14,165,233,0.2)', color: '#BAE6FD', border: '0.5px solid rgba(14,165,233,0.35)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🧑‍💼 Utilisateurs</button>
+            <button onClick={handleLogout} style={{ background: 'transparent', color: '#E11D48', border: '0.5px solid #FDA4AF', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🚪 Déconnexion</button>
+          </div>
+        )}
+      </div>
+
+      {isMobile && mobileNavOpen && (
+        <div style={{
+          background: '#18181B', padding: '12px 16px 16px',
+          borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+          position: 'sticky', top: '56px', zIndex: 99,
+          display: 'flex', flexDirection: 'column', gap: '8px'
+        }}>
           <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '3px', border: '0.5px solid rgba(255,255,255,0.1)' }}>
             {[{ id: 'gestion', label: '🏗 Gestion' }, { id: 'activite', label: '📊 Activité' }].map(tab => (
-              <button key={tab.id} onClick={() => basculerOnglet(tab.id)} style={{
+              <button key={tab.id} onClick={() => { basculerOnglet(tab.id); setMobileNavOpen(false) }} style={{
+                flex: 1,
                 background: onglet === tab.id ? 'rgba(99,102,241,0.85)' : 'transparent',
                 color: onglet === tab.id ? 'white' : 'rgba(255,255,255,0.55)',
-                border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px',
-                fontWeight: onglet === tab.id ? '600' : '400', cursor: 'pointer', whiteSpace: 'nowrap'
+                border: 'none', borderRadius: '6px', padding: '8px 12px', fontSize: '13px',
+                fontWeight: onglet === tab.id ? '600' : '400', cursor: 'pointer'
               }}>{tab.label}</button>
             ))}
           </div>
           {onglet === 'gestion' && vue !== 'liste' && (
-            <button onClick={() => { setVue('liste'); resetForm() }} style={{
-              background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)',
-              border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap'
-            }}>← Retour</button>
+            <button onClick={() => { setVue('liste'); resetForm(); setMobileNavOpen(false) }} style={{
+              textAlign: 'left',
+              background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)',
+              border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', cursor: 'pointer'
+            }}>← Retour à la liste</button>
           )}
-          <button onClick={() => handleNavigation('/superadmin/prospects')} style={{ background: 'rgba(99,102,241,0.2)', color: '#A5B4FC', border: '0.5px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>👥 Prospects</button>
-          <button onClick={() => handleNavigation('/superadmin/utilisateurs')} style={{ background: 'rgba(14,165,233,0.2)', color: '#BAE6FD', border: '0.5px solid rgba(14,165,233,0.35)', borderRadius: '8px', padding: '7px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🧑‍💼 Utilisateurs</button>
-          <button onClick={handleLogout} style={{ background: 'transparent', color: '#E11D48', border: '0.5px solid #FDA4AF', borderRadius: '8px', padding: '6px 12px', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>🚪 Déconnexion</button>
+          <button onClick={() => { setMobileNavOpen(false); handleNavigation('/superadmin/prospects') }} style={{
+            textAlign: 'left',
+            background: 'rgba(99,102,241,0.2)', color: '#A5B4FC',
+            border: '0.5px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', cursor: 'pointer'
+          }}>👥 Prospects</button>
+          <button onClick={() => { setMobileNavOpen(false); handleNavigation('/superadmin/utilisateurs') }} style={{
+            textAlign: 'left',
+            background: 'rgba(14,165,233,0.2)', color: '#BAE6FD',
+            border: '0.5px solid rgba(14,165,233,0.35)', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', cursor: 'pointer'
+          }}>🧑‍💼 Utilisateurs</button>
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+          <button onClick={() => { setMobileNavOpen(false); handleLogout() }} style={{
+            textAlign: 'left',
+            background: 'transparent', color: '#E11D48',
+            border: '0.5px solid #FDA4AF', borderRadius: '8px', padding: '12px 16px', fontSize: '14px', cursor: 'pointer'
+          }}>🚪 Déconnexion</button>
         </div>
-      </div>
+      )}
 
       <div style={{ padding: isMobile ? '16px' : '32px', maxWidth: '1000px', margin: '0 auto' }}>
 

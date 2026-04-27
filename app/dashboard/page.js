@@ -166,11 +166,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: c.fond, overflowX: 'hidden' }}>
+    <div className="no-print" style={{ minHeight: '100vh', background: c.fond, overflowX: 'hidden' }}>
       <Navbar section="cuisine" />
       <InventaireBanner />
 
-      <div className="no-print" style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1100px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
           <div style={{ fontSize: '11px', color: c.texteMuted, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: '500', flex: '1 1 auto', minWidth: 0 }}>
             Tableau de bord Cuisine — {params['nom_etablissement'] || 'La Fantaisie'}
