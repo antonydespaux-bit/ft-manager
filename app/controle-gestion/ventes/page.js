@@ -350,7 +350,13 @@ export default function VentesMensuelPage() {
         // ici (le budget privat passe par l'enveloppe lissée) pour éviter le
         // double comptage.
         if (privatLissage.active && privatLieuIds.has(cell.lieu_service_id)) continue
-        if (!isCellElectedForDate(cell, d.iso, annee, monthNum, electedMap)) continue
+        // Une journée réellement saisie est forcément ouverte : elle reçoit sa
+        // cible du jour même si l'heuristique "N derniers jours" ne l'aurait
+        // pas élue. Sans ça, des jours travaillés en début de mois (alors que
+        // les overrides d'ouverture réduisent le mois — période estivale, etc.)
+        // affichent Objectif/Δ/Month to date à «—». On ne filtre par élection
+        // que les jours SANS saisie (projection calendaire).
+        if (!d.hasData && !isCellElectedForDate(cell, d.iso, annee, monthNum, electedMap)) continue
         total +=
           Number(cell.ca_food_cible || 0) +
           Number(cell.ca_bev_20_cible || 0) +
