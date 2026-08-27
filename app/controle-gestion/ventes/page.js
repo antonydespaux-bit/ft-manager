@@ -88,6 +88,12 @@ export default function VentesMensuelPage() {
   // Overrides nb_jours par (mois, jds, service) — utilisé pour aligner le
   // TOTAL du mois sur le Récapitulatif annuel de la page Budgets.
   const [joursOverrideRows, setJoursOverrideRows] = useState([])
+  // Jours fermés : dates spécifiques (ca_jours_fermes, ex : fermeture estivale)
+  // et fermetures hebdomadaires récurrentes (ca_jours_fermes_hebdo, ex : dim/lun).
+  // Un jour fermé a un objectif de 0 → le budget ne se répartit que sur les
+  // jours réellement ouverts (cf. budgetByDateIso).
+  const [joursFermesRows, setJoursFermesRows] = useState([])
+  const [joursFermesHebdoRows, setJoursFermesHebdoRows] = useState([])
   // Lieux marqués `couverts_indicatifs` (= lieux Privat) : leur CA réel est
   // lissé sur le mois (cf. enveloppe privatisation ci-dessous).
   const [privatLieuIds, setPrivatLieuIds] = useState(() => new Set())
@@ -130,7 +136,7 @@ export default function VentesMensuelPage() {
     try {
       const { debut, fin } = monthRange(mois)
       const [y, m] = mois.split('-').map(Number)
-      const [caRes, budgetRes, overrideRes, lieuxRes, privatRes] = await Promise.all([
+      const [caRes, budgetRes, overrideRes, lieuxRes, privatRes, fermesRes, fermesHebdoRes] = await Promise.all([
         supabase
           .from('ca_journalier')
           .select('jour, lieu_service_id, service, couverts, ca_food, ca_bev_20, ca_bev_10, ca_autre')
@@ -166,15 +172,31 @@ export default function VentesMensuelPage() {
           .eq('annee', y)
           .eq('mois', m)
           .maybeSingle(),
+        // Jours fermés du mois : dates spécifiques (fermeture estivale, férié…).
+        supabase
+          .from('ca_jours_fermes')
+          .select('date')
+          .eq('client_id', clientId)
+          .gte('date', debut)
+          .lte('date', fin),
+        // Fermetures hebdomadaires récurrentes (ex : tous les dimanches/lundis).
+        supabase
+          .from('ca_jours_fermes_hebdo')
+          .select('jour_semaine')
+          .eq('client_id', clientId),
       ])
       if (caRes.error) throw caRes.error
       if (budgetRes.error) throw budgetRes.error
       if (overrideRes.error) throw overrideRes.error
       if (lieuxRes.error) throw lieuxRes.error
       if (privatRes.error) throw privatRes.error
+      if (fermesRes.error) throw fermesRes.error
+      if (fermesHebdoRes.error) throw fermesHebdoRes.error
       setRawRows(caRes.data || [])
       setBudgetRows(budgetRes.data || [])
       setJoursOverrideRows(overrideRes.data || [])
+      setJoursFermesRows(fermesRes.data || [])
+      setJoursFermesHebdoRows(fermesHebdoRes.data || [])
       setPrivatLieuIds(new Set((lieuxRes.data || []).map((l) => l.id)))
       // null = pas d'enveloppe saisie → lissage privat inactif (comportement
       // historique inchangé). Une ligne (même montant 0) active le lissage.
@@ -314,6 +336,22 @@ export default function VentesMensuelPage() {
     }
   }, [days, privatBudgetMois])
 
+  // Ensemble des dates ISO fermées du mois : fermetures hebdo (jour de semaine)
+  // + dates spécifiques (fermeture estivale, férié…). Un jour fermé reçoit un
+  // objectif de 0, si bien que le budget mensuel ne se répartit que sur les
+  // jours ouverts (la somme des objectifs jour = total du mois).
+  const closedDatesSet = useMemo(() => {
+    const set = new Set()
+    const hebdo = new Set(joursFermesHebdoRows.map((r) => Number(r.jour_semaine)))
+    for (const d of days) {
+      if (hebdo.has(jsWeekdayToIso(d.weekday))) set.add(d.iso)
+    }
+    for (const r of joursFermesRows) {
+      if (r.date) set.add(r.date)
+    }
+    return set
+  }, [days, joursFermesHebdoRows, joursFermesRows])
+
   // Budget journalier par date ISO du mois affiché.
   // Override mensuel (mois = m) prioritaire sur le défaut (mois = NULL) au
   // niveau de la cellule (jds, lieu, service).
@@ -328,20 +366,26 @@ export default function VentesMensuelPage() {
     const monthNum = Number(mStr)
     const cellMap = new Map() // key = `${jds}_${lieu}_${svc}`
     for (const b of budgetRows) {
-      // Seul le mois courant (override) ou le défaut annuel (mois = null) compte.
-      // Une cellule d'un autre mois précis ne doit jamais servir de fallback,
-      // sinon le budget d'un mois fuite sur un autre (ex : Privat de mai en juin).
-      if (b.mois !== monthNum && b.mois != null) continue
+      // On ne compte QUE les cellules définies explicitement pour ce mois
+      // (mois = m). Les défauts annuels (mois = null) sont ignorés : un lieu
+      // sans budget spécifique au mois n'est pas budgété ce mois-là. Cohérent
+      // avec le total mensuel (monthlyBudgetAligned) et la page /budgets, sinon
+      // la somme des objectifs jour diffère du total du mois (ex : un lieu resté
+      // sur son défaut annuel gonflerait la colonne sans compter dans le total).
+      if (b.mois !== monthNum) continue
       const key = `${b.jour_semaine}_${b.lieu_service_id}_${b.service}`
-      if (b.mois === monthNum) {
-        cellMap.set(key, b)
-      } else if (!cellMap.has(key)) {
-        cellMap.set(key, b)
-      }
+      cellMap.set(key, b)
     }
     const electedMap = buildElectedDatesMap(joursOverrideRows)
     const out = new Map() // key = iso date → total budget
     for (const d of days) {
+      // Jour fermé (hebdo ou date spécifique) → objectif 0. On ne répartit le
+      // budget que sur les jours ouverts, sans quoi les jours de fermeture
+      // afficheraient une cible et la somme dépasserait le budget du mois.
+      if (closedDatesSet.has(d.iso)) {
+        out.set(d.iso, 0)
+        continue
+      }
       const isoJds = jsWeekdayToIso(d.weekday)
       let total = 0
       for (const cell of cellMap.values()) {
@@ -368,7 +412,7 @@ export default function VentesMensuelPage() {
       out.set(d.iso, total)
     }
     return out
-  }, [budgetRows, joursOverrideRows, mois, days, privatLissage, privatLieuIds])
+  }, [budgetRows, joursOverrideRows, mois, days, privatLissage, privatLieuIds, closedDatesSet])
 
   const daysWithBudget = useMemo(() => {
     return days.map((d) => {
