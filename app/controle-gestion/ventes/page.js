@@ -61,19 +61,6 @@ function jsWeekdayToIso(jsWeekday) {
   return jsWeekday === 0 ? 7 : jsWeekday
 }
 
-// Combien de fois `isoJds` (1=lundi … 7=dimanche) tombe dans `mois` de `annee`.
-// Utilisé pour le Δ Budget total (équivalent à joursDansMois côté budgets).
-function nbWeekdayInMonth(annee, mois, isoJds) {
-  const lastDay = new Date(annee, mois, 0).getDate()
-  let count = 0
-  for (let d = 1; d <= lastDay; d++) {
-    const date = new Date(annee, mois - 1, d)
-    const dow = date.getDay() === 0 ? 7 : date.getDay()
-    if (dow === isoJds) count++
-  }
-  return count
-}
-
 export default function VentesMensuelPage() {
   const router = useRouter()
   const { c } = useTheme()
@@ -442,33 +429,46 @@ export default function VentesMensuelPage() {
     })
   }, [daysWithBudget])
 
-  // Budget MENSUEL aligné sur le Récapitulatif annuel de la page Budgets :
-  // - Ne prend que les cellules ca_budgets avec mois = monthNum (ignore les
-  //   défauts mois = NULL — la page Budgets non plus ne les affiche pas).
-  // - Multiplie chaque cellule par nbJours(mois, jds, svc) avec respect de
-  //   l'override par service (table ca_budget_jours_override).
-  // Volontairement différent de la somme jour-par-jour de daysWithBudget,
-  // qui utilise le compte calendaire strict — la coloration par jour reste
-  // basée sur le calendrier (un mardi = un mardi, on ne peut pas le couper).
+  // Budget MENSUEL = somme des cellules mois = monthNum × nombre de jours
+  // OUVERTS de ce jour-de-semaine dans le mois. « Jours ouverts » = occurrences
+  // calendaires moins les jours fermés (ca_jours_fermes / _hebdo). Résultat :
+  // le total du mois = la somme des objectifs jour (budgetByDateIso), les deux
+  // se déduisent des mêmes jours ouverts.
+  //
+  // Les overrides nb_jours (ca_budget_jours_override) restent honorés comme
+  // BORNE : le compte retenu = min(override, jours ouverts réels). Pour un
+  // établissement qui déclare ses fermetures (dates + hebdo), les jours fermés
+  // suffisent → les overrides deviennent inutiles. Pour un établissement qui
+  // n'a pas saisi ses fermetures (ex : Joia), aucun jour fermé ⇒ jours ouverts
+  // = calendaire complet ⇒ min = override : comportement historique préservé.
   const monthlyBudgetAligned = useMemo(() => {
     const [yStr, mStr] = mois.split('-')
-    const annee = Number(yStr)
     const monthNum = Number(mStr)
     // Index overrides : Map<`${jds}_${svc}_${lieuId|__all__}`, nb_jours>
-    // L'override par lieu est prioritaire sur l'override global (lieu=null)
-    // qui est prioritaire sur le compte calendaire.
+    // L'override par lieu est prioritaire sur l'override global (lieu=null).
     const overrideMap = new Map()
     for (const o of joursOverrideRows) {
       if (o.mois !== monthNum) continue
       const lieuKey = o.lieu_service_id || '__all__'
       overrideMap.set(`${o.jour_semaine}_${o.service}_${lieuKey}`, Number(o.nb_jours))
     }
+    // Occurrences ouvertes (non fermées) d'un jour-de-semaine dans le mois.
+    const openWeekdayCount = (jds) => {
+      let n = 0
+      for (const d of days) {
+        if (jsWeekdayToIso(d.weekday) !== jds) continue
+        if (closedDatesSet.has(d.iso)) continue
+        n++
+      }
+      return n
+    }
     const lookupNbre = (jds, svc, lieuId) => {
+      const open = openWeekdayCount(jds)
       const k1 = `${jds}_${svc}_${lieuId}`
-      if (overrideMap.has(k1)) return overrideMap.get(k1)
+      if (overrideMap.has(k1)) return Math.min(overrideMap.get(k1), open)
       const k2 = `${jds}_${svc}___all__`
-      if (overrideMap.has(k2)) return overrideMap.get(k2)
-      return nbWeekdayInMonth(annee, monthNum, jds)
+      if (overrideMap.has(k2)) return Math.min(overrideMap.get(k2), open)
+      return open
     }
     let total = 0
     for (const b of budgetRows) {
@@ -490,7 +490,7 @@ export default function VentesMensuelPage() {
     // Enveloppe privatisation du mois entier (0 si lissage inactif).
     total += privatLissage.budgetMonth
     return total
-  }, [budgetRows, joursOverrideRows, mois, privatLissage, privatLieuIds])
+  }, [budgetRows, joursOverrideRows, mois, privatLissage, privatLieuIds, days, closedDatesSet])
 
   const monthTotals = useMemo(() => {
     const t = {
