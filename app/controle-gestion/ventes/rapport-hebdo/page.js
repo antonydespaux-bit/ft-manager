@@ -120,7 +120,7 @@ export default function RapportHebdoPage() {
       const [lieuxRes, caRes, budgetRes, overrideRes, jfRes, jfhRes] = await Promise.all([
         supabase
           .from('lieux_service')
-          .select('id, nom, ordre, actif, parent_lieu_service_id, couverts_indicatifs')
+          .select('id, nom, ordre, actif, parent_lieu_service_id, couverts_indicatifs, couverts_comptes')
           .eq('client_id', clientId)
           .eq('actif', true)
           .order('ordre').order('nom'),
@@ -256,6 +256,18 @@ export default function RapportHebdoPage() {
     () => new Set(lieux.filter((l) => l.couverts_indicatifs).map((l) => l.id)),
     [lieux]
   )
+  // Ids (remappés vers le parent) des lieux à exclure du suivi couverts
+  // (couverts_comptes === false, ex : Marsan Table de partage / La cave). Le
+  // remap vers parent permet de matcher les lignes déjà remappées côté section
+  // couverts. N'affecte QUE la section couverts.
+  const couvertsExclusIds = useMemo(() => {
+    const parent = new Map(lieux.map((l) => [l.id, l.parent_lieu_service_id || l.id]))
+    const set = new Set()
+    for (const l of lieux) {
+      if (l.couverts_comptes === false) set.add(parent.get(l.id) || l.id)
+    }
+    return set
+  }, [lieux])
   const caRowsRemap = useMemo(
     () => caRows.map((r) => ({
       ...r,
@@ -293,7 +305,9 @@ export default function RapportHebdoPage() {
     // Section TM par lieu : lignes brutes (1 par lieu physique) + libellés
     // propres, pour détailler Salle à manger / Table du chef / Privat séparément.
     caRowsRaw: caRows, budgetRowsRaw: budgetRows, lieuxMapSelf,
-  }), [caRowsRemap, budgetRowsRemap, lieuxMap, debut, fin, joursFermesIso, joursOverrideRows, caRows, budgetRows, lieuxMapSelf])
+    // Section couverts uniquement : exclut les lieux couverts_comptes=false.
+    couvertsExclusIds,
+  }), [caRowsRemap, budgetRowsRemap, lieuxMap, debut, fin, joursFermesIso, joursOverrideRows, caRows, budgetRows, lieuxMapSelf, couvertsExclusIds])
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const handleSemainePrec = () => {
