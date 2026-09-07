@@ -300,6 +300,29 @@ export default function VentesMensuelPage() {
     return result
   }, [rawRows, mois, privatLieuIds])
 
+  // Cellules (date, lieu, service) réellement saisies : clé
+  // `${iso}_${lieu_service_id}_${service}` dès qu'il y a des couverts ou du CA.
+  // Sert à n'accorder la cible d'une cellule un jour donné que si CE
+  // lieu/service a effectivement travaillé — et non « le jour a de la data »
+  // au global. Sans ça, une saisie du restaurant principal un mardi ferait
+  // apparaître la cible d'un lieu Privat pourtant fermé ce mardi (override
+  // nb_jours=0), gonflant l'objectif du jour (ex : Joia 01/09 → 31 576 au lieu
+  // de 6 075).
+  const cellDataKeys = useMemo(() => {
+    const set = new Set()
+    for (const r of rawRows) {
+      const ca =
+        Number(r.ca_food || 0) +
+        Number(r.ca_bev_20 || 0) +
+        Number(r.ca_bev_10 || 0) +
+        Number(r.ca_autre || 0)
+      if (ca > 0 || Number(r.couverts || 0) > 0) {
+        set.add(`${r.jour}_${r.lieu_service_id}_${r.service}`)
+      }
+    }
+    return set
+  }, [rawRows])
+
   // Lissage des privatisations sur le mois.
   // Actif uniquement si une enveloppe budgétaire privatisation est saisie pour
   // le mois (privatBudgetMois != null) — sinon comportement historique.
@@ -381,13 +404,18 @@ export default function VentesMensuelPage() {
         // ici (le budget privat passe par l'enveloppe lissée) pour éviter le
         // double comptage.
         if (privatLissage.active && privatLieuIds.has(cell.lieu_service_id)) continue
-        // Une journée réellement saisie est forcément ouverte : elle reçoit sa
-        // cible du jour même si l'heuristique "N derniers jours" ne l'aurait
-        // pas élue. Sans ça, des jours travaillés en début de mois (alors que
-        // les overrides d'ouverture réduisent le mois — période estivale, etc.)
-        // affichent Objectif/Δ/Month to date à «—». On ne filtre par élection
-        // que les jours SANS saisie (projection calendaire).
-        if (!d.hasData && !isCellElectedForDate(cell, d.iso, annee, monthNum, electedMap)) continue
+        // Une cellule (lieu/service) réellement saisie ce jour-là est forcément
+        // ouverte : elle reçoit sa cible même si l'heuristique "N derniers
+        // jours" ne l'aurait pas élue. Sans ça, des jours travaillés en début
+        // de mois (alors que les overrides d'ouverture réduisent le mois —
+        // période estivale, etc.) affichent Objectif/Δ/Month to date à «—».
+        // La présence de data est vérifiée PAR CELLULE (et non « le jour a de
+        // la data ») : une saisie du restaurant principal ne doit pas réveiller
+        // la cible d'un lieu Privat fermé ce jour-là (cf. cellDataKeys).
+        const cellHasData = cellDataKeys.has(
+          `${d.iso}_${cell.lieu_service_id}_${cell.service}`
+        )
+        if (!cellHasData && !isCellElectedForDate(cell, d.iso, annee, monthNum, electedMap)) continue
         total +=
           Number(cell.ca_food_cible || 0) +
           Number(cell.ca_bev_20_cible || 0) +
@@ -399,7 +427,7 @@ export default function VentesMensuelPage() {
       out.set(d.iso, total)
     }
     return out
-  }, [budgetRows, joursOverrideRows, mois, days, privatLissage, privatLieuIds, closedDatesSet])
+  }, [budgetRows, joursOverrideRows, mois, days, privatLissage, privatLieuIds, closedDatesSet, cellDataKeys])
 
   const daysWithBudget = useMemo(() => {
     return days.map((d) => {
