@@ -233,6 +233,15 @@ export default function RapportHebdoPage() {
     return out
   }, [lieux])
 
+  // lieuxMapSelf = Map<id, nom PROPRE du lieu> (sans remap parent). Sert à la
+  // section « Ticket moyen par lieu », qui détaille chaque lieu physique
+  // (Salle à manger, Table du chef, Privat…) au lieu de les agréger sous leur
+  // parent comme le reste du rapport.
+  const lieuxMapSelf = useMemo(
+    () => new Map(lieux.map((l) => [l.id, l.nom])),
+    [lieux]
+  )
+
   // Remap chaque row vers le parent (ou self si pas de parent) — toutes
   // les fonctions de calcul (tmParLieuService, etc.) groupent par
   // lieu_service_id qui pointe maintenant vers le parent.
@@ -281,7 +290,10 @@ export default function RapportHebdoPage() {
 
   const data = useMemo(() => buildRapportData({
     caRows: caRowsRemap, budgetRows: budgetRowsRemap, lieuxMap, debut, fin, joursFermesIso, joursOverrideRows,
-  }), [caRowsRemap, budgetRowsRemap, lieuxMap, debut, fin, joursFermesIso, joursOverrideRows])
+    // Section TM par lieu : lignes brutes (1 par lieu physique) + libellés
+    // propres, pour détailler Salle à manger / Table du chef / Privat séparément.
+    caRowsRaw: caRows, budgetRowsRaw: budgetRows, lieuxMapSelf,
+  }), [caRowsRemap, budgetRowsRemap, lieuxMap, debut, fin, joursFermesIso, joursOverrideRows, caRows, budgetRows, lieuxMapSelf])
 
   // ── Actions ─────────────────────────────────────────────────────────────
   const handleSemainePrec = () => {
